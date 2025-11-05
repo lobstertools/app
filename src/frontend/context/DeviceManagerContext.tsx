@@ -1,0 +1,390 @@
+import {
+    createContext,
+    ReactNode,
+    useContext,
+    useEffect,
+    useState,
+    useCallback,
+} from 'react';
+import axios from 'axios';
+import { notification } from 'antd';
+
+import {
+    DiscoveredDevice,
+    ActiveDevice,
+    ConnectionHealth,
+    DeviceManagerContextState,
+    DeviceProvisioningData,
+} from '../../types';
+import { apiClient } from '../lib/apiClient';
+import { useAppRuntime } from './AppRuntimeContext';
+
+interface DeviceHealthResponse {
+    status: 'ok' | 'error';
+    message: string;
+}
+type DeviceDetailsResponse = ActiveDevice;
+
+// Initial state for the new ConnectionHealth (2-link version)
+const INITIAL_HEALTH: ConnectionHealth = {
+    server: { status: 'pending', message: 'Connecting to server...' },
+    device: { status: 'pending', message: 'Waiting for server...' },
+};
+
+const DeviceManagerContext = createContext<
+    DeviceManagerContextState | undefined
+>(undefined);
+
+/**
+ * Custom hook to consume the DeviceManagerContext.
+ * Provides access to all device state and management functions.
+ */
+export const useDeviceManager = () => {
+    const ctx = useContext(DeviceManagerContext);
+    if (!ctx)
+        throw new Error(
+            'useDeviceManager must be used within a DeviceManagerProvider'
+        );
+    return ctx;
+};
+
+/**
+ * Main provider component. Wraps the application to provide global state
+ * and logic for discovering, provisioning, and interacting with devices.
+ */
+export const DeviceManagerProvider = ({
+    children,
+}: {
+    children: ReactNode;
+}) => {
+    // This is the one place we consume AppRuntimeContext
+    const { isBackendReady } = useAppRuntime();
+
+    const [connectionHealth, setConnectionHealth] =
+        useState<ConnectionHealth>(INITIAL_HEALTH);
+
+    const [activeDevice, setActiveDevice] = useState<ActiveDevice | null>(
+        () => {
+            const savedDevice = localStorage.getItem('lobster-active-device');
+            return savedDevice ? JSON.parse(savedDevice) : null;
+        }
+    );
+
+    const [discoveredDevices, setDiscoveredDevices] = useState<
+        DiscoveredDevice[]
+    >([]);
+    const [isDeviceModalOpen, setIsDeviceModalOpen] = useState(false);
+    const [isScanning, setIsScanning] = useState(false);
+    const [isProvisioning, setIsProvisioning] = useState(false);
+
+    const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+    const [logContent, setLogContent] = useState('');
+
+    // --- Device Management Functions ---
+
+    /**
+     * Triggers a new scan for BLE (new) and mDNS (ready) devices.
+     * Populates the `discoveredDevices` list.
+     */
+    const scanForDevices = useCallback(async () => {
+        setIsScanning(true);
+        try {
+            const response =
+                await apiClient.get<DiscoveredDevice[]>('/devices');
+            setDiscoveredDevices(response.data);
+        } catch (err) {
+            console.error('Failed to fetch devices:', err);
+            notification.error({ message: 'Failed to scan for devices' });
+        } finally {
+            setIsScanning(false);
+        }
+    }, []);
+
+    /**
+     * Sends Wi-Fi credentials and configuration data to a 'new' (BLE) device.
+     * @param deviceId The ID of the BLE device to provision.
+     * @param data The provisioning data (SSID, pass, etc.).
+     * @returns True on success, false on failure.
+     */
+    const provisionDevice = useCallback(
+        async (deviceId: string, data: DeviceProvisioningData) => {
+            setIsProvisioning(true);
+            try {
+                const response = await apiClient.post(
+                    `/devices/${deviceId}/provision`,
+                    data
+                );
+                notification.success({
+                    message: 'Provisioning Sent!',
+                    description:
+                        response.data?.message ||
+                        'Device should reboot and appear on the network.',
+                });
+                scanForDevices(); // Refresh the list
+                setIsProvisioning(false);
+                return true;
+            } catch (err: any) {
+                const msg =
+                    err.response?.data?.message ||
+                    'Failed to provision device.';
+                notification.error({
+                    message: 'Provisioning Failed',
+                    description: msg,
+                });
+                setIsProvisioning(false);
+                return false;
+            }
+        },
+        [scanForDevices]
+    );
+
+    /**
+     * Deselects the currently active device, clears it from localStorage,
+     * and re-opens the device selection modal.
+     */
+    const clearDevice = useCallback(() => {
+        setActiveDevice(null);
+        localStorage.removeItem('lobster-active-device');
+        setConnectionHealth({
+            server: { status: 'ok', message: 'Server connected.' },
+            device: { status: 'pending', message: 'No device selected.' },
+        });
+        setIsDeviceModalOpen(true);
+    }, []);
+
+    /**
+     * Sets a 'ready' discovered device as the new `activeDevice`.
+     * Fetches its full details and saves it to localStorage.
+     * @param device The device (from `discoveredDevices`) to select.
+     */
+    const selectDevice = useCallback(
+        async (device: DiscoveredDevice) => {
+            if (device.state !== 'ready') {
+                notification.error({
+                    message: 'Device not ready',
+                    description: 'This device must be provisioned first.',
+                });
+                return;
+            }
+
+            setConnectionHealth(INITIAL_HEALTH);
+            setIsDeviceModalOpen(false);
+
+            try {
+                const response = await apiClient.get<DeviceDetailsResponse>(
+                    `/devices/${device.id}/details`
+                );
+
+                const fullDevice = response.data;
+                fullDevice.id = device.id; // Ensure the ID is set
+
+                setActiveDevice(fullDevice);
+                localStorage.setItem(
+                    'lobster-active-device',
+                    JSON.stringify(fullDevice)
+                );
+            } catch (err) {
+                console.error('Failed to fetch device details:', err);
+                notification.error({
+                    message: 'Failed to select device',
+                    description:
+                        'Could not fetch device details. Please try again.',
+                });
+                clearDevice(); // Go back to 'no device' state
+            }
+        },
+        [clearDevice]
+    );
+
+    /**
+     * Sends a factory reset command to the specified device.
+     * On success, clears the active device.
+     * @param deviceId The ID of the device to reset (must be an active device).
+     */
+    const factoryResetDevice = useCallback(
+        async (deviceId: string) => {
+            try {
+                await apiClient.post(`/devices/${deviceId}/factory-reset`);
+                notification.success({
+                    message: 'Factory Reset Complete',
+                    description:
+                        'The device is rebooting into provisioning mode.',
+                });
+                clearDevice(); // Device is no longer 'active'
+            } catch (err: any) {
+                const msg =
+                    err.response?.data?.message ||
+                    'Failed to send reset command.';
+                notification.error({
+                    message: 'Reset Failed',
+                    description: msg,
+                });
+            }
+        },
+        [clearDevice]
+    );
+
+    /**
+     * Opens the device selection modal.
+     */
+    const openDeviceModal = () => setIsDeviceModalOpen(true);
+
+    /**
+     * Closes the device selection modal.
+     */
+    const closeDeviceModal = () => setIsDeviceModalOpen(false);
+
+    /**
+     * Fetches the full diagnostic log contents from the currently
+     * active device and opens the log modal.
+     */
+    const fetchDeviceLogs = useCallback(async () => {
+        if (!activeDevice) return;
+        setLogContent('Loading logs from device...');
+        setIsLogModalOpen(true);
+        try {
+            const response = await apiClient.get(
+                `/devices/${activeDevice.id}/log`,
+                { responseType: 'text' }
+            );
+            setLogContent(response.data);
+        } catch (err: any) {
+            const msg = axios.isAxiosError(err)
+                ? err.response?.data
+                : 'Failed to fetch logs.';
+            setLogContent(`Error:\n${msg}`);
+        }
+    }, [activeDevice]);
+
+    /**
+     * Closes the log viewer modal.
+     */
+    const closeLogModal = () => setIsLogModalOpen(false);
+
+    // --- Health & Keepalive (Internal) ---
+
+    const fetchHealth = useCallback(async () => {
+        if (!isBackendReady) {
+            setConnectionHealth(INITIAL_HEALTH); // Backend not yet ready
+            return;
+        }
+
+        if (!activeDevice) {
+            setConnectionHealth({
+                server: { status: 'ok', message: 'Server connected.' },
+                device: { status: 'pending', message: 'No device selected.' },
+            });
+            return;
+        }
+
+        try {
+            // Check Link 2 (Backend -> Device)
+            const response = await apiClient.get<DeviceHealthResponse>(
+                `/devices/${activeDevice.id}/health`
+            );
+
+            // SUCCESS: Link 1 (UI -> Server) is OK. Link 2 is from response.
+            setConnectionHealth({
+                server: { status: 'ok', message: 'Server connected.' },
+                device: {
+                    status: response.data.status,
+                    message: response.data.message,
+                },
+            });
+        } catch (err: any) {
+            if (axios.isAxiosError(err)) {
+                if (err.response) {
+                    // SERVER IS REACHABLE, but returned an error (404, 503)
+                    // This means Link 1 (UI -> Server) is 'ok'.
+                    // Link 2 (Backend -> Device) is 'error'.
+                    const deviceMsg =
+                        err.response.data?.message || 'Device is unreachable.';
+                    setConnectionHealth({
+                        server: { status: 'ok', message: 'Server connected.' },
+                        device: { status: 'error', message: deviceMsg },
+                    });
+                } else {
+                    // SERVER IS UNREACHABLE (Network error, DNS, ECONNREFUSED)
+                    // Link 1 (UI -> Server) is 'error'.
+                    setConnectionHealth({
+                        server: {
+                            status: 'error',
+                            message: 'Server unreachable. Check connection.',
+                        },
+                        device: {
+                            status: 'pending',
+                            message: 'Waiting for server connection...',
+                        },
+                    });
+                }
+            } else {
+                // A non-Axios JS error occurred
+                console.error('Non-Axios error in fetchHealth:', err);
+                setConnectionHealth({
+                    server: {
+                        status: 'error',
+                        message: 'An application error occurred.',
+                    },
+                    device: { status: 'pending', message: 'Waiting...' },
+                });
+            }
+        }
+    }, [activeDevice, isBackendReady]);
+
+    const sendKeepAlive = useCallback(async () => {
+        if (!activeDevice) return;
+        try {
+            await apiClient.post(`/devices/${activeDevice.id}/keepalive`);
+        } catch (err) {
+            console.warn('Failed to send keep-alive ping:', err);
+        }
+    }, [activeDevice]);
+
+    // --- Effects ---
+
+    useEffect(() => {
+        fetchHealth();
+        const healthPollTimer = setInterval(fetchHealth, 10000);
+        return () => clearInterval(healthPollTimer);
+    }, [fetchHealth]);
+
+    useEffect(() => {
+        const isFullyConnected =
+            connectionHealth.server.status === 'ok' &&
+            connectionHealth.device.status === 'ok';
+
+        if (!activeDevice || !isFullyConnected) return;
+
+        sendKeepAlive();
+        const keepAliveTimer = setInterval(sendKeepAlive, 60000);
+        return () => clearInterval(keepAliveTimer);
+    }, [activeDevice, connectionHealth, sendKeepAlive]);
+
+    const value: DeviceManagerContextState = {
+        connectionHealth,
+        activeDevice,
+        discoveredDevices,
+        isDeviceModalOpen,
+        isScanning,
+        isProvisioning,
+        isLogModalOpen,
+        logContent,
+        scanForDevices,
+        provisionDevice,
+        selectDevice,
+        clearDevice,
+        openDeviceModal,
+        closeDeviceModal,
+        factoryResetDevice,
+        fetchDeviceLogs,
+        closeLogModal,
+    };
+
+    return (
+        <DeviceManagerContext.Provider value={value}>
+            {children}
+        </DeviceManagerContext.Provider>
+    );
+};
+
+export default DeviceManagerContext;

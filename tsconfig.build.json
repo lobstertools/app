@@ -1,0 +1,13 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "outDir": "dist/backend",
+        "noEmit": false,
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "isolatedModules": false,
+        "allowImportingTsExtensions": false
+    },
+    "include": ["src/backend"],
+    "exclude": ["node_modules", "dist", "public"]
+}
