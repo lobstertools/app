@@ -20,6 +20,7 @@ import { SessionControl } from '../session/SessionControl';
 import { SessionLockModal } from '../session/SessionLockModal';
 import { DeviceConfigurationMenu } from '../device/DeviceConfigurationMenu';
 import { DeviceLogModal } from '../device/DeviceLogModal';
+import { SessionStats } from '../session/SessionStats';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -62,7 +63,10 @@ export const AppContent = ({
                     <Title level={3} style={{ margin: 0 }}>
                         Lobster
                     </Title>
-                    <Tag color="red">Beta</Tag>
+                    <Tag color="red" style={{ marginRight: '32px' }}>
+                        Beta
+                    </Tag>
+                    <SessionStats />
                     <div style={{ flex: 1 }} />
 
                     <Space size={12} align="center">
