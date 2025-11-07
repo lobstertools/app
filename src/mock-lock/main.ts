@@ -19,7 +19,7 @@ import cors from 'cors';
 import readline from 'readline';
 import bonjour from 'bonjour';
 
-import { SessionStatusResponse } from '../types/';
+import { ActiveDevice, SessionStatusResponse } from '../types/';
 
 const app = express();
 const PORT = 3003;
@@ -387,7 +387,7 @@ app.get('/details', (req, res) => {
         countStreaks: COUNT_STREAKS,
         enableTimePayback: ENABLE_TIME_PAYBACK,
         abortPaybackMinutes: ABORT_PAYBACK_MINUTES,
-    });
+    } as ActiveDevice);
 });
 
 /**
