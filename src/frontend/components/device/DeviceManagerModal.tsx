@@ -17,7 +17,7 @@ import {
     Tabs,
     Empty,
 } from 'antd';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { DiscoveredDevice } from '../../../types';
 import { ProvisionDeviceForm } from './ProvisionDeviceForm';
 
@@ -33,13 +33,9 @@ export const DeviceManagerModal = () => {
         selectDevice,
         isScanning,
         scanForDevices,
-        activeDevice,
         closeDeviceModal,
     } = useDeviceManager();
     const { token } = antdTheme.useToken();
-
-    // Modal can only be closed if a device is already active
-    const isClosable = activeDevice !== null;
 
     // Filter devices into 'ready' (mDNS) and 'new' (BLE)
     const readyDevices = useMemo(
@@ -51,6 +47,12 @@ export const DeviceManagerModal = () => {
         () => discoveredDevices.filter((d) => d.state === 'new_unprovisioned'),
         [discoveredDevices]
     );
+
+    useEffect(() => {
+        if (isDeviceModalOpen) {
+            scanForDevices();
+        }
+    }, [isDeviceModalOpen, scanForDevices]);
 
     /**
      * Renders a list of devices (either ready or new).
@@ -155,15 +157,11 @@ export const DeviceManagerModal = () => {
         <Modal
             title="Device Manager"
             open={isDeviceModalOpen}
-            closable={isClosable}
+            closable={false}
             width={720}
             wrapClassName="backdrop-blur-modal"
             footer={[
-                <Button
-                    key="cancel"
-                    onClick={closeDeviceModal}
-                    disabled={!isClosable}
-                >
+                <Button key="cancel" onClick={closeDeviceModal}>
                     Cancel
                 </Button>,
                 <Button

@@ -34,7 +34,6 @@ import { useMemo } from 'react';
 import { useDeviceManager } from '../../context/DeviceManagerContext';
 
 const { Text } = Typography;
-const { confirm } = Modal;
 
 /**
  * Diagnostic indicator for connection health, logs, and device actions.
@@ -55,8 +54,9 @@ export const DeviceConfigurationMenu = () => {
         factoryResetDevice,
     } = useDeviceManager();
 
+    const [modalApi, contextHolder] = Modal.useModal();
+
     // Pulling static config from activeDevice
-    const deviceId = activeDevice?.id;
     const deviceName = activeDevice?.name;
     const channelCount = activeDevice?.numberOfChannels || 0;
     const paybackEnabled = activeDevice?.enableTimePayback || false;
@@ -69,7 +69,7 @@ export const DeviceConfigurationMenu = () => {
         [activeDevice]
     );
     const hasPedalFeature = useMemo(
-        () => activeDevice?.features?.includes('Abort_Padel') || false, // Assuming 'Padel' is correct
+        () => activeDevice?.features?.includes('Abort_Padel') || false,
         [activeDevice]
     );
 
@@ -79,7 +79,7 @@ export const DeviceConfigurationMenu = () => {
         let title: string;
         let icon: React.ReactNode;
         let description: string;
-        let displayDeviceId = deviceId || 'Unknown Device';
+        let displayDeviceId: string;
 
         if (!activeDevice) {
             color = red[5];
@@ -100,7 +100,7 @@ export const DeviceConfigurationMenu = () => {
             icon = <DisconnectOutlined style={{ color: color }} />;
             description =
                 'The server is running, but it cannot reach the device.';
-            displayDeviceId = deviceName || displayDeviceId;
+            displayDeviceId = deviceName || 'Unknown Device';
         } else if (
             connectionHealth.server.status === 'pending' ||
             connectionHealth.device.status === 'pending'
@@ -109,23 +109,23 @@ export const DeviceConfigurationMenu = () => {
             title = 'Connecting...';
             icon = <LoadingOutlined style={{ color: color }} />;
             description = 'Attempting to connect to the server/device...';
-            displayDeviceId = activeDevice?.name || 'Connecting...';
+            displayDeviceId = deviceName || 'Connecting...';
         } else {
             // Both server and device status are 'ok'
             color = green[5];
             title = 'Connected';
             icon = <WifiOutlined style={{ color: color }} />;
             description = 'UI, server, and device are all connected.';
-            displayDeviceId = deviceName || displayDeviceId;
+            displayDeviceId = deviceName || 'Unknown Device';
         }
 
         return { title, icon, description, displayDeviceId };
-    }, [connectionHealth, activeDevice, deviceId, deviceName, token]);
+    }, [connectionHealth, activeDevice, deviceName, token]);
     // --- END HEALTH LOGIC ---
 
     const showFactoryResetConfirm = () => {
         if (!activeDevice) return;
-        confirm({
+        modalApi.confirm({
             title: 'Are you sure you want to factory reset this device?',
             icon: <ExclamationCircleOutlined />,
             content: (
@@ -298,7 +298,7 @@ export const DeviceConfigurationMenu = () => {
                             key: 'payback',
                             label: paybackEnabled
                                 ? `Payback: ${paybackMinutes} min`
-                                : 'Payback: Disabled',
+                                : 'PayBack: Disabled',
                             icon: <FieldTimeOutlined />,
                             disabled: true,
                         },
@@ -351,7 +351,7 @@ export const DeviceConfigurationMenu = () => {
                 { key: 'setup-features', type: 'divider' as const },
                 {
                     key: 'change-device',
-                    label: 'Change & Provision Device',
+                    label: 'Device Manager',
                     icon: <SettingOutlined />,
                     onClick: openDeviceModal,
                 },
@@ -389,10 +389,7 @@ export const DeviceConfigurationMenu = () => {
                     <Text type="secondary" style={{ fontSize: '12px' }}>
                         {title}
                     </Text>
-                    <Text
-                        type="secondary"
-                        style={{ fontSize: '12px', fontFamily: 'monospace' }}
-                    >
+                    <Text type="secondary" style={{ fontSize: '12px' }}>
                         {displayDeviceId}
                     </Text>
                 </Space>
@@ -404,12 +401,15 @@ export const DeviceConfigurationMenu = () => {
     );
 
     return (
-        <Dropdown
-            menu={{ items: menuItems }}
-            trigger={['click']}
-            disabled={!activeDevice && title !== 'No Device'} // Disable if connecting
-        >
-            {triggerComponent}
-        </Dropdown>
+        <>
+            {contextHolder}
+            <Dropdown
+                menu={{ items: menuItems }}
+                trigger={['click']}
+                disabled={!activeDevice && title !== 'No Device'} // Disable if connecting
+            >
+                {triggerComponent}
+            </Dropdown>
+        </>
     );
 };
