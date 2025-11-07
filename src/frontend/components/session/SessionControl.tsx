@@ -209,8 +209,8 @@ export const SessionControl = () => {
         const { status } = useSession();
         const { activeDevice } = useDeviceManager();
         const pendingPaybackSeconds = status?.pendingPaybackSeconds || 0;
-        const paybackEnabled = activeDevice?.enableTimePayback || false;
-        const paybackMinutes = activeDevice?.abortPaybackMinutes || 0;
+        const paybackEnabled = activeDevice?.config?.enableTimePayback || false;
+        const paybackMinutes = activeDevice?.config?.abortPaybackMinutes || 0;
 
         return (
             <Form

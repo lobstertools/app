@@ -62,10 +62,12 @@ export interface ActiveDevice {
     version: string;
     features: string[];
     numberOfChannels: number;
-    abortDelaySeconds: number;
-    countStreaks: boolean;
-    enableTimePayback: boolean;
-    abortPaybackMinutes: number;
+    config: {
+        abortDelaySeconds: number;
+        countStreaks: boolean;
+        enableTimePayback: boolean;
+        abortPaybackMinutes: number;
+    };
 }
 
 /**

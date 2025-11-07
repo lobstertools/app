@@ -383,10 +383,12 @@ app.get('/details', (req, res) => {
         version: DEVICE_VERSION,
         features: FEATURES,
         numberOfChannels: NUMBER_OF_CHANNELS,
-        abortDelaySeconds: ABORT_DELAY_SECONDS,
-        countStreaks: COUNT_STREAKS,
-        enableTimePayback: ENABLE_TIME_PAYBACK,
-        abortPaybackMinutes: ABORT_PAYBACK_MINUTES,
+        config: {
+            abortDelaySeconds: ABORT_DELAY_SECONDS,
+            countStreaks: COUNT_STREAKS,
+            enableTimePayback: ENABLE_TIME_PAYBACK,
+            abortPaybackMinutes: ABORT_PAYBACK_MINUTES,
+        },
     } as ActiveDevice);
 });
 

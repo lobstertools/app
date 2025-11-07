@@ -60,9 +60,9 @@ export const DeviceConfigurationMenu = () => {
     const deviceName = activeDevice?.name;
     const displayDeviceAddress = activeDevice?.address || 'N/A';
     const channelCount = activeDevice?.numberOfChannels || 0;
-    const paybackEnabled = activeDevice?.enableTimePayback || false;
-    const paybackMinutes = activeDevice?.abortPaybackMinutes || 0;
-    const abortDelaySeconds = activeDevice?.abortDelaySeconds || 0;
+    const paybackEnabled = activeDevice?.config?.enableTimePayback || false;
+    const paybackMinutes = activeDevice?.config?.abortPaybackMinutes || 0;
+    const abortDelaySeconds = activeDevice?.config?.abortDelaySeconds || 0;
 
     // Pulling features from activeDevice
     const hasLedFeature = useMemo(
@@ -309,8 +309,8 @@ export const DeviceConfigurationMenu = () => {
                         {
                             key: 'payback',
                             label: paybackEnabled
-                                ? `Payback: ${paybackMinutes} min`
-                                : 'PayBack: Disabled',
+                                ? `Time payback: ${paybackMinutes} min`
+                                : 'Time payback: Disabled',
                             icon: <FieldTimeOutlined />,
                             disabled: true,
                         },
