@@ -30,8 +30,14 @@ const globalStyles = `
     /* Vendor prefixes for older browser compatibility */
     -webkit-user-select: none; /* Safari */
     -moz-user-select: none;    /* Firefox */
-    -ms-user-select: none;     /* Internet Explorer/Edge */
+    -ms-user-select: none;     /* Internet Explorer/Edge */    
   }
+  .selectable-text {
+    user-select: all;
+    -webkit-user-select: all;
+    -moz-user-select: all;
+    -ms-user-select: all;
+  }    
 `;
 
 /**
@@ -58,18 +64,6 @@ function App() {
     useEffect(() => {
         localStorage.setItem('app-theme', theme);
     }, [theme]);
-
-    // Disable right-click context menu globally
-    useEffect(() => {
-        const handleContextMenu = (event: MouseEvent) => {
-            event.preventDefault();
-        };
-
-        document.addEventListener('contextmenu', handleContextMenu);
-        return () => {
-            document.removeEventListener('contextmenu', handleContextMenu);
-        };
-    }, []);
 
     // Select the correct Ant Design theme algorithm
     const antdAlgorithm =

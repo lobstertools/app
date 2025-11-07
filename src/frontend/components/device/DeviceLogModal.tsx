@@ -35,10 +35,12 @@ export const DeviceLogModal = () => {
                 }}
             >
                 <pre
+                    className="selectable-text"
                     style={{
                         margin: 0,
                         whiteSpace: 'pre-wrap',
                         wordBreak: 'break-all',
+                        userSelect: 'text',
                     }}
                 >
                     {logContent}
