@@ -395,24 +395,28 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
                 ]
             );
 
-        // Find ALL characteristics
+        // main.ts
+        const normalize = (uuid: string) =>
+            uuid.toLowerCase().replace(/-/g, '');
+
         const ssidChar = characteristics.find(
-            (c) => c.uuid === PROV_SSID_CHAR_UUID
+            (c) => normalize(c.uuid) === normalize(PROV_SSID_CHAR_UUID)
         );
         const passChar = characteristics.find(
-            (c) => c.uuid === PROV_PASS_CHAR_UUID
+            (c) => normalize(c.uuid) === normalize(PROV_PASS_CHAR_UUID)
         );
         const abortDelayChar = characteristics.find(
-            (c) => c.uuid === PROV_ABORT_DELAY_CHAR_UUID
+            (c) => normalize(c.uuid) === normalize(PROV_ABORT_DELAY_CHAR_UUID)
         );
         const countStreaksChar = characteristics.find(
-            (c) => c.uuid === PROV_COUNT_STREAKS_CHAR_UUID
+            (c) => normalize(c.uuid) === normalize(PROV_COUNT_STREAKS_CHAR_UUID)
         );
         const enablePaybackChar = characteristics.find(
-            (c) => c.uuid === PROV_ENABLE_PAYBACK_CHAR_UUID
+            (c) =>
+                normalize(c.uuid) === normalize(PROV_ENABLE_PAYBACK_CHAR_UUID)
         );
         const abortPaybackChar = characteristics.find(
-            (c) => c.uuid === PROV_ABORT_PAYBACK_CHAR_UUID
+            (c) => normalize(c.uuid) === normalize(PROV_ABORT_PAYBACK_CHAR_UUID)
         );
 
         // Validate ALL characteristics
