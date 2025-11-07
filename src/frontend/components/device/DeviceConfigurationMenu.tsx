@@ -58,6 +58,7 @@ export const DeviceConfigurationMenu = () => {
 
     // Pulling static config from activeDevice
     const deviceName = activeDevice?.name;
+    const displayDeviceAddress = activeDevice?.address || 'N/A';
     const channelCount = activeDevice?.numberOfChannels || 0;
     const paybackEnabled = activeDevice?.enableTimePayback || false;
     const paybackMinutes = activeDevice?.abortPaybackMinutes || 0;
@@ -119,7 +120,12 @@ export const DeviceConfigurationMenu = () => {
             displayDeviceId = deviceName || 'Unknown Device';
         }
 
-        return { title, icon, description, displayDeviceId };
+        return {
+            title,
+            icon,
+            description,
+            displayDeviceId,
+        };
     }, [connectionHealth, activeDevice, deviceName, token]);
     // --- END HEALTH LOGIC ---
 
@@ -285,6 +291,12 @@ export const DeviceConfigurationMenu = () => {
                         {
                             key: 'device-id',
                             label: `Device: ${displayDeviceId || 'N/A'}`,
+                            icon: <HddOutlined />,
+                            disabled: true,
+                        },
+                        {
+                            key: 'device-ip',
+                            label: `IP: ${displayDeviceAddress || 'N/A'}`,
                             icon: <HddOutlined />,
                             disabled: true,
                         },
