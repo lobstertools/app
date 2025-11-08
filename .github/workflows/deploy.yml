@@ -1,0 +1,125 @@
+# This is a GitHub Actions workflow file.
+# To use it, create a directory in your repo: .github/workflows
+# And save this file as: .github/workflows/build-electron-app.yml
+
+name: Build Electron App
+
+# Controls when the action will run.
+# - 'push' to the 'main' branch
+# - 'pull_request' to the 'main' branch
+# - 'workflow_dispatch' allows you to run it manually from the Actions tab
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  # Job to build the macOS version
+  build-macos:
+    # Use the latest macOS runner
+    runs-on: macos-latest
+
+    steps:
+      # 1. Check out your repository's code
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      # 2. Set up Node.js (version 20.x)
+      # This action also handles setting up and caching Yarn.
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'yarn'
+
+      # 3. Install dependencies
+      # Using --frozen-lockfile is best practice for CI to ensure
+      # you use the exact dependencies from your yarn.lock file.
+      # Make sure to commit your yarn.lock file to your repo.
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      # 4. Run your existing build script
+      # This command (from your package.json) will:
+      # - rimraf dist
+      # - build:frontend
+      # - build:backend
+      # - build:electron
+      # - build:electron:package (which runs electron-builder)
+      - name: Build and package app
+        run: yarn build
+        env:
+          # --- FOR MACOS CODE SIGNING & NOTARIZATION (Optional) ---
+          # To build a signed and notarized app, you MUST:
+          # 1. Create these secrets in your GitHub repo settings.
+          # 2. Uncomment the following lines.
+          #
+          # APPLE_ID: ${{ secrets.APPLE_ID }}
+          # APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          #
+          # You also need to import your signing certificate.
+          # The easiest way is to set CSC_LINK and CSC_KEY_PASSWORD.
+          # CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          # CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          #
+          # For more info: https://www.electron.build/code-signing
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Required for electron-builder to auto-update
+
+      # 5. Upload the build artifact (the .dmg file)
+      # Your package.json specifies the output dir as "dist/package"
+      # and the mac target as "dmg".
+      - name: Upload macOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lobster-macOS-Installer
+          path: dist/package/*.dmg
+          if-no-files-found: error # Fail the build if .dmg is not found
+
+  # Job to build the Windows version
+  build-windows:
+    # Use the latest Windows runner
+    runs-on: windows-latest
+
+    steps:
+      # 1. Check out your repository's code
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      # 2. Set up Node.js (version 20.x)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'yarn'
+
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      # 4. Run your existing build script
+      - name: Build and package app
+        run: yarn build
+        env:
+          # --- FOR WINDOWS CODE SIGNING (Optional) ---
+          # To build a signed app, you MUST:
+          # 1. Create these secrets in your GitHub repo settings.
+          # 2. Uncomment the following lines.
+          #
+          # CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          # CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          #
+          # For more info: https://www.electron.build/code-signing
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Required for electron-builder to auto-update
+
+      # 5. Upload the build artifact (the .exe installer)
+      # Your package.json specifies the output dir as "dist/package"
+      # and the windows target as "nsis" (which creates an .exe installer).
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lobster-Windows-Installer
+          path: dist/package/*.exe
+          if-no-files-found: error # Fail the build if .exe is not found
