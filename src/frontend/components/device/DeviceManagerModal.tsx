@@ -337,7 +337,7 @@ export const DeviceManagerModal = () => {
                 title={modalTitle}
                 open={isDeviceModalOpen}
                 closable={false}
-                width={720}
+                width={960}
                 wrapClassName="backdrop-blur-modal"
                 footer={modalFooter}
                 onCancel={handleCancel}

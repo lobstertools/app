@@ -7,10 +7,11 @@ import {
     Spin,
     Alert,
     Typography,
+    Divider,
 } from 'antd';
 import { useState } from 'react';
 import { DiscoveredDevice, DeviceProvisioningData } from '../../../types';
-import { useDeviceManager } from '../../context/DeviceManagerContext'; 
+import { useDeviceManager } from '../../context/DeviceManagerContext';
 
 /**
  * This form collects WiFi credentials and the static device config
@@ -91,11 +92,22 @@ export const ProvisionDeviceForm = ({
                     These settings are sent once and stored on the device.
                 </Text>
 
+                {/* --- Added Info Block --- */}
+                <Alert
+                    message="Settings are Permanent"
+                    description="These settings are permanent. A factory reset is required to change them, which erases all data (streaks, debt, etc.)"
+                    type="warning"
+                    showIcon
+                    style={{ marginTop: 16 }}
+                />
+
+                <Divider>Wi-Fi Credentials</Divider>
+
+                {/* --- Wi-Fi Section --- */}
                 <Form.Item
                     name="ssid"
                     label="Wi-Fi Name (SSID)"
                     rules={[{ required: true, message: 'SSID is required' }]}
-                    style={{ marginTop: 16 }}
                 >
                     <Input placeholder="Your 2.4GHz Wi-Fi Network Name" />
                 </Form.Item>
@@ -110,21 +122,37 @@ export const ProvisionDeviceForm = ({
                     <Input.Password placeholder="Your Wi-Fi Password" />
                 </Form.Item>
 
+                <Divider>Device Configuration</Divider>
+
+                {/* --- Abort Pedal Section --- */}
                 <Form.Item
                     name="abortDelaySeconds"
                     label="Abort Pedal Hold Time (Seconds)"
                     rules={[{ required: true }]}
+                    help="The number of seconds the abort pedal must be held down to trigger an early session abort. This helps prevent accidental presses."
                 >
                     <InputNumber min={1} max={10} style={{ width: '100%' }} />
                 </Form.Item>
 
-                <Form.Item name="countStreaks" valuePropName="checked">
-                    <Checkbox>
-                        Count consecutive successful sessions (Streaks)
-                    </Checkbox>
+                <Divider style={{ marginTop: '48px' }}>
+                    Abort Deterrents
+                </Divider>
+
+                {/* --- Streaks Section --- */}
+                <Form.Item
+                    name="countStreaks"
+                    valuePropName="checked"
+                    help="The device will track consecutive completed sessions. This 'Streak' is visible as a badge in the app to provide motivation and a reminder of your success."
+                >
+                    <Checkbox>Enable Session Streaks</Checkbox>
                 </Form.Item>
 
-                <Form.Item name="enableTimePayback" valuePropName="checked">
+                {/* --- Payback Section --- */}
+                <Form.Item
+                    name="enableTimePayback"
+                    valuePropName="checked"
+                    help="Discourages bailing out. When a session is aborted (via pedal, UI, or power loss), a 'time debt' is created and added to the start of your next session."
+                >
                     <Checkbox>
                         Enable Time Payback for aborted sessions
                     </Checkbox>
@@ -135,7 +163,6 @@ export const ProvisionDeviceForm = ({
                         name="abortPaybackMinutes"
                         label="Payback Time per Abort (Minutes)"
                         rules={[{ required: true }]}
-                        style={{ paddingLeft: 24 }}
                     >
                         <InputNumber
                             min={1}
