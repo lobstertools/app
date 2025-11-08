@@ -72,7 +72,7 @@ export const DeviceConfigurationMenu = () => {
         [activeDevice]
     );
     const hasPedalFeature = useMemo(
-        () => activeDevice?.features?.includes('Abort_Padel') || false,
+        () => activeDevice?.features?.includes('Abort_Pedal') || false,
         [activeDevice]
     );
 
@@ -224,7 +224,7 @@ export const DeviceConfigurationMenu = () => {
                 key: 'feat-abort-pedal',
                 label: (
                     <Space>
-                        <span>Abort Padel Support</span>
+                        <span>Abort Pedal Support</span>
                         <Tooltip title={pedalTooltipContent} placement="right">
                             <InfoCircleOutlined
                                 style={{

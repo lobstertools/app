@@ -30,7 +30,7 @@ app.use(express.json());
 const DEVICE_ID = 'Mock-LobsterLock';
 const DEVICE_VERSION = 'v1.4-mock';
 const NUMBER_OF_CHANNELS = 4;
-const FEATURES = ['LED_Indicator', 'Abort_Padel'];
+const FEATURES = ['LED_Indicator', 'Abort_Pedal'];
 const TEST_DURATION_SECONDS = 60; // 60 second test
 
 // These settings mimic what would be saved in flash from provisioning

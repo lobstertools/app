@@ -112,7 +112,7 @@ export const ProvisionDeviceForm = ({
 
                 <Form.Item
                     name="abortDelaySeconds"
-                    label="Abort Padel Hold Time (Seconds)"
+                    label="Abort Pedal Hold Time (Seconds)"
                     rules={[{ required: true }]}
                 >
                     <InputNumber min={1} max={10} style={{ width: '100%' }} />
