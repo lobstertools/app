@@ -77,6 +77,15 @@
             "dist/electron/**/*",
             "package.json"
         ],
+        "extraResources": [
+            {
+                "from": "assets/bin/",
+                "to": "bin/",
+                "filter": [
+                    "**/*"
+                ]
+            }
+        ],
         "directories": {
             "output": "dist/package",
             "buildResources": "build-assets"
