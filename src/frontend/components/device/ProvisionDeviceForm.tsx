@@ -10,10 +10,11 @@ import {
 } from 'antd';
 import { useState } from 'react';
 import { DiscoveredDevice, DeviceProvisioningData } from '../../../types';
+import { useDeviceManager } from '../../context/DeviceManagerContext'; 
 
 /**
  * This form collects WiFi credentials and the static device config
- * and sends it via the provisionDevice function.
+ * and sends it via the provisionDevice function from the context.
  */
 interface ProvisionDeviceFormProps {
     device: DiscoveredDevice;
@@ -27,17 +28,18 @@ export const ProvisionDeviceForm = ({
     onSuccess,
 }: ProvisionDeviceFormProps) => {
     const [form] = Form.useForm();
-    const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // Get the "payback" fields based on the "enable" checkbox
     const enablePayback = Form.useWatch('enableTimePayback', form);
 
+    // Use the context for provisioning and loading state
+    const { provisionDevice, isProvisioning } = useDeviceManager();
+
     /**
      * Handles the form submission.
      */
     const handleFinish = async (values: DeviceProvisioningData) => {
-        setIsLoading(true);
         setError(null);
 
         // Ensure numeric values are numbers, not strings
@@ -47,33 +49,22 @@ export const ProvisionDeviceForm = ({
             abortPaybackMinutes: Number(values.abortPaybackMinutes),
         };
 
-        try {
-            const response = await fetch(
-                `/api/devices/${device.id}/provision`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload),
-                }
-            );
+        // Call the context function
+        const success = await provisionDevice(device.id, payload);
 
-            if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData.message || 'Provisioning failed');
-            }
-
+        if (success) {
             onSuccess();
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setIsLoading(false);
+        } else {
+            // Error notification is handled by the context,
+            // but we can set a local error for the form Alert.
+            setError(
+                'Provisioning failed. Please check the console or server logs.'
+            );
         }
     };
 
     return (
-        <Spin spinning={isLoading}>
+        <Spin spinning={isProvisioning}>
             <Form
                 form={form}
                 layout="vertical"
@@ -139,7 +130,6 @@ export const ProvisionDeviceForm = ({
                     </Checkbox>
                 </Form.Item>
 
-                {/* Only show payback minutes if it's enabled */}
                 {enablePayback && (
                     <Form.Item
                         name="abortPaybackMinutes"
@@ -159,7 +149,7 @@ export const ProvisionDeviceForm = ({
                     <Button
                         type="primary"
                         htmlType="submit"
-                        loading={isLoading}
+                        loading={isProvisioning}
                         block
                     >
                         Provision Device

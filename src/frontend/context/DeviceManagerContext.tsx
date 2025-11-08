@@ -18,6 +18,7 @@ import {
 } from '../../types';
 import { apiClient } from '../lib/apiClient';
 import { useAppRuntime } from './AppRuntimeContext';
+import { SerialPortInfo } from '../types/electron';
 
 interface DeviceHealthResponse {
     status: 'ok' | 'error';
@@ -58,7 +59,7 @@ export const DeviceManagerProvider = ({
     children: ReactNode;
 }) => {
     // This is the one place we consume AppRuntimeContext
-    const { isBackendReady } = useAppRuntime();
+    const { isBackendReady, isElectron } = useAppRuntime();
 
     const [connectionHealth, setConnectionHealth] =
         useState<ConnectionHealth>(INITIAL_HEALTH);
@@ -79,6 +80,12 @@ export const DeviceManagerProvider = ({
 
     const [isLogModalOpen, setIsLogModalOpen] = useState(false);
     const [logContent, setLogContent] = useState('');
+
+    // --- State for Flashing ---
+    const [serialPorts, setSerialPorts] = useState<SerialPortInfo[]>([]);
+    const [isScanningPorts, setIsScanningPorts] = useState(false);
+    const [isFlashing, setIsFlashing] = useState(false);
+    const [flashProgress, setFlashProgress] = useState(0);
 
     // --- Device Management Functions ---
 
@@ -261,6 +268,83 @@ export const DeviceManagerProvider = ({
      */
     const closeLogModal = () => setIsLogModalOpen(false);
 
+    /**
+     * Scans for available serial ports (Electron only).
+     */
+    const scanForSerialPorts = useCallback(async () => {
+        if (!isElectron) return;
+        setIsScanningPorts(true);
+        try {
+            const ports = await window.api.listSerialPorts();
+            setSerialPorts(ports);
+        } catch (err: any) {
+            notification.error({
+                message: 'Failed to list serial ports',
+                description: err.message,
+            });
+        } finally {
+            setIsScanningPorts(false);
+        }
+    }, [isElectron]);
+
+    /**
+     * Opens the Electron dialog to select a firmware file.
+     * @returns File path or null.
+     */
+    const selectFirmwareFile = useCallback(async () => {
+        if (!isElectron) return null;
+        try {
+            return await window.api.openFirmwareDialog();
+        } catch (err: any) {
+            notification.error({
+                message: 'Failed to open file dialog',
+                description: err.message,
+            });
+            return null;
+        }
+    }, [isElectron]);
+
+    /**
+     * Flashes a device with the selected firmware (Electron only).
+     * This function now throws an error on failure instead of
+     * showing a notification.
+     *
+     * @returns True on success.
+     * @throws An error with the failure message.
+     */
+    const flashDevice = useCallback(
+        async (port: string, firmwarePath: string) => {
+            if (!isElectron) {
+                // Still return false for the non-electron case
+                return false;
+            }
+
+            setIsFlashing(true);
+            setFlashProgress(0);
+
+            try {
+                // This will either resolve with 'success'
+                // or throw an error from the main process
+                await window.api.flashDevice(port, firmwarePath);
+
+                // Success!
+                notification.success({
+                    message: 'Device flashed successfully!',
+                });
+                return true;
+            } catch (err: any) {
+                // Re-throw the error to be caught by the UI component
+                throw err;
+            } finally {
+                // This always runs, ensuring we stop the loading state
+                // even if an error was thrown.
+                setIsFlashing(false);
+                setFlashProgress(0); // Reset progress
+            }
+        },
+        [isElectron]
+    );
+
     // --- Health & Keepalive (Internal) ---
 
     const fetchHealth = useCallback(async () => {
@@ -360,6 +444,25 @@ export const DeviceManagerProvider = ({
         return () => clearInterval(keepAliveTimer);
     }, [activeDevice, connectionHealth, sendKeepAlive]);
 
+    // Effect to listen for flash progress
+    useEffect(() => {
+        // Only run this effect in Electron
+        if (!isElectron) return;
+
+        // Register the listener from window.api
+        const removeListener = window.api.onFlashProgress((progress) => {
+            // Only update state if we are actively in the process of flashing
+            if (isFlashing) {
+                setFlashProgress(progress);
+            }
+        });
+
+        // Return the cleanup function
+        return () => {
+            removeListener();
+        };
+    }, [isElectron, isFlashing]);
+
     const value: DeviceManagerContextState = {
         connectionHealth,
         activeDevice,
@@ -378,6 +481,14 @@ export const DeviceManagerProvider = ({
         factoryResetDevice,
         fetchDeviceLogs,
         closeLogModal,
+
+        serialPorts,
+        isScanningPorts,
+        isFlashing,
+        flashProgress,
+        scanForSerialPorts,
+        selectFirmwareFile,
+        flashDevice,
     };
 
     return (

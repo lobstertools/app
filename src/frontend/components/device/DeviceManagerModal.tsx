@@ -22,12 +22,15 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { DiscoveredDevice } from '../../../types';
 import { ProvisionDeviceForm } from './ProvisionDeviceForm';
+import { FlasherScreen } from './FlasherScreen';
+import { useAppRuntime } from '../../context/AppRuntimeContext';
+import { SerialPortInfo } from '../../types/electron';
 
 const { Text } = Typography;
 
 /**
- * A modal for discovering, selecting, and provisioning devices.
- * Supports a two-stage "List-Detail" flow for provisioning.
+ * A modal for discovering, selecting, provisioning, and flashing devices.
+ * All logic is driven by the DeviceManagerContext.
  */
 export const DeviceManagerModal = () => {
     const {
@@ -37,63 +40,78 @@ export const DeviceManagerModal = () => {
         isScanning,
         scanForDevices,
         closeDeviceModal,
+        serialPorts,
+        isScanningPorts,
+        scanForSerialPorts,
+        isFlashing,
     } = useDeviceManager();
     const { token } = antdTheme.useToken();
+    const { isElectron } = useAppRuntime();
 
-    // Hook for success notifications
     const [messageApi, contextHolder] = message.useMessage();
 
-    // State to track the *single* device being provisioned.
-    // null = Show device list
-    // DiscoveredDevice = Show provisioning screen for that device
+    // --- State for "List-Detail" flow ---
     const [provisioningDevice, setProvisioningDevice] =
         useState<DiscoveredDevice | null>(null);
+    const [flashingPort, setFlashingPort] = useState<SerialPortInfo | null>(
+        null
+    );
 
-    // Filter devices into 'ready' (mDNS) and 'new' (BLE)
+    // Filter devices
     const readyDevices = useMemo(
         () => discoveredDevices.filter((d) => d.state === 'ready'),
         [discoveredDevices]
     );
-
     const newDevices = useMemo(
         () => discoveredDevices.filter((d) => d.state === 'new_unprovisioned'),
         [discoveredDevices]
     );
 
+    // Scan for all device types when modal opens
     useEffect(() => {
         if (isDeviceModalOpen) {
             scanForDevices();
+            if (isElectron) {
+                scanForSerialPorts();
+            }
         }
-    }, [isDeviceModalOpen, scanForDevices]);
+    }, [isDeviceModalOpen, scanForDevices, isElectron, scanForSerialPorts]);
 
-    // Combined cancel handler to reset our state
     const handleCancel = () => {
+        if (isFlashing) return;
+
         setProvisioningDevice(null);
+        setFlashingPort(null);
         closeDeviceModal();
     };
 
-    // When modal closes, reset the view
+    // When modal closes, reset all views
     useEffect(() => {
         if (!isDeviceModalOpen) {
             setProvisioningDevice(null);
+            setFlashingPort(null);
         }
     }, [isDeviceModalOpen]);
 
     /**
      * Callback for when the provisioning form is successfully submitted.
-     * This is passed down to <ProvisionDeviceForm />.
      */
     const handleProvisionSuccess = () => {
         messageApi.success(
             `Device "${provisioningDevice?.name}" provisioned successfully. It will now reboot.`
         );
-        // This will return the modal to the device list view
-        setProvisioningDevice(null);
+        setProvisioningDevice(null); // Back to list
     };
 
     /**
-     * Renders a list of devices (either ready or new).
+     * Callback for when the flasher screen is successfully submitted.
      */
+    const handleFlashSuccess = () => {
+        messageApi.success(`Device flashed successfully!`);
+        setFlashingPort(null); // Back to list
+    };
+
+    // --- renderDeviceList ---
     const renderDeviceList = (
         devices: DiscoveredDevice[],
         isReadyList: boolean
@@ -115,8 +133,7 @@ export const DeviceManagerModal = () => {
                     );
 
                     const actions = isReadyList
-                        ? // 'Ready' devices get a 'Select' button
-                          [
+                        ? [
                               <Button
                                   type="primary"
                                   onClick={() => selectDevice(device)}
@@ -124,9 +141,9 @@ export const DeviceManagerModal = () => {
                                   Select
                               </Button>,
                           ]
-                        : // 'New' devices get a 'Provision' button
-                          [
+                        : [
                               <Button
+                                  type="primary"
                                   onClick={() => setProvisioningDevice(device)}
                               >
                                   Provision
@@ -155,7 +172,45 @@ export const DeviceManagerModal = () => {
         );
     };
 
-    // Tabs for the list view
+    // --- renderFlasherList ---
+    const renderFlasherList = () => {
+        return (
+            <List
+                loading={isScanningPorts}
+                dataSource={serialPorts}
+                locale={{
+                    emptyText: (
+                        <Empty description="No serial ports found. Click 'Scan' to search." />
+                    ),
+                }}
+                renderItem={(port) => (
+                    <List.Item
+                        actions={[
+                            <Button
+                                type="primary"
+                                onClick={() => setFlashingPort(port)}
+                            >
+                                Flash
+                            </Button>,
+                        ]}
+                    >
+                        <List.Item.Meta
+                            avatar={<UsbOutlined />}
+                            title={port.path}
+                            description={
+                                <Text type="secondary" code>
+                                    {port.manufacturer || 'N/A'} (Vendor:{' '}
+                                    {port.vendorId}, Product: {port.productId})
+                                </Text>
+                            }
+                        />
+                    </List.Item>
+                )}
+            />
+        );
+    };
+
+    // --- Build Tab Items ---
     const tabItems = [
         {
             key: 'ready',
@@ -179,30 +234,44 @@ export const DeviceManagerModal = () => {
         },
     ];
 
-    // Dynamically build the footer based on the view
+    if (isElectron) {
+        tabItems.push({
+            key: 'flasher',
+            label: (
+                <Space>
+                    <UsbOutlined />
+                    Device Flasher ({serialPorts.length})
+                </Space>
+            ),
+            children: renderFlasherList(),
+        });
+    }
+
+    // --- modalFooter ---
     const modalFooter = [
-        <Button key="cancel" onClick={handleCancel}>
+        <Button key="cancel" onClick={handleCancel} disabled={isFlashing}>
             Cancel
         </Button>,
     ];
 
-    if (!provisioningDevice) {
-        // Only show 'Scan' when in the list view
+    if (!provisioningDevice && !flashingPort) {
         modalFooter.push(
             <Button
                 key="scan"
                 icon={<SearchOutlined />}
-                onClick={scanForDevices}
-                loading={isScanning}
+                onClick={() => {
+                    scanForDevices();
+                    if (isElectron) {
+                        scanForSerialPorts(); // Scan both
+                    }
+                }}
+                loading={isScanning || isScanningPorts}
             >
                 Scan for Devices
             </Button>
         );
     }
 
-    /**
-     * Renders the focused "Detail" screen for provisioning a single device.
-     */
     const renderProvisioningScreen = () => {
         if (!provisioningDevice) return null;
 
@@ -212,15 +281,10 @@ export const DeviceManagerModal = () => {
                     type="link"
                     icon={<ArrowLeftOutlined />}
                     onClick={() => setProvisioningDevice(null)}
-                    style={{
-                        paddingLeft: 0,
-                        marginBottom: 16,
-                        display: 'block',
-                    }}
+                    style={{ paddingLeft: 0, marginBottom: 16 }}
                 >
                     Back to Device List
                 </Button>
-
                 <Text type="secondary">
                     Enter the Wi-Fi credentials and device settings.
                 </Text>
@@ -234,36 +298,52 @@ export const DeviceManagerModal = () => {
                 >
                     <ProvisionDeviceForm
                         device={provisioningDevice}
-                        onSuccess={handleProvisionSuccess} // Pass the callback
+                        onSuccess={handleProvisionSuccess}
                     />
                 </Card>
             </div>
         );
     };
 
+    // --- Modal Title ---
+    const modalTitle = provisioningDevice
+        ? `Provision Device: ${provisioningDevice.name}`
+        : flashingPort
+          ? `Flash Device: ${flashingPort.path}`
+          : 'Device Manager';
+
+    // --- Modal View Logic ---
+    const renderModalContent = () => {
+        if (provisioningDevice) {
+            return renderProvisioningScreen();
+        }
+        if (flashingPort) {
+            return (
+                <FlasherScreen
+                    port={flashingPort}
+                    onCancel={() => setFlashingPort(null)}
+                    onSuccess={handleFlashSuccess}
+                />
+            );
+        }
+        // Default: Show tabs
+        return <Tabs defaultActiveKey="ready" items={tabItems} />;
+    };
+
     return (
         <>
-            {/* Renders the antd messageApi context */}
             {contextHolder}
             <Modal
-                title={
-                    provisioningDevice
-                        ? `Provision Device: ${provisioningDevice.name}`
-                        : 'Device Manager'
-                }
+                title={modalTitle}
                 open={isDeviceModalOpen}
                 closable={false}
                 width={720}
                 wrapClassName="backdrop-blur-modal"
-                footer={modalFooter} // Using dynamic footer
-                onCancel={handleCancel} // Using combined handler
+                footer={modalFooter}
+                onCancel={handleCancel}
+                maskClosable={!isFlashing}
             >
-                {/* Conditionally render List or Detail view */}
-                {provisioningDevice ? (
-                    renderProvisioningScreen()
-                ) : (
-                    <Tabs defaultActiveKey="ready" items={tabItems} />
-                )}
+                {renderModalContent()}
             </Modal>
         </>
     );

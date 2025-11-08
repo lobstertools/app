@@ -1,6 +1,7 @@
 // See the Electron documentation for details on how to use preload scripts:
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'; // Added IpcRendererEvent
+import { SerialPortInfo } from '../frontend/types/electron';
 
 // Expose a secure API to the window (your React app)
 contextBridge.exposeInMainWorld('api', {
@@ -9,31 +10,46 @@ contextBridge.exposeInMainWorld('api', {
      * when the 'backend-ready' signal is received from the main process.
      */
     onBackendReady: (callback: () => void) => {
-        ipcRenderer.on('backend-ready', callback);
+        // Store the callback to be able to remove it
+        const listener = () => callback();
+        ipcRenderer.on('backend-ready', listener);
+        // Return a function to remove the listener
+        return () => ipcRenderer.removeListener('backend-ready', listener);
     },
 
     /**
+     * Asks the main process to open a file dialog for firmware.
+     * @returns A promise that resolves with the selected file path or null.
+     */
+    openFirmwareDialog: () => ipcRenderer.invoke('open-firmware-dialog'),
+
+    /**
      * Triggers the backend to start flashing a device on a specific port.
-     * The backend will use its pre-built firmware file.
      * @param port The COM port (e.g., 'COM3' or '/dev/tty.SLAB_USBtoUART')
+     * @param firmwarePath The local filesystem path to the .bin firmware file.
      * @returns A promise that resolves with 'success' or rejects with an error.
      */
-    flashDevice: (port: string) => ipcRenderer.invoke('flash-device', { port }),
+    flashDevice: (port: string, firmwarePath: string) =>
+        ipcRenderer.invoke('flash-device', { port, firmwarePath }),
 
     /**
      * Asks the main process for a list of available serial ports.
      * @returns A promise that resolves with an array of SerialPortInfo objects.
      */
-    listSerialPorts: () => ipcRenderer.invoke('list-serial-ports'),
+    listSerialPorts: (): Promise<SerialPortInfo[]> =>
+        ipcRenderer.invoke('list-serial-ports'),
 
     /**
      * Registers a listener for flashing progress updates.
      * @param callback A function that will receive the progress (0-100)
+     * @returns A function that, when called, removes the listener.
      */
     onFlashProgress: (callback: (progress: number) => void) => {
-        ipcRenderer.on('flash-progress', (_event, progress) =>
-            callback(progress)
-        );
+        const listener = (_event: IpcRendererEvent, progress: number) =>
+            callback(progress);
+        ipcRenderer.on('flash-progress', listener);
+        // Return a function to remove the listener
+        return () => ipcRenderer.removeListener('flash-progress', listener);
     },
 });
 

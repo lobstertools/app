@@ -37,6 +37,8 @@ export const AppRuntimeProvider = ({ children }: { children: ReactNode }) => {
     const [isBackendReady, setIsBackendReady] = useState(false);
 
     useEffect(() => {
+        let removeBackendListener: (() => void) | undefined;
+
         // Check for the Electron preload API on mount
         if (window.api) {
             setIsElectron(true);
@@ -44,7 +46,7 @@ export const AppRuntimeProvider = ({ children }: { children: ReactNode }) => {
                 'Frontend (Electron): waiting for backend-ready signal...'
             );
             // This listener is defined in preload.cts
-            window.api.onBackendReady(() => {
+            removeBackendListener = window.api.onBackendReady(() => {
                 console.log('Frontend Received: backend-ready signal!');
                 setIsBackendReady(true);
             });
@@ -57,6 +59,13 @@ export const AppRuntimeProvider = ({ children }: { children: ReactNode }) => {
             setIsElectron(false);
             setIsBackendReady(true);
         }
+
+        // Cleanup listener on unmount
+        return () => {
+            if (removeBackendListener) {
+                removeBackendListener();
+            }
+        };
     }, []); // This effect runs only once on mount
 
     const value: AppRuntimeContextState = {

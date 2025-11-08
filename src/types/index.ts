@@ -1,5 +1,7 @@
 // --- Core Status Types ---
 
+import { SerialPortInfo } from '../frontend/types/electron';
+
 /** Describes the setup state of a device (e.g., in BLE provisioning or on the network). */
 export type DeviceProvisioningState = 'ready' | 'new_unprovisioned';
 
@@ -100,15 +102,6 @@ export interface SessionStartRequest {
     startDelays: number[];
 }
 
-/**
- * Information about an available serial port (for the flasher).
- */
-export interface SerialPortInfo {
-    path: string;
-    manufacturer?: string;
-    vendorId?: string;
-}
-
 export interface Reward {
     code: string;
     timestamp: string;
@@ -166,6 +159,14 @@ export interface DeviceManagerContextState {
 
     isLogModalOpen: boolean;
     logContent: string;
+
+    serialPorts: SerialPortInfo[];
+    isScanningPorts: boolean;
+    isFlashing: boolean;
+    flashProgress: number;
+    scanForSerialPorts: () => void;
+    selectFirmwareFile: () => Promise<string | null>;
+    flashDevice: (port: string, firmwarePath: string) => Promise<boolean>;
 
     // --- Device Actions ---
     scanForDevices: () => void;
