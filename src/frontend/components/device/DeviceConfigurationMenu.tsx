@@ -29,9 +29,11 @@ import {
     ExclamationCircleOutlined,
     UndoOutlined,
     FieldTimeOutlined,
+    BugOutlined,
 } from '@ant-design/icons';
 import { useMemo } from 'react';
 import { useDeviceManager } from '../../context/DeviceManagerContext';
+import { InternalDebugView } from '../debug/InternalDebugView';
 
 const { Text } = Typography;
 
@@ -146,6 +148,18 @@ export const DeviceConfigurationMenu = () => {
             onOk() {
                 factoryResetDevice(activeDevice.id);
             },
+        });
+    };
+
+    /**
+     * Shows the internal state debug modal.
+     */
+    const showDebugModal = () => {
+        modalApi.info({
+            title: 'Internal Debug State',
+            content: <InternalDebugView />,
+            width: 800,
+            maskClosable: true,
         });
     };
 
@@ -361,6 +375,16 @@ export const DeviceConfigurationMenu = () => {
                     danger: true,
                 },
                 { key: 'setup-features', type: 'divider' as const },
+                ...((import.meta as any).env?.DEV
+                    ? [
+                          {
+                              key: 'debug-view',
+                              label: 'Internal Debug View',
+                              icon: <BugOutlined />,
+                              onClick: showDebugModal,
+                          },
+                      ]
+                    : []),
                 {
                     key: 'change-device',
                     label: 'Device Manager',
