@@ -23,9 +23,8 @@ import { DeviceProvisioningData } from '../types';
 // --- Configuration ---
 const app = express();
 const PORT = process.env.PORT || 3001;
-const isDevelopment = process.env.NODE_ENV === 'development';
 
-if (isDevelopment) app.use(cors());
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
