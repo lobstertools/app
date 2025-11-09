@@ -1,4 +1,6 @@
-import { useSession } from '../../context/SessionContext';
+import { useSession } from '../../context/useSessionContext';
+import { useDeviceManager } from '../../context/useDeviceManager';
+
 import { red, green, yellow } from '@ant-design/colors';
 import {
     Typography,
@@ -32,7 +34,6 @@ import {
     BugOutlined,
 } from '@ant-design/icons';
 import { useMemo } from 'react';
-import { useDeviceManager } from '../../context/DeviceManagerContext';
 import { InternalDebugView } from '../debug/InternalDebugView';
 
 const { Text } = Typography;

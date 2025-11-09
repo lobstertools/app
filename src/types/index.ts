@@ -131,23 +131,6 @@ export interface SessionFormData {
     startDelays: number[];
 }
 
-// --- Context State Interfaces ---
-// (These were already camelCase, no changes needed)
-
-export interface SessionContextState {
-    status: SessionStatusResponse | null;
-    currentState: ComputedAppStatus;
-    rewardHistory: Reward[];
-    sessionTimeRemaining: number;
-    channelDelays: number[];
-    isLocking: boolean;
-
-    // --- Session Functions---
-    startSession: (values: SessionFormData) => void;
-    abortSession: () => void;
-    startTestSession: () => void;
-}
-
 export interface DeviceManagerContextState {
     connectionHealth: ConnectionHealth;
 

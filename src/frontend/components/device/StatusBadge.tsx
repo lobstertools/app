@@ -1,4 +1,4 @@
-import { useSession } from '../../context/SessionContext';
+import { useSession } from '../../context/useSessionContext';
 import { red, blue, grey } from '@ant-design/colors';
 import { Typography, Space } from 'antd';
 

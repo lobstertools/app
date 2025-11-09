@@ -1,43 +1,21 @@
-import {
-    useContext,
-    useMemo,
-    createContext,
-    ReactNode,
-    useCallback,
-    useEffect,
-    useState,
-} from 'react';
+import { useMemo, ReactNode, useCallback, useEffect, useState } from 'react';
 import { notification, Alert } from 'antd';
 
 import {
     Reward,
-    SessionContextState,
     SessionFormData,
     SessionStatusResponse,
     ComputedAppStatus,
 } from '../../types';
 
-import { useDeviceManager } from './DeviceManagerContext';
 import { apiClient } from '../lib/apiClient';
 import axios from 'axios';
-
-export const MAX_CHANNELS_TO_RENDER = 4;
-
-// Create the context
-const SessionContext = createContext<SessionContextState | undefined>(
-    undefined
-);
-
-/**
- * Custom hook to easily access the SessionContext.
- */
-export const useSession = () => {
-    const context = useContext(SessionContext);
-    if (!context) {
-        throw new Error('useSession must be used within a SessionProvider');
-    }
-    return context;
-};
+import { useDeviceManager } from './useDeviceManager';
+import {
+    MAX_CHANNELS_TO_RENDER,
+    SessionContext,
+    SessionContextState,
+} from './useSessionContext';
 
 /**
  * Main state provider component.

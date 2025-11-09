@@ -14,7 +14,7 @@ import {
     Alert,
 } from 'antd';
 
-import { useDeviceManager } from '../../context/DeviceManagerContext';
+import { useDeviceManager } from '../../context/useDeviceManager';
 import { SerialPortInfo } from '../../types/electron';
 
 const { Text } = Typography;

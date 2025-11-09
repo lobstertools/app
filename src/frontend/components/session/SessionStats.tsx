@@ -1,6 +1,6 @@
 // src/components/session/SessionStats.tsx
 
-import { useSession } from '../../context/SessionContext';
+import { useSession } from '../../context/useSessionContext';
 import { Space, Tag, Tooltip } from 'antd';
 import {
     FireOutlined,

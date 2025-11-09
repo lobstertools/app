@@ -1,4 +1,4 @@
-import { useSession } from '../../context/SessionContext';
+import { useSession } from '../../context/useSessionContext';
 import {
     Typography,
     Button,

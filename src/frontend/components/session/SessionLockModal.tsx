@@ -1,7 +1,7 @@
-import { useSession } from '../../context/SessionContext';
 import { EyeInvisibleOutlined, StopOutlined } from '@ant-design/icons';
 import { Typography, Button, Modal, Statistic } from 'antd';
 import { secondsRemainingToHuman } from '../../utils/time';
+import { useSession } from '../../context/useSessionContext';
 
 const { Title } = Typography;
 

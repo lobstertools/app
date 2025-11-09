@@ -1,11 +1,4 @@
-import {
-    createContext,
-    ReactNode,
-    useContext,
-    useEffect,
-    useState,
-    useCallback,
-} from 'react';
+import { ReactNode, useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { notification } from 'antd';
 
@@ -17,36 +10,16 @@ import {
     DeviceProvisioningData,
 } from '../../types';
 import { apiClient } from '../lib/apiClient';
-import { useAppRuntime } from './AppRuntimeContext';
 import { SerialPortInfo } from '../types/electron';
+import { useAppRuntime } from './useAppRuntime';
+import { DeviceHealthResponse, DeviceManagerContext } from './useDeviceManager';
 
-interface DeviceHealthResponse {
-    status: 'ok' | 'error';
-    message: string;
-}
 type DeviceDetailsResponse = ActiveDevice;
 
 // Initial state for the new ConnectionHealth (2-link version)
 const INITIAL_HEALTH: ConnectionHealth = {
     server: { status: 'pending', message: 'Connecting to server...' },
     device: { status: 'pending', message: 'Waiting for server...' },
-};
-
-const DeviceManagerContext = createContext<
-    DeviceManagerContextState | undefined
->(undefined);
-
-/**
- * Custom hook to consume the DeviceManagerContext.
- * Provides access to all device state and management functions.
- */
-export const useDeviceManager = () => {
-    const ctx = useContext(DeviceManagerContext);
-    if (!ctx)
-        throw new Error(
-            'useDeviceManager must be used within a DeviceManagerProvider'
-        );
-    return ctx;
 };
 
 /**
@@ -332,9 +305,6 @@ export const DeviceManagerProvider = ({
                     message: 'Device flashed successfully!',
                 });
                 return true;
-            } catch (err: any) {
-                // Re-throw the error to be caught by the UI component
-                throw err;
             } finally {
                 // This always runs, ensuring we stop the loading state
                 // even if an error was thrown.

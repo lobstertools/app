@@ -1,7 +1,3 @@
-import {
-    MAX_CHANNELS_TO_RENDER,
-    useSession,
-} from '../../context/SessionContext';
 import { red } from '@ant-design/colors';
 import {
     Typography,
@@ -38,7 +34,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { SessionFormData } from '../../../types';
 import { secondsRemainingToHuman } from '../../utils/time';
 import { CountdownDisplay } from './CountdownDisplay';
-import { useDeviceManager } from '../../context/DeviceManagerContext';
+import { useDeviceManager } from '../../context/useDeviceManager';
+import {
+    useSession,
+    MAX_CHANNELS_TO_RENDER,
+} from '../../context/useSessionContext';
 
 const { Title, Text } = Typography;
 

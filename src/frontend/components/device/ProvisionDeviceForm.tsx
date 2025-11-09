@@ -11,7 +11,7 @@ import {
 } from 'antd';
 import { useState } from 'react';
 import { DiscoveredDevice, DeviceProvisioningData } from '../../../types';
-import { useDeviceManager } from '../../context/DeviceManagerContext';
+import { useDeviceManager } from '../../context/useDeviceManager';
 
 /**
  * This form collects WiFi credentials and the static device config

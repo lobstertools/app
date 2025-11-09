@@ -1,5 +1,5 @@
 import { Modal, Button, Card, theme as antdTheme } from 'antd';
-import { useDeviceManager } from '../../context/DeviceManagerContext';
+import { useDeviceManager } from '../../context/useDeviceManager';
 
 /**
  * A modal that displays the raw text content of device logs.

@@ -1,4 +1,5 @@
-import { useDeviceManager } from '../../context/DeviceManagerContext';
+import { useDeviceManager } from '../../context/useDeviceManager';
+import { useAppRuntime } from '../../context/useAppRuntime';
 import { green } from '@ant-design/colors';
 import {
     CheckCircleOutlined,
@@ -23,7 +24,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { DiscoveredDevice } from '../../../types';
 import { ProvisionDeviceForm } from './ProvisionDeviceForm';
 import { FlasherScreen } from './FlasherScreen';
-import { useAppRuntime } from '../../context/AppRuntimeContext';
 import { SerialPortInfo } from '../../types/electron';
 
 const { Text } = Typography;

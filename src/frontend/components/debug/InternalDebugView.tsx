@@ -1,7 +1,7 @@
 import { theme as antdTheme, Card, Space, Typography } from 'antd';
-import { useAppRuntime } from '../../context/AppRuntimeContext';
-import { useDeviceManager } from '../../context/DeviceManagerContext';
-import { useSession } from '../../context/SessionContext';
+import { useAppRuntime } from '../../context/useAppRuntime';
+import { useDeviceManager } from '../../context/useDeviceManager';
+import { useSession } from '../../context/useSessionContext';
 
 const { Text } = Typography;
 

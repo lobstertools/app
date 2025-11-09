@@ -12,7 +12,7 @@ import {
     Tag,
 } from 'antd';
 import { MagLockIcon } from '../icons/MagLockIcon';
-import { useSession } from '../../context/SessionContext';
+import { useSession } from '../../context/useSessionContext';
 import { StatusBadge } from '../device/StatusBadge';
 import { DeviceManagerModal } from '../device/DeviceManagerModal';
 import { RewardDisplay } from '../reward/RewardDisplay';

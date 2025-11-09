@@ -21,7 +21,9 @@
         "build:electron": "tsc --p tsconfig.electron.json",
         "build:electron:package": "electron-builder",
         "build": "rimraf dist && yarn build:frontend && yarn build:backend && yarn build:electron && yarn build:electron:package",
-        "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+        "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+        "lint:fix": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0 --fix",
+        "verify": "yarn lint && rimraf dist && yarn build:frontend && yarn build:backend && yarn build:electron"
     },
     "dependencies": {
         "@abandonware/noble": "^1.9.2-26",
