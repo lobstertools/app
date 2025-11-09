@@ -15,7 +15,9 @@ permissions:
   contents: write
 
 jobs:
+  # -------------------------------------------------------------------
   # Job to build the macOS version
+  # -------------------------------------------------------------------
   build-macos:
     runs-on: macos-latest
     steps:
@@ -40,7 +42,9 @@ jobs:
           path: dist/package/*.dmg
           if-no-files-found: error
 
+  # -------------------------------------------------------------------
   # Job to build the Windows version
+  # -------------------------------------------------------------------
   build-windows:
     runs-on: windows-latest
     steps:
@@ -66,7 +70,7 @@ jobs:
           if-no-files-found: error
 
   # -------------------------------------------------------------------
-  # ADDED: Job to build the Linux version
+  # Job to build the Linux version
   # -------------------------------------------------------------------
   build-linux:
     runs-on: ubuntu-latest # Use Linux runner
@@ -107,17 +111,19 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: Lobster-macOS-Installer
+          path: Lobster-macOS-Installer
           
       - name: Download Windows Artifact
         uses: actions/download-artifact@v4
         with:
           name: Lobster-Windows-Installer
+          path: Lobster-Windows-Installer
 
-      # ADDED: Download step for the new Linux artifact
       - name: Download Linux Artifact
         uses: actions/download-artifact@v4
         with:
           name: Lobster-Linux-Installer
+          path: Lobster-Linux-Installer
 
       - name: Create GitHub Release
         id: create_release
@@ -125,7 +131,6 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           
-          # MODIFIED: Added the Linux artifact to the list
           artifacts: "Lobster-macOS-Installer/*.dmg,Lobster-Windows-Installer/*.exe,Lobster-Linux-Installer/*.AppImage"
           
           draft: false
