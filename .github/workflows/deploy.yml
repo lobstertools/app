@@ -1,125 +1,133 @@
-# This is a GitHub Actions workflow file.
-# To use it, create a directory in your repo: .github/workflows
-# And save this file as: .github/workflows/build-electron-app.yml
+# .github/workflows/build-electron-app.yml
 
-name: Build Electron App
+name: Build and Release Electron App
 
-# Controls when the action will run.
-# - 'push' to the 'main' branch
-# - 'pull_request' to the 'main' branch
-# - 'workflow_dispatch' allows you to run it manually from the Actions tab
 on:
   push:
     branches: [ "main" ]
+    tags:
+      - 'v*' # Run on tag pushes
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   # Job to build the macOS version
   build-macos:
-    # Use the latest macOS runner
     runs-on: macos-latest
-
     steps:
-      # 1. Check out your repository's code
       - name: Check out code
         uses: actions/checkout@v4
-
-      # 2. Set up Node.js (version 20.x)
-      # This action also handles setting up and caching Yarn.
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
           cache: 'yarn'
-
-      # 3. Install dependencies
-      # Using --frozen-lockfile is best practice for CI to ensure
-      # you use the exact dependencies from your yarn.lock file.
-      # Make sure to commit your yarn.lock file to your repo.
       - name: Install dependencies
         run: yarn install --frozen-lockfile
-
-      # 4. Run your existing build script
-      # This command (from your package.json) will:
-      # - rimraf dist
-      # - build:frontend
-      # - build:backend
-      # - build:electron
-      # - build:electron:package (which runs electron-builder)
       - name: Build and package app
         run: yarn build
         env:
-          # --- FOR MACOS CODE SIGNING & NOTARIZATION (Optional) ---
-          # To build a signed and notarized app, you MUST:
-          # 1. Create these secrets in your GitHub repo settings.
-          # 2. Uncomment the following lines.
-          #
-          # APPLE_ID: ${{ secrets.APPLE_ID }}
-          # APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-          # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          #
-          # You also need to import your signing certificate.
-          # The easiest way is to set CSC_LINK and CSC_KEY_PASSWORD.
-          # CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
-          # CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
-          #
-          # For more info: https://www.electron.build/code-signing
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Required for electron-builder to auto-update
-
-      # 5. Upload the build artifact (the .dmg file)
-      # Your package.json specifies the output dir as "dist/package"
-      # and the mac target as "dmg".
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload macOS Artifact
+        if: startsWith(github.ref, 'refs/tags/')
         uses: actions/upload-artifact@v4
         with:
           name: Lobster-macOS-Installer
           path: dist/package/*.dmg
-          if-no-files-found: error # Fail the build if .dmg is not found
+          if-no-files-found: error
 
   # Job to build the Windows version
   build-windows:
-    # Use the latest Windows runner
     runs-on: windows-latest
-
     steps:
-      # 1. Check out your repository's code
       - name: Check out code
         uses: actions/checkout@v4
-
-      # 2. Set up Node.js (version 20.x)
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
           cache: 'yarn'
-
-      # 3. Install dependencies
       - name: Install dependencies
         run: yarn install --frozen-lockfile
-
-      # 4. Run your existing build script
       - name: Build and package app
         run: yarn build
         env:
-          # --- FOR WINDOWS CODE SIGNING (Optional) ---
-          # To build a signed app, you MUST:
-          # 1. Create these secrets in your GitHub repo settings.
-          # 2. Uncomment the following lines.
-          #
-          # CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          # CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
-          #
-          # For more info: https://www.electron.build/code-signing
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Required for electron-builder to auto-update
-
-      # 5. Upload the build artifact (the .exe installer)
-      # Your package.json specifies the output dir as "dist/package"
-      # and the windows target as "nsis" (which creates an .exe installer).
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload Windows Artifact
+        if: startsWith(github.ref, 'refs/tags/')
         uses: actions/upload-artifact@v4
         with:
           name: Lobster-Windows-Installer
           path: dist/package/*.exe
-          if-no-files-found: error # Fail the build if .exe is not found
+          if-no-files-found: error
+
+  # -------------------------------------------------------------------
+  # ADDED: Job to build the Linux version
+  # -------------------------------------------------------------------
+  build-linux:
+    runs-on: ubuntu-latest # Use Linux runner
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'yarn'
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      - name: Build and package app
+        run: yarn build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload Linux Artifact
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lobster-Linux-Installer
+          path: dist/package/*.AppImage
+          if-no-files-found: error
+
+  # -------------------------------------------------------------------
+  # Job to create the GitHub Release
+  # -------------------------------------------------------------------
+  create-release:
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    needs: [build-macos, build-windows, build-linux]
+    
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Download macOS Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Lobster-macOS-Installer
+          
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Lobster-Windows-Installer
+
+      # ADDED: Download step for the new Linux artifact
+      - name: Download Linux Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Lobster-Linux-Installer
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+          # MODIFIED: Added the Linux artifact to the list
+          artifacts: "Lobster-macOS-Installer/*.dmg,Lobster-Windows-Installer/*.exe,Lobster-Linux-Installer/*.AppImage"
+          
+          draft: false
+          prerelease: false
+          generateReleaseNotes: true
