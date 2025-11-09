@@ -118,25 +118,60 @@ const stopBackend = () => {
     }
 };
 
-function getEsptoolPath() {
-    const platform = process.platform;
-    const arch = process.arch;
+/**
+ * Tries to find a system-installed version of esptool.
+ * Returns the path if found, otherwise null.
+ */
+function findSystemEsptool(): string | null {
+    const isWindows = process.platform === 'win32';
+    // Commands to check, in order of preference
+    const commandsToTry = isWindows
+        ? ['where esptool.exe', 'where esptool.py'] // Windows
+        : ['which esptool', 'which esptool.py']; // macOS & Linux
 
-    if (platform === 'darwin') {
+    for (const cmd of commandsToTry) {
         try {
-            const systemPath = execSync('which esptool').toString().trim();
-            if (systemPath) {
-                console.log(
-                    `[Electron] Found system-installed esptool at: ${systemPath}`
-                );
-                return systemPath;
+            // execSync will throw an error if the command is not found
+            const systemPath = execSync(cmd).toString().trim();
+
+            // 'where' on Windows can return multiple lines, 'which' returns one.
+            // We'll take the first valid one.
+            const firstPath = systemPath.split('\n')[0].trim();
+
+            if (firstPath) {
+                return firstPath;
             }
         } catch (error) {
+            // Command not found, continue to the next one
+        }
+    }
+
+    // No system-wide executable found
+    return null;
+}
+
+function getEsptoolPath() {
+    try {
+        const systemPath = findSystemEsptool();
+        if (systemPath) {
+            console.log(
+                `[Electron] Found system-installed esptool at: ${systemPath}`
+            );
+            return systemPath;
+        } else {
             console.log(
                 '[Electron] No system-installed esptool found, using bundled version.'
             );
         }
+    } catch (error: any) {
+        console.error(
+            `[Electron] Error checking for system-installed esptool: ${error.message}`
+        );
+        console.log('[Electron] Defaulting to bundled version.');
     }
+
+    const platform = process.platform;
+    const arch = process.arch;
 
     let toolSubPath = '';
     console.log(
@@ -155,16 +190,24 @@ function getEsptoolPath() {
         if (arch === 'arm64') {
             toolSubPath = path.join('esptool-macos-arm64', 'esptool');
         } else if (arch === 'x64') {
-            throw new Error(
-                `Unsupported macOS architecture: ${arch}. Please add the 'esptool-macos-amd64' binary folder to assets/bin.`
-            );
+            toolSubPath = path.join('esptool-macos-amd64', 'esptool');
         } else {
             throw new Error(`Unsupported macOS architecture: ${arch}.`);
         }
     } else if (platform === 'linux') {
-        throw new Error(
-            `Unsupported platform: ${platform}. Please add esptool binaries for Linux to assets/bin.`
-        );
+        const binName = 'esptool'; // Binary name for Linux
+        if (arch === 'x64') {
+            toolSubPath = path.join('esptool-linux-amd64', binName);
+        } else if (arch === 'arm64') {
+            toolSubPath = path.join('esptool-linux-aarch64', binName);
+        } else if (arch === 'arm') {
+            // Note: process.arch 'arm' typically maps to armv7
+            toolSubPath = path.join('esptool-linux-armv7', binName);
+        } else {
+            throw new Error(
+                `Unsupported Linux architecture: ${arch}. Please add esptool binaries for Linux to assets/bin.`
+            );
+        }
     } else {
         throw new Error(`Unsupported platform for esptool: ${platform}`);
     }
