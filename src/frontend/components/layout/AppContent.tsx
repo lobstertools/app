@@ -11,7 +11,7 @@ import {
     theme as antdTheme,
     Tag,
 } from 'antd';
-import { MagLockIcon } from '../icons/MagLockIcon';
+
 import { useSession } from '../../context/useSessionContext';
 import { StatusBadge } from '../device/StatusBadge';
 import { DeviceManagerModal } from '../device/DeviceManagerModal';
@@ -59,7 +59,11 @@ export const AppContent = ({
                         background: token.colorBgContainer,
                     }}
                 >
-                    <MagLockIcon width={30} />
+                    <img
+                        src="/public/lobster-logo.png"
+                        alt="Lobster Logo"
+                        width={30}
+                    />
                     <Title level={3} style={{ margin: 0 }}>
                         Lobster
                     </Title>
