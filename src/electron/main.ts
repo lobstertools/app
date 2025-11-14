@@ -223,6 +223,7 @@ const createWindow = () => {
     mainWindow = new BrowserWindow({
         width: 1600,
         height: 1000,
+        icon: path.join(__dirname, '..', '..', 'build-assets', 'icon.png'),
         webPreferences: {
             preload: preloadScriptPath,
             contextIsolation: true,

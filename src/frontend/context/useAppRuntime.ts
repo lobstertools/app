@@ -1,10 +1,13 @@
 import { createContext, useContext } from 'react';
 
 export interface AppRuntimeContextState {
-    /** Is the app running inside an Electron shell? */
     isElectron: boolean;
-    /** Has the backend signaled that it's ready? */
     isBackendReady: boolean;
+    isDevelopmentMode: boolean;
+    showWelcomeOnStartup: boolean;
+    setShowWelcomeOnStartup: (show: boolean) => void;
+    isWelcomeGuideOpen: boolean;
+    setWelcomeGuideOpen: (isOpen: boolean) => void;
 }
 
 export const AppRuntimeContext = createContext<

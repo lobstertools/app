@@ -1,11 +1,39 @@
 import { ReactNode, useEffect, useState } from 'react';
 
-import '../types/electron.d.ts'; // This import is still needed for window.api
+import '../types/electron.d.ts'; 
 import { AppRuntimeContext, AppRuntimeContextState } from './useAppRuntime.ts';
 
 export const AppRuntimeProvider = ({ children }: { children: ReactNode }) => {
     const [isElectron, setIsElectron] = useState(false);
     const [isBackendReady, setIsBackendReady] = useState(false);
+
+    // Is the app running in a dev environment (Vite)?
+    const isDevelopmentMode = (import.meta as any).env?.DEV || false;
+
+    // --- Persistent Welcome Screen State ---
+    const [showWelcomeOnStartup, setShowWelcomeOnStartupState] = useState(
+        () => {
+            const saved = localStorage.getItem(
+                'lobster-show-welcome-on-startup'
+            );
+            // Default to 'true' if it's not found
+            return saved === null ? true : JSON.parse(saved);
+        }
+    );
+
+    // --- Temporary Modal State ---
+    const [isWelcomeGuideOpen, setWelcomeGuideOpen] = useState(false);
+
+    /**
+     * Updates the persistent setting in state and localStorage.
+     */
+    const setShowWelcomeOnStartup = (show: boolean) => {
+        setShowWelcomeOnStartupState(show);
+        localStorage.setItem(
+            'lobster-show-welcome-on-startup',
+            JSON.stringify(show)
+        );
+    };
 
     useEffect(() => {
         let removeBackendListener: (() => void) | undefined;
@@ -42,6 +70,11 @@ export const AppRuntimeProvider = ({ children }: { children: ReactNode }) => {
     const value: AppRuntimeContextState = {
         isElectron,
         isBackendReady,
+        isDevelopmentMode,
+        showWelcomeOnStartup,
+        setShowWelcomeOnStartup,
+        isWelcomeGuideOpen,
+        setWelcomeGuideOpen,
     };
 
     return (

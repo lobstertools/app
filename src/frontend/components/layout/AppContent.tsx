@@ -11,7 +11,6 @@ import {
     theme as antdTheme,
     Tag,
 } from 'antd';
-
 import { useSession } from '../../context/useSessionContext';
 import { StatusBadge } from '../device/StatusBadge';
 import { DeviceManagerModal } from '../device/DeviceManagerModal';
@@ -21,6 +20,7 @@ import { SessionLockModal } from '../session/SessionLockModal';
 import { DeviceConfigurationMenu } from '../device/DeviceConfigurationMenu';
 import { DeviceLogModal } from '../device/DeviceLogModal';
 import { SessionStats } from '../session/SessionStats';
+import { WelcomeScreen } from '../onboarding/WelcomeScreen';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -148,6 +148,7 @@ export const AppContent = ({
                 <SessionLockModal />
                 <DeviceManagerModal />
                 <DeviceLogModal />
+                <WelcomeScreen />
             </Layout>
         </>
     );

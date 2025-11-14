@@ -77,7 +77,8 @@
             "dist/frontend/**/*",
             "dist/backend/**/*",
             "dist/electron/**/*",
-            "package.json"
+            "package.json",
+            "build-assets"
         ],
         "extraResources": [
             {
