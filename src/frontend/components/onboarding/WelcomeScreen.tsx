@@ -12,11 +12,13 @@ import {
 } from 'antd';
 import {
     SafetyCertificateOutlined,
-    CheckCircleOutlined,
-    WarningOutlined,
     RocketOutlined,
     ToolOutlined,
     StarOutlined,
+    DownloadOutlined,
+    UsbOutlined,
+    CheckCircleOutlined,
+    WarningOutlined,
 } from '@ant-design/icons';
 
 import { useState } from 'react';
@@ -26,8 +28,9 @@ import { useAppRuntime } from '../../context/useAppRuntime';
 const { Title, Text, Paragraph } = Typography;
 
 import lobsterLogo from '../../assets/lobster-logo.png';
+import masterLockImage from '../../assets/Master_1500i.jpg';
 
-// --- Step 1 Content (Unchanged) ---
+// --- Step 1 Content ---
 const WelcomeStep = () => {
     return (
         <Space direction="vertical" style={{ width: '100%' }} size="large">
@@ -48,7 +51,7 @@ const WelcomeStep = () => {
                         </Title>
                         <Paragraph
                             type="secondary"
-                            style={{ fontSize: 16, paddingTop: 4 }} // Removed centering styles
+                            style={{ fontSize: 16, paddingTop: 4 }}
                         >
                             This app is the control center for a strict, DIY
                             self-bondage system using a Wi-Fi-connected
@@ -76,8 +79,7 @@ const WelcomeStep = () => {
                     </li>
                     <li>
                         <strong>Persistent Stats:</strong> All stats are saved
-                        on the device itself. They cannot be reset by clearing
-                        data.
+                        on the device itself.
                     </li>
                 </ul>
             </Paragraph>
@@ -86,159 +88,355 @@ const WelcomeStep = () => {
 };
 
 // --- Step 2 Content---
-const HardwareStep = () => (
-    <Space direction="vertical" style={{ width: '100%' }} size="large">
-        <Title level={4}>Hardware & Firmware Setup</Title>
-        <Paragraph>
-            This is a "Bring Your Own Hardware" system. This app is the
-            <strong> software</strong>; you must first build and flash the
-            <strong> hardware</strong>.
-        </Paragraph>
-        <Paragraph>
-            Our companion website at <strong>lobster-tools.github.io</strong>{' '}
-            has the full parts list, wiring diagrams, and step-by-step
-            instructions for this entire process.
-        </Paragraph>
+const HardwareStep = () => {
+    const { token } = antdTheme.useToken();
 
-        <Divider />
+    // Style for the three columns
+    const blockStyle: React.CSSProperties = {
+        border: `1px solid ${token.colorBorder}`,
+        padding: '24px',
+        borderRadius: token.borderRadiusLG,
+        backgroundColor: token.colorBgContainer,
+        height: '100%',
+    };
 
-        <Title level={4}>The Full Process</Title>
-        <Paragraph>
-            Here is the high-level overview of what you'll need to do:
-            <ol>
-                <li>
-                    <strong>Build Your Hardware:</strong> Following the guide on
-                    our website, you will assemble your <strong>MagLock</strong>{' '}
-                    (or other electronic lock) and build the{' '}
-                    <strong>ESP32-based controller</strong>.
-                </li>
-                <li>
-                    <strong>Download the Firmware:</strong> From the same
-                    website, you'll download the latest official Lobster
-                    firmware file (a <code>.bin</code> file).
-                </li>
-                <li>
-                    <strong>Flash the Controller:</strong> Once your controller
-                    is built, you'll flash it using this app:
-                    <ul>
-                        <li>
-                            Plug your ESP32 controller into your computer via
+    return (
+        <Space direction="vertical" style={{ width: '100%' }} size="large">
+            <Title level={4}>Your Hardware Journey</Title>
+            <Paragraph>
+                This is a "Bring Your Own Hardware" system. This app is the
+                <strong> software</strong>; you must first build and flash the
+                <strong> hardware</strong>.
+            </Paragraph>
+            <Paragraph>
+                Get the complete parts list, build guides, and firmware at our
+                website:
+                <br />
+                <Button
+                    type="link"
+                    href="https://lobster-tools.github.io"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                        padding: 0,
+                        height: 'auto',
+                        lineHeight: 'inherit',
+                        fontSize: '1.1em',
+                    }}
+                >
+                    <strong>https://lobster-tools.github.io</strong>
+                </Button>
+            </Paragraph>
+
+            <Divider />
+
+            <Row gutter={[24, 24]}>
+                {/* Column 1: Build */}
+                <Col span={8}>
+                    <Space direction="vertical" style={blockStyle}>
+                        <Title level={5} style={{ marginTop: 0 }}>
+                            <ToolOutlined
+                                style={{ color: token.colorPrimary }}
+                            />{' '}
+                            1. Build Hardware
+                        </Title>
+                        <Paragraph type="secondary">
+                            Follow the website guide to assemble your
+                            <strong> MagLock</strong> and the
+                            <strong> ESP32 Controller</strong>. This requires
+                            basic soldering and wiring.
+                        </Paragraph>
+                    </Space>
+                </Col>
+
+                {/* Column 2: Download */}
+                <Col span={8}>
+                    <Space direction="vertical" style={blockStyle}>
+                        <Title level={5} style={{ marginTop: 0 }}>
+                            <DownloadOutlined
+                                style={{ color: token.colorPrimary }}
+                            />{' '}
+                            2. Download Firmware
+                        </Title>
+                        <Paragraph type="secondary">
+                            From the same website, download the latest
+                            <strong> firmware</strong> (a <code>.bin</code>{' '}
+                            file) to your computer.
+                        </Paragraph>
+                    </Space>
+                </Col>
+
+                {/* Column 3: Flash */}
+                <Col span={8}>
+                    <Space
+                        direction="vertical"
+                        style={{
+                            ...blockStyle,
+                        }}
+                    >
+                        <Title level={5} style={{ marginTop: 0 }}>
+                            <UsbOutlined
+                                style={{ color: token.colorPrimary }}
+                            />{' '}
+                            3. Flash (In This App)
+                        </Title>
+                        <Paragraph type="secondary">
+                            Plug your built controller into this computer via
                             USB.
-                        </li>
-                        <li>
+                            <br />
                             Open the <strong>Device Manager</strong> (⚙️ icon)
-                            in this app.
-                        </li>
-                        <li>
-                            Go to the <strong>Device Flasher</strong> tab.
-                        </li>
-                        <li>
-                            Select your downloaded{' '}
-                            <strong>firmware file</strong> and the correct{' '}
-                            <strong>serial port</strong>.
-                        </li>
-                        <li>
-                            Click <strong>Flash</strong>.
-                        </li>
-                    </ul>
-                </li>
-            </ol>
-        </Paragraph>
-    </Space>
-);
+                            &gt; <strong>Device Flasher</strong> tab to upload
+                            the firmware.
+                        </Paragraph>
+                    </Space>
+                </Col>
+            </Row>
+        </Space>
+    );
+};
 
 // --- Step 3 Content ---
 const RewardStep = () => {
     const { token } = antdTheme.useToken();
     return (
-        <Space direction="vertical" style={{ width: '100%' }} size="large">
-            <Title level={4}>The Reward Lock</Title>
-            <Paragraph>
-                The Lobster system is built around a powerful incentive:
-                <strong> The Reward Lock</strong>.
-            </Paragraph>
-            <Paragraph>
-                The idea is to lock away something you <strong>want</strong>,
-                making your successful release the <strong>only</strong> way to
-                get it. This "reward" could be the key to your other padlocks, a
-                favorite treat, or anything else you desire.
-            </Paragraph>
-            <Paragraph>
-                You'll need a
-                <strong> Master Lock No. 1500iD Speed Dial™</strong> (the
-                directional one) and a separate
-                <strong> lockable box</strong>.
-            </Paragraph>
-            <Paragraph>
-                <strong>How it works:</strong>
-                <ul>
-                    <li>
-                        <Text strong>Before you start:</Text> The app generates
-                        a<strong> new, random directional combination</strong>.
-                        You must manually set your Master Lock to this new
-                        combination
-                        <i> before</i> you lock the box.
-                    </li>
-                    <li>
-                        <Text strong>During the session:</Text> You are locked
-                        in by the MagLock, and the combination is hidden.
-                    </li>
-                    <li>
-                        <Text strong>
+        <Row gutter={[32, 16]} align="top" style={{ width: '100%' }}>
+            {/* Left Column: Explanation */}
+            <Col span={14}>
+                <Space
+                    direction="vertical"
+                    size="middle"
+                    style={{ width: '100%' }}
+                >
+                    <Title level={4} style={{ margin: 0 }}>
+                        The Reward Lock
+                    </Title>
+                    <Paragraph>
+                        The Lobster system is built around a powerful incentive:
+                        the
+                        <strong> Reward Lock</strong>.
+                    </Paragraph>
+                    <Paragraph>
+                        You lock away something you <strong>want</strong> (like
+                        keys or a treat) in a separate box using this specific
+                        <strong> Master Lock 1500iD Speed Dial™</strong>.
+                    </Paragraph>
+
+                    <Title level={5} style={{ marginTop: 2, marginBottom: 2 }}>
+                        How It Works
+                    </Title>
+
+                    {/* Step 1: Generate */}
+                    <Row wrap={false} align="top">
+                        <Col flex="32px">
+                            <Text
+                                strong
+                                style={{
+                                    fontSize: 18,
+                                    color: token.colorPrimary,
+                                }}
+                            >
+                                1.
+                            </Text>
+                        </Col>
+                        <Col flex="auto">
+                            <Text strong>Generate Code:</Text> The{' '}
+                            <strong>controller</strong> generates a new, random
+                            directional code.
+                        </Col>
+                    </Row>
+
+                    {/* Step 2: Program */}
+                    <Row wrap={false} align="top">
+                        <Col flex="32px">
+                            <Text
+                                strong
+                                style={{
+                                    fontSize: 18,
+                                    color: token.colorPrimary,
+                                }}
+                            >
+                                2.
+                            </Text>
+                        </Col>
+                        <Col flex="auto">
+                            <Text strong>Program Lock:</Text> You manually{' '}
+                            <strong>program this code</strong> into your Master
+                            Lock and use it to lock away your reward.
+                        </Col>
+                    </Row>
+
+                    {/* Step 3: Start */}
+                    <Row wrap={false} align="top">
+                        <Col flex="32px">
+                            <Text
+                                strong
+                                style={{
+                                    fontSize: 18,
+                                    color: token.colorPrimary,
+                                }}
+                            >
+                                3.
+                            </Text>
+                        </Col>
+                        <Col flex="auto">
+                            <Text strong>Start Session:</Text> The app hides the
+                            code while the session is active.
+                        </Col>
+                    </Row>
+
+                    <Divider style={{ margin: '12px 0' }} />
+
+                    {/* Outcome 1: Success */}
+                    <Row wrap={false} align="top">
+                        <Col flex="32px">
                             <CheckCircleOutlined
-                                style={{ color: token.colorSuccess }}
-                            />{' '}
-                            On Success:
-                        </Text>
-                        When you successfully complete a full session, the app
-                        reveals the directional combination.
-                    </li>
-                    <li>
-                        <Text strong>
+                                style={{
+                                    color: token.colorSuccess,
+                                    fontSize: 20,
+                                    marginTop: 4,
+                                }}
+                            />
+                        </Col>
+                        <Col flex="auto">
+                            <Text strong>On Success:</Text>
+                            <Paragraph style={{ margin: 0 }} type="secondary">
+                                The combination is revealed{' '}
+                                <strong>immediately</strong>.
+                            </Paragraph>
+                        </Col>
+                    </Row>
+
+                    {/* Outcome 2: Abort */}
+                    <Row wrap={false} align="top">
+                        <Col flex="32px">
                             <WarningOutlined
-                                style={{ color: token.colorError }}
-                            />{' '}
-                            On Abort:
-                        </Text>
-                        If you abort, the combination is
-                        <strong> lost forever</strong>. The only way to get a
-                        new reward is to start and complete an entirely
-                        <strong> new</strong> session.
-                    </li>
-                </ul>
-            </Paragraph>
-        </Space>
+                                style={{
+                                    color: token.colorError,
+                                    fontSize: 20,
+                                    marginTop: 4,
+                                }}
+                            />
+                        </Col>
+                        <Col flex="auto">
+                            <Text strong>On Abort:</Text>
+                            <Paragraph style={{ margin: 0 }} type="secondary">
+                                The combination is <strong>delayed</strong> by a
+                                penalty time (e.g., 2 hours).
+                            </Paragraph>
+                        </Col>
+                    </Row>
+                </Space>
+            </Col>
+
+            {/* Right Column: Image */}
+            <Col span={10}>
+                <img
+                    src={masterLockImage}
+                    alt="Master Lock 1500iD Speed Dial"
+                    style={{
+                        width: '100%',
+                        maxWidth: '300px',
+                        display: 'block',
+                        marginLeft: 'auto',
+                        marginRight: 'auto',
+                        borderRadius: token.borderRadiusLG,
+                        marginTop: '20px',
+                    }}
+                />
+            </Col>
+        </Row>
     );
 };
 
-// --- Step 4 Content (Unchanged) ---
-const SafetyStep = () => (
-    <Space direction="vertical" style={{ width: '100%' }} size="large">
-        <Title level={4}>
-            <SafetyCertificateOutlined style={{ color: 'red' }} /> Your Safety:
-            The Abort Padel
-        </Title>
-        <Paragraph>
-            Despite its strictness, your safety is the #1 priority. The hardware
-            instructions include building a physical
-            <strong> "Abort Padel"</strong> (a foot pedal or large button).
-        </Paragraph>
-        <Paragraph>
-            This padel is your <strong>emergency safety release</strong>. It
-            connects directly to your ESP32 and will
-            <strong> immediately</strong> cut power to the MagLock, ending the
-            session, even if your Wi-Fi or computer fails.
-        </Paragraph>
-        <Paragraph>
-            <strong>Important:</strong> Using the safety padel is still an
-            <strong> abort</strong>. It follows the same strict logic (you will
-            lose your reward), but it guarantees you can
-            <strong> always</strong> get out in an emergency.
-        </Paragraph>
-    </Space>
-);
+// --- Step 4 Content ---
+const SafetyStep = () => {
+    const { token } = antdTheme.useToken();
+    return (
+        <Row gutter={[32, 16]} align="top" style={{ width: '100%' }}>
+            {/* Left Column: Explanation */}
+            <Col span={14}>
+                <Space
+                    direction="vertical"
+                    style={{ width: '100%' }}
+                    size="middle"
+                >
+                    <Title level={4} style={{ margin: 0 }}>
+                        Your Safety: The Abort Pedal
+                    </Title>
+                    <Paragraph>
+                        Despite its strictness, your safety is the #1 priority.
+                        The hardware instructions include building a physical
+                        <strong> "Abort Pedal"</strong> (a foot pedal or large
+                        button).
+                    </Paragraph>
+                    <Paragraph>
+                        This pedal is your{' '}
+                        <strong>emergency safety release</strong>. It connects
+                        directly to the controller and will
+                        <strong> immediately</strong> cut power to the MagLock,
+                        even if your Wi-Fi or computer fails.
+                    </Paragraph>
 
-// --- Steps Configuration (Unchanged) ---
+                    <Divider style={{ margin: '12px 0' }} />
+
+                    {/* Consequence Block */}
+                    <Row wrap={false} align="top">
+                        <Col flex="32px">
+                            <WarningOutlined
+                                style={{
+                                    color: token.colorError,
+                                    fontSize: 20,
+                                    marginTop: 4,
+                                }}
+                            />
+                        </Col>
+                        <Col flex="auto">
+                            <Text strong>This is still an Abort</Text>
+                            <Paragraph style={{ margin: 0 }} type="secondary">
+                                Using the pedal follows the same strict logic
+                                (your reward will be delayed), but it guarantees
+                                you can
+                                <strong> always</strong> get out in an
+                                emergency.
+                            </Paragraph>
+                        </Col>
+                    </Row>
+                </Space>
+            </Col>
+
+            {/* Right Column: Icon */}
+            <Col span={10}>
+                <Space
+                    direction="vertical"
+                    align="center"
+                    style={{
+                        width: '100%',
+                        padding: '32px 16px',
+                        marginTop: '20px',
+                        backgroundColor: token.colorBgContainer,
+                        border: `1px solid ${token.colorBorder}`,
+                        borderRadius: token.borderRadiusLG,
+                    }}
+                >
+                    <SafetyCertificateOutlined
+                        style={{
+                            fontSize: '64px',
+                            color: token.colorError,
+                        }}
+                    />
+                    <Title level={5} style={{ margin: 0, marginTop: 16 }}>
+                        Hardware Emergency Release
+                    </Title>
+                    <Text type="secondary" style={{ textAlign: 'center' }}>
+                        Always connected, always on.
+                    </Text>
+                </Space>
+            </Col>
+        </Row>
+    );
+};
+
+// --- Steps Configuration ---
 const steps = [
     {
         title: 'Welcome',
