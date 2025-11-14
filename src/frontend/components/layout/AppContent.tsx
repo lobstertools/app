@@ -25,6 +25,8 @@ import { WelcomeScreen } from '../onboarding/WelcomeScreen';
 const { Header, Content } = Layout;
 const { Title } = Typography;
 
+import lobsterLogo from '../../assets/lobster-logo.png';
+
 /**
  * Inner component to hold the main layout and logic.
  */
@@ -59,11 +61,7 @@ export const AppContent = ({
                         background: token.colorBgContainer,
                     }}
                 >
-                    <img
-                        src="/public/lobster-logo.png"
-                        alt="Lobster Logo"
-                        width={30}
-                    />
+                    <img src={lobsterLogo} alt="Lobster Logo" width={30} />
                     <Title level={3} style={{ margin: 0 }}>
                         Lobster
                     </Title>

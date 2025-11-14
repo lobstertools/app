@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from 'react';
 
-import '../types/electron.d.ts'; 
+import '../types/electron.d.ts';
 import { AppRuntimeContext, AppRuntimeContextState } from './useAppRuntime.ts';
 
 export const AppRuntimeProvider = ({ children }: { children: ReactNode }) => {

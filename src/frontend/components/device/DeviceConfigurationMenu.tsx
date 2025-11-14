@@ -32,11 +32,11 @@ import {
     UndoOutlined,
     FieldTimeOutlined,
     BugOutlined,
-    QuestionCircleOutlined, // [!code ++]
+    QuestionCircleOutlined,
 } from '@ant-design/icons';
 import { useMemo } from 'react';
 import { InternalDebugView } from '../debug/InternalDebugView';
-import { useAppRuntime } from '../../context/AppRuntimeContext'; // [!code ++]
+import { useAppRuntime } from '../../context/useAppRuntime';
 
 const { Text } = Typography;
 
@@ -58,10 +58,8 @@ export const DeviceConfigurationMenu = () => {
         openDeviceModal,
         factoryResetDevice,
     } = useDeviceManager();
-    // [!code ++]
-    // Get function to re-open welcome modal
+
     const { setWelcomeGuideOpen } = useAppRuntime();
-    // [!code --]
 
     const [modalApi, contextHolder] = Modal.useModal();
 
@@ -392,14 +390,12 @@ export const DeviceConfigurationMenu = () => {
                           },
                       ]
                     : []),
-                // [!code ++]
                 {
                     key: 'welcome-guide',
                     label: 'View Welcome Guide',
                     icon: <QuestionCircleOutlined />,
                     onClick: () => setWelcomeGuideOpen(true),
                 },
-                // [!code --]
                 {
                     key: 'change-device',
                     label: 'Device Manager',

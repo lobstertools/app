@@ -7,6 +7,8 @@ import {
     theme as antdTheme,
     Checkbox,
     Steps,
+    Col,
+    Row,
 } from 'antd';
 import {
     SafetyCertificateOutlined,
@@ -16,46 +18,47 @@ import {
     ToolOutlined,
     StarOutlined,
 } from '@ant-design/icons';
-import { useAppRuntime } from '../../context/AppRuntimeContext';
+
 import { useState } from 'react';
-import { useDeviceManager } from '../../context/DeviceManagerContext';
-import { LobsterLogo } from '../icons/MagLockIcon';
+import { useDeviceManager } from '../../context/useDeviceManager';
+import { useAppRuntime } from '../../context/useAppRuntime';
 
 const { Title, Text, Paragraph } = Typography;
 
+import lobsterLogo from '../../assets/lobster-logo.png';
+
 // --- Step 1 Content (Unchanged) ---
 const WelcomeStep = () => {
-    const { token } = antdTheme.useToken();
     return (
-        <Space
-            direction="vertical"
-            style={{ width: '100%' }}
-            size="large"
-        >
-            <Space
-                direction="vertical"
-                style={{ width: '100%', textAlign: 'center' }}
-                size="middle"
-            >
-                <LobsterLogo size={120}/>
-
-                <Title level={2} style={{ margin: 0 }}>
-                    Welcome to Lobster
-                </Title>
-                <Paragraph
-                    type="secondary"
-                    style={{ fontSize: 16, maxWidth: 500, margin: '0 auto' }}
-                >
-                    This app is the control center for a strict, DIY
-                    self-bondage system using a Wi-Fi-connected
-                    <strong> MagLock</strong>.
-                </Paragraph>
-            </Space>
+        <Space direction="vertical" style={{ width: '100%' }} size="large">
+            <Row gutter={24} align="middle">
+                {/* Left Column (Logo) */}
+                <Col flex="none">
+                    <img
+                        src={lobsterLogo}
+                        alt="Lobster Logo"
+                        style={{ width: 100, height: 'auto' }}
+                    />
+                </Col>
+                {/* Right Column (Text) */}
+                <Col flex="auto">
+                    <Space direction="vertical" size={0}>
+                        <Title level={2} style={{ margin: 0 }}>
+                            Welcome to Lobster
+                        </Title>
+                        <Paragraph
+                            type="secondary"
+                            style={{ fontSize: 16, paddingTop: 4 }} // Removed centering styles
+                        >
+                            This app is the control center for a strict, DIY
+                            self-bondage system using a Wi-Fi-connected
+                            <strong> MagLock</strong>.
+                        </Paragraph>
+                    </Space>
+                </Col>
+            </Row>
             <Divider />
-            <Title level={4}>
-                <WarningOutlined style={{ color: token.colorWarning }} />{' '}
-                Designed for Strictness
-            </Title>
+            <Title level={4}>Designed for Strictness</Title>
             <Paragraph>
                 This system is "strict" because it's designed to remove
                 loopholes. Cheating is not an option.
@@ -66,14 +69,14 @@ const WelcomeStep = () => {
                         it's treated as an <strong>abort</strong>.
                     </li>
                     <li>
-                        <strong>Strict Abort Logic:</strong> Aborting resets your
+                        <strong>Strict Abort Logic:</strong> Aborting resets
                         session streak, tracks the abort, and can apply a
                         <strong> "time payback" penalty</strong> to your
                         <i> next</i> session.
                     </li>
                     <li>
-                        <strong>Persistent Stats:</strong> All stats are saved on
-                        the device itself. They cannot be reset by clearing app
+                        <strong>Persistent Stats:</strong> All stats are saved
+                        on the device itself. They cannot be reset by clearing
                         data.
                     </li>
                 </ul>
@@ -82,57 +85,74 @@ const WelcomeStep = () => {
     );
 };
 
-// --- Step 2 Content (Unchanged) ---
+// --- Step 2 Content---
 const HardwareStep = () => (
     <Space direction="vertical" style={{ width: '100%' }} size="large">
-        <Title level={4}>Step 1: Build Your Hardware</Title>
+        <Title level={4}>Hardware & Firmware Setup</Title>
         <Paragraph>
             This is a "Bring Your Own Hardware" system. This app is the
-            <strong> software</strong>; you must first build the
-            <strong> hardware</strong>:
-            <ol>
-                <li>A <strong>MagLock</strong> (or other electronic lock).</li>
-                <li>An <strong>ESP32</strong>-based lock controller with a relay.</li>
-            </ol>
-                        <Text type="secondary" style={{ display: 'block', marginTop: 12 }}>
-                Our companion website has the full parts list, wiring
-                diagrams, and step-by-step instructions.
-            </Text>
+            <strong> software</strong>; you must first build and flash the
+            <strong> hardware</strong>.
+        </Paragraph>
+        <Paragraph>
+            Our companion website at <strong>lobster-tools.github.io</strong>{' '}
+            has the full parts list, wiring diagrams, and step-by-step
+            instructions for this entire process.
         </Paragraph>
 
         <Divider />
 
-        <Title level={4}>Step 2: Flash the Lobster Firmware</Title>
+        <Title level={4}>The Full Process</Title>
         <Paragraph>
-            Your ESP32 controller needs the official Lobster firmware. You can
-            flash it directly from this app:
+            Here is the high-level overview of what you'll need to do:
             <ol>
-                <li>Assemble your ESP32 and plug it into your computer via USB.</li>
                 <li>
-                    Open the <strong>Device Manager</strong> (⚙️ icon) in this
-                    app.
+                    <strong>Build Your Hardware:</strong> Following the guide on
+                    our website, you will assemble your <strong>MagLock</strong>{' '}
+                    (or other electronic lock) and build the{' '}
+                    <strong>ESP32-based controller</strong>.
                 </li>
                 <li>
-                    Go to the <strong>Device Flasher</strong> tab.
+                    <strong>Download the Firmware:</strong> From the same
+                    website, you'll download the latest official Lobster
+                    firmware file (a <code>.bin</code> file).
                 </li>
                 <li>
-                    Select the correct <strong>serial port</strong> and the
-                    latest <strong>firmware</strong> file.
-                </li>
-                <li>
-                    Click <strong>Flash</strong>.
+                    <strong>Flash the Controller:</strong> Once your controller
+                    is built, you'll flash it using this app:
+                    <ul>
+                        <li>
+                            Plug your ESP32 controller into your computer via
+                            USB.
+                        </li>
+                        <li>
+                            Open the <strong>Device Manager</strong> (⚙️ icon)
+                            in this app.
+                        </li>
+                        <li>
+                            Go to the <strong>Device Flasher</strong> tab.
+                        </li>
+                        <li>
+                            Select your downloaded{' '}
+                            <strong>firmware file</strong> and the correct{' '}
+                            <strong>serial port</strong>.
+                        </li>
+                        <li>
+                            Click <strong>Flash</strong>.
+                        </li>
+                    </ul>
                 </li>
             </ol>
         </Paragraph>
     </Space>
 );
 
-// --- Step 3 Content (Unchanged) ---
+// --- Step 3 Content ---
 const RewardStep = () => {
     const { token } = antdTheme.useToken();
     return (
         <Space direction="vertical" style={{ width: '100%' }} size="large">
-            <Title level={4}>The Core Concept: The Reward Lock</Title>
+            <Title level={4}>The Reward Lock</Title>
             <Paragraph>
                 The Lobster system is built around a powerful incentive:
                 <strong> The Reward Lock</strong>.
@@ -149,24 +169,26 @@ const RewardStep = () => {
                 directional one) and a separate
                 <strong> lockable box</strong>.
             </Paragraph>
-                        <Paragraph>
+            <Paragraph>
                 <strong>How it works:</strong>
                 <ul>
                     <li>
-                        <Text strong>Before you start:</Text> The app generates a
-                        <strong> new, random directional combination</strong>. You
-                        must manually set your Master Lock to this new combination
+                        <Text strong>Before you start:</Text> The app generates
+                        a<strong> new, random directional combination</strong>.
+                        You must manually set your Master Lock to this new
+                        combination
                         <i> before</i> you lock the box.
                     </li>
                     <li>
-                        <Text strong>During the session:</Text> You are locked in
-                        by the MagLock, and the combination is hidden.
+                        <Text strong>During the session:</Text> You are locked
+                        in by the MagLock, and the combination is hidden.
                     </li>
                     <li>
                         <Text strong>
                             <CheckCircleOutlined
                                 style={{ color: token.colorSuccess }}
-                            /> On Success:
+                            />{' '}
+                            On Success:
                         </Text>
                         When you successfully complete a full session, the app
                         reveals the directional combination.
@@ -175,11 +197,12 @@ const RewardStep = () => {
                         <Text strong>
                             <WarningOutlined
                                 style={{ color: token.colorError }}
-                            /> On Abort:
+                            />{' '}
+                            On Abort:
                         </Text>
                         If you abort, the combination is
-                        <strong> lost forever</strong>. The only way to get a new
-                        reward is to start and complete an entirely
+                        <strong> lost forever</strong>. The only way to get a
+                        new reward is to start and complete an entirely
                         <strong> new</strong> session.
                     </li>
                 </ul>
@@ -192,15 +215,15 @@ const RewardStep = () => {
 const SafetyStep = () => (
     <Space direction="vertical" style={{ width: '100%' }} size="large">
         <Title level={4}>
-            <SafetyCertificateOutlined style={{ color: 'red' }} /> Your
-            Safety: The Abort Padel
+            <SafetyCertificateOutlined style={{ color: 'red' }} /> Your Safety:
+            The Abort Padel
         </Title>
         <Paragraph>
-            Despite its strictness, your safety is the #1 priority. The
-            hardware instructions include building a physical
+            Despite its strictness, your safety is the #1 priority. The hardware
+            instructions include building a physical
             <strong> "Abort Padel"</strong> (a foot pedal or large button).
         </Paragraph>
-                <Paragraph>
+        <Paragraph>
             This padel is your <strong>emergency safety release</strong>. It
             connects directly to your ESP32 and will
             <strong> immediately</strong> cut power to the MagLock, ending the
@@ -249,41 +272,19 @@ export const WelcomeScreen = () => {
         isWelcomeGuideOpen,
         setWelcomeGuideOpen,
     } = useAppRuntime();
-    // Get the function to open the device manager
     const { openDeviceModal } = useDeviceManager();
 
-    // [!code ++]
-    // Local state for the checkbox.
-    // Default to 'true' (checked), so the default action is
-    // to NOT show this again.
     const [dontShowAgain, setDontShowAgain] = useState(true);
-    // [!code --]
-    // Local state for the current step
     const [currentStep, setCurrentStep] = useState(0);
-
-    // [!code ++]
-    // We remove the useEffect that was fighting with the local state.
-    // The user's checkbox click is now the only source of truth.
-    // [!code --]
-
-    // The modal is open if it's the first launch OR if it's been
-    // manually re-opened from the menu.
     const isOpen = showWelcomeOnStartup || isWelcomeGuideOpen;
 
     /**
      * Handles closing the modal from 'x' or 'Cancel'.
      */
     const handleClose = () => {
-        // [!code ++]
         // Save the persistent setting based on the checkbox.
-        // !dontShowAgain:
-        // - If box is CHECKED (true), save FALSE (don't show on startup).
-        // - If box is UNCHECKED (false), save TRUE (show on startup).
         setShowWelcomeOnStartup(!dontShowAgain);
-        // [!code --]
-        // Close the manual-open modal
         setWelcomeGuideOpen(false);
-        // Reset to first step for next time
         setCurrentStep(0);
     };
 
@@ -291,16 +292,10 @@ export const WelcomeScreen = () => {
      * Handles the final "Get Started" button click.
      */
     const handleGetStarted = () => {
-        handleClose(); // <-- This closes the welcome modal and saves state
-        
-        // [!code ++]
-        // Fix the race condition by delaying the opening of the next modal.
-        // This gives React time to re-render and the modal fade-out
-        // animation to start.
+        handleClose();
         setTimeout(() => {
-            openDeviceModal(); // Then this opens the device manager
+            openDeviceModal();
         }, 300);
-        // [!code --]
     };
 
     // --- Multi-Step Footer ---
