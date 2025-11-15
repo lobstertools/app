@@ -90,8 +90,7 @@
             }
         ],
         "directories": {
-            "output": "dist/package",
-            "buildResources": "build-assets"
+            "output": "dist/package"
         },
         "win": {
             "target": "nsis"
