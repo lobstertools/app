@@ -1,6 +1,6 @@
 import { EyeInvisibleOutlined, StopOutlined } from '@ant-design/icons';
 import { Typography, Button, Modal, Statistic } from 'antd';
-import { secondsRemainingToHuman } from '../../utils/time';
+import { formatSeconds } from '../../utils/time';
 import { useSession } from '../../context/useSessionContext';
 
 const { Title } = Typography;
@@ -64,7 +64,7 @@ export const SessionLockModal = () => {
                         }
                         value={
                             status
-                                ? secondsRemainingToHuman(sessionTimeRemaining)
+                                ? formatSeconds(sessionTimeRemaining)
                                 : '00:00:00'
                         }
                         valueStyle={{

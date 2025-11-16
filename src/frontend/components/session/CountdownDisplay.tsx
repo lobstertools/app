@@ -10,7 +10,7 @@ import {
     Statistic,
     theme as antdTheme,
 } from 'antd';
-import { secondsRemainingToHuman } from '../../utils/time';
+import { formatSeconds } from '../../utils/time';
 
 const { Title } = Typography;
 
@@ -33,7 +33,7 @@ export const CountdownDisplay = () => {
             <Title level={2}>Session Starting...</Title>
             <Statistic
                 title="Main Lock Engages In"
-                value={secondsRemainingToHuman(timeToLock)}
+                value={formatSeconds(timeToLock)}
                 valueStyle={{ fontSize: '3rem', fontFamily: 'monospace' }}
             />
             <Divider />

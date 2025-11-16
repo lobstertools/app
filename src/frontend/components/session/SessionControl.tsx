@@ -32,7 +32,7 @@ import {
 } from '@ant-design/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { SessionFormData } from '../../../types';
-import { secondsRemainingToHuman } from '../../utils/time';
+import { formatSeconds } from '../../utils/time';
 import { CountdownDisplay } from './CountdownDisplay';
 import { useDeviceManager } from '../../context/useDeviceManager';
 import {
@@ -327,7 +327,7 @@ export const SessionControl = () => {
                             <FieldTimeOutlined style={{ marginRight: 8 }} />
                             You have{' '}
                             <Text strong>
-                                {secondsRemainingToHuman(pendingPaybackSeconds)}
+                                {formatSeconds(pendingPaybackSeconds)}
                             </Text>{' '}
                             of pending payback, which will be added to this
                             session.
@@ -543,9 +543,7 @@ export const SessionControl = () => {
                     <div style={{ textAlign: 'center', padding: '24px 0' }}>
                         <Statistic
                             title="Penalty Time Remaining"
-                            value={secondsRemainingToHuman(
-                                sessionTimeRemaining
-                            )}
+                            value={formatSeconds(sessionTimeRemaining)}
                             valueStyle={{
                                 fontSize: '2.5rem',
                                 fontFamily: 'monospace',
