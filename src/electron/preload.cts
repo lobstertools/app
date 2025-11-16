@@ -1,6 +1,6 @@
 // See the Electron documentation for details on how to use preload scripts:
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
-import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'; // Added IpcRendererEvent
+import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 import { SerialPortInfo } from '../frontend/types/electron';
 
 // Expose a secure API to the window (your React app)

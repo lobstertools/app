@@ -92,7 +92,7 @@ export const ProvisionDeviceForm = ({
                     These settings are sent once and stored on the device.
                 </Text>
 
-                {/* --- Added Info Block --- */}
+                {/* --- Info Block --- */}
                 <Alert
                     message="Settings are Permanent"
                     description="These settings are permanent. A factory reset is required to change them, which erases all data (streaks, debt, etc.)"
