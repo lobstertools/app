@@ -494,6 +494,59 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
 });
 
 /**
+ * Updates the Wi-Fi credentials on a "ready" device.
+ */
+app.post(
+    '/api/devices/:id/update-wifi',
+    async (req: Request, res: Response) => {
+        const { id } = req.params;
+        const device = deviceCache.get(id);
+        if (!device || device.state !== 'ready') {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Device not found or not ready.',
+            });
+        }
+
+        const { ssid, pass } = req.body;
+        if (!ssid || pass === undefined) {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Missing required fields: ssid, pass.',
+            });
+        }
+
+        const targetUrl = buildTargetUrl(
+            device.address,
+            device.port,
+            '/update-wifi'
+        );
+        try {
+            log(`Forwarding /update-wifi to ${targetUrl}`);
+            const lockResponse = await axios.post(
+                targetUrl,
+                { ssid, pass }, // Forward the JSON payload
+                { timeout: 5000 }
+            );
+            refreshDeviceTimestamp(id);
+            res.status(lockResponse.status).json(lockResponse.data);
+        } catch (error: unknown) {
+            let status = 500;
+            let message = 'Failed to communicate with the lock device.';
+
+            if (isAxiosError(error)) {
+                status = error.response?.status || 500;
+                message = error.response?.data?.message || error.message;
+            } else if (error instanceof Error) {
+                message = error.message;
+            }
+            log(`Failed to update Wi-Fi: ${message}`);
+            res.status(status).json({ status: 'error', message });
+        }
+    }
+);
+
+/**
  * Forgets a "ready" device.
  * This tells the device to erase its Wi-Fi credentials and reboot.
  */

@@ -1,7 +1,5 @@
 // --- Core Status Types ---
 
-import { SerialPortInfo } from '../frontend/types/electron';
-
 /** Describes the setup state of a device (e.g., in BLE provisioning or on the network). */
 export type DeviceProvisioningState = 'ready' | 'new_unprovisioned';
 
@@ -129,42 +127,4 @@ export interface SessionFormData {
     rangeMax?: number;
     hideTimer: boolean;
     startDelays: number[];
-}
-
-export interface DeviceManagerContextState {
-    connectionHealth: ConnectionHealth;
-
-    activeDevice: ActiveDevice | null;
-    discoveredDevices: DiscoveredDevice[];
-    isDeviceModalOpen: boolean;
-    isScanning: boolean;
-    isProvisioning: boolean;
-
-    isLogModalOpen: boolean;
-    logContent: string;
-
-    serialPorts: SerialPortInfo[];
-    isScanningPorts: boolean;
-    isFlashing: boolean;
-    flashProgress: number;
-    scanForSerialPorts: () => void;
-    selectFirmwareFile: () => Promise<string | null>;
-    flashDevice: (port: string, firmwarePath: string) => Promise<boolean>;
-
-    // --- Device Actions ---
-    scanForDevices: () => void;
-    provisionDevice: (
-        deviceId: string,
-        data: DeviceProvisioningData
-    ) => Promise<boolean>;
-    clearDevice: () => void;
-    fetchDeviceLogs: () => void;
-    factoryResetDevice: (deviceId: string) => Promise<void>;
-
-    selectDevice: (device: DiscoveredDevice) => void;
-    openDeviceModal: () => void;
-    closeDeviceModal: () => void;
-    closeLogModal: () => void;
-
-    // --- Flasher Modal State & Electron APIs ---
 }

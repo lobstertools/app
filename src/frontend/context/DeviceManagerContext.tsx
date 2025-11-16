@@ -6,13 +6,16 @@ import {
     DiscoveredDevice,
     ActiveDevice,
     ConnectionHealth,
-    DeviceManagerContextState,
     DeviceProvisioningData,
 } from '../../types';
 import { apiClient } from '../lib/apiClient';
 import { SerialPortInfo } from '../types/electron';
 import { useAppRuntime } from './useAppRuntime';
-import { DeviceHealthResponse, DeviceManagerContext } from './useDeviceManager';
+import {
+    DeviceHealthResponse,
+    DeviceManagerContext,
+    DeviceManagerContextState,
+} from './useDeviceManager';
 
 type DeviceDetailsResponse = ActiveDevice;
 
@@ -53,6 +56,11 @@ export const DeviceManagerProvider = ({
 
     const [isLogModalOpen, setIsLogModalOpen] = useState(false);
     const [logContent, setLogContent] = useState('');
+
+    // --- State for new Device Settings Modal ---
+    const [isDeviceSettingsModalOpen, setIsDeviceSettingsModalOpen] =
+        useState(false);
+    const [isUpdatingWifi, setIsUpdatingWifi] = useState(false);
 
     // --- State for Flashing ---
     const [serialPorts, setSerialPorts] = useState<SerialPortInfo[]>([]);
@@ -116,6 +124,39 @@ export const DeviceManagerProvider = ({
             }
         },
         [scanForDevices]
+    );
+
+    /**
+     * Sends new Wi-Fi credentials to an already provisioned, 'ready' device.
+     * @param deviceId The ID of the active device.
+     * @param ssid The new Wi-Fi SSID.
+     * @param pass The new Wi-Fi password.
+     * @returns True on success, false on failure.
+     */
+    const updateWifi = useCallback(
+        async (deviceId: string, ssid: string, pass: string) => {
+            setIsUpdatingWifi(true);
+            try {
+                await apiClient.post(`/devices/${deviceId}/update-wifi`, {
+                    ssid,
+                    pass,
+                });
+                // Notification is handled by the modal on success
+                return true;
+            } catch (err: any) {
+                const msg =
+                    err.response?.data?.message ||
+                    'Failed to send Wi-Fi update command.';
+                notification.error({
+                    message: 'Update Failed',
+                    description: msg,
+                });
+                return false;
+            } finally {
+                setIsUpdatingWifi(false);
+            }
+        },
+        []
     );
 
     /**
@@ -213,6 +254,16 @@ export const DeviceManagerProvider = ({
      * Closes the device selection modal.
      */
     const closeDeviceModal = () => setIsDeviceModalOpen(false);
+
+    /**
+     * Opens the device settings modal.
+     */
+    const openDeviceSettingsModal = () => setIsDeviceSettingsModalOpen(true);
+
+    /**
+     * Closes the device settings modal.
+     */
+    const closeDeviceSettingsModal = () => setIsDeviceSettingsModalOpen(false);
 
     /**
      * Fetches the full diagnostic log contents from the currently
@@ -459,6 +510,12 @@ export const DeviceManagerProvider = ({
         scanForSerialPorts,
         selectFirmwareFile,
         flashDevice,
+
+        isDeviceSettingsModalOpen,
+        openDeviceSettingsModal,
+        closeDeviceSettingsModal,
+        isUpdatingWifi,
+        updateWifi,
     };
 
     return (

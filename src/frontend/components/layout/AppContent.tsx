@@ -25,6 +25,7 @@ const { Title } = Typography;
 
 import lobsterLogo from '../../assets/lobster-logo.png';
 import { ApplicationSettingsModal } from '../settings/ApplicationSettingsModal';
+import { DeviceSettingsModal } from '../device/DeviceSettingsModal';
 
 /**
  * Inner component to hold the main layout and logic.
@@ -131,6 +132,7 @@ export const AppContent = ({
                 <DeviceLogModal />
                 <WelcomeScreen />
                 <ApplicationSettingsModal />
+                <DeviceSettingsModal />
             </Layout>
         </>
     );

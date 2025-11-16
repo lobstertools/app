@@ -358,6 +358,7 @@ Endpoints:
 - POST /start-test
 - GET /reward
 - GET /log
+- POST /update-wifi
 - POST /factory-reset`);
 });
 
@@ -367,6 +368,39 @@ Endpoints:
  */
 app.get('/log', (req, res) => {
     res.type('text/plain').send(logBuffer.join('\n'));
+});
+
+/**
+ * POST /update-wifi
+ * Simulates updating the Wi-Fi credentials (only in 'ready' state).
+ */
+app.post('/update-wifi', (req, res) => {
+    if (currentState !== 'ready') {
+        log('API: /update-wifi FAILED (not ready)');
+        return res.status(409).json({
+            status: 'error',
+            message: 'Device must be in READY state to update Wi-Fi.',
+        });
+    }
+
+    const { ssid, pass } = req.body;
+    if (!ssid || pass === undefined) {
+        log('API: /update-wifi FAILED (missing ssid or pass)');
+        return res.status(400).json({
+            status: 'error',
+            message: 'Missing required fields: ssid, pass.',
+        });
+    }
+
+    log(
+        `📶 /update-wifi received. Mock NVS "saved" new credentials: SSID=${ssid}`
+    );
+
+    res.json({
+        status: 'success',
+        message:
+            'Wi-Fi credentials updated. Please reboot the device to apply.',
+    });
 });
 
 /**

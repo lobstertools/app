@@ -11,7 +11,6 @@ import {
     theme as antdTheme,
     Dropdown,
     MenuProps,
-    Modal,
 } from 'antd';
 import {
     StopOutlined,
@@ -28,9 +27,8 @@ import {
     CheckCircleOutlined,
     UsbOutlined,
     SettingOutlined,
-    ExclamationCircleOutlined,
-    UndoOutlined,
     FieldTimeOutlined,
+    SlidersOutlined,
 } from '@ant-design/icons';
 import { useMemo } from 'react';
 
@@ -52,10 +50,8 @@ export const DeviceConfigurationMenu = () => {
         fetchDeviceLogs,
         activeDevice,
         openDeviceModal,
-        factoryResetDevice,
+        openDeviceSettingsModal,
     } = useDeviceManager();
-
-    const [modalApi, contextHolder] = Modal.useModal();
 
     // Pulling static config from activeDevice
     const deviceName = activeDevice?.name;
@@ -129,26 +125,6 @@ export const DeviceConfigurationMenu = () => {
         };
     }, [connectionHealth, activeDevice, deviceName, token]);
     // --- END HEALTH LOGIC ---
-
-    const showFactoryResetConfirm = () => {
-        if (!activeDevice) return;
-        modalApi.confirm({
-            title: 'Are you sure you want to factory reset this device?',
-            icon: <ExclamationCircleOutlined />,
-            content: (
-                <>
-                    This will erase all settings (including WiFi) on
-                    <Text strong> {activeDevice.name} </Text>
-                    and put it back into provisioning mode.
-                </>
-            ),
-            okText: 'Factory Reset',
-            okType: 'danger',
-            onOk() {
-                factoryResetDevice(activeDevice.id);
-            },
-        });
-    };
 
     // Tooltip content
     const ledTooltipContent = (
@@ -348,18 +324,17 @@ export const DeviceConfigurationMenu = () => {
                         connectionHealth.device.status !== 'ok',
                 },
                 mainActionItem,
+                { key: 'setup-features', type: 'divider' as const },
                 {
-                    key: 'factory-reset',
-                    label: 'Factory Reset Device',
-                    icon: <UndoOutlined />,
-                    onClick: showFactoryResetConfirm,
+                    key: 'device-settings',
+                    label: 'Device Settings',
+                    icon: <SlidersOutlined />,
+                    onClick: openDeviceSettingsModal,
                     disabled:
                         !activeDevice ||
-                        connectionHealth.device.status !== 'ok' ||
-                        currentState !== 'ready',
-                    danger: true,
+                        (currentState !== 'ready' &&
+                            currentState !== 'completed'),
                 },
-                { key: 'setup-features', type: 'divider' as const },
                 {
                     key: 'change-device',
                     label: 'Device Manager',
@@ -413,7 +388,6 @@ export const DeviceConfigurationMenu = () => {
 
     return (
         <>
-            {contextHolder}
             <Dropdown
                 menu={{ items: menuItems }}
                 trigger={['click']}
