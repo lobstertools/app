@@ -61,6 +61,10 @@ let lockSecondsConfig = 0;
 let penaltySecondsConfig = 0;
 let rewardHistory: Reward[] = [];
 
+// --- Keep-Alive Watchdog (LOCKED state only) ---
+const KEEP_ALIVE_TIMEOUT_MS = 120 * 1000; // 2 minutes
+let lastKeepAliveTime = 0; // 0 = disarmed
+
 let lockInterval: NodeJS.Timeout | null = null;
 let penaltyInterval: NodeJS.Timeout | null = null;
 let countdownInterval: NodeJS.Timeout | null = null;
@@ -157,11 +161,57 @@ const initializeState = () => {
     lockSecondsRemaining = 0;
     penaltySecondsRemaining = 0;
     testSecondsRemaining = 0;
+    lastKeepAliveTime = 0; // Disarm watchdog
 
     countdownSecondsRemaining = new Array(NUMBER_OF_CHANNELS).fill(0);
     hideTimer = false;
     lockSecondsConfig = 0;
     penaltySecondsConfig = 0;
+};
+
+/**
+ * Triggers the full abort logic, moving from 'locked' to 'aborted'.
+ * @param source The reason for the abort (e.g., 'API', 'Watchdog')
+ * @returns true if the abort was successful
+ */
+const triggerAbort = (source: string): boolean => {
+    if (currentState !== 'locked') {
+        log(
+            `triggerAbort called from ${source} but state is ${currentState}. Ignoring.`
+        );
+        return false;
+    }
+
+    log(`🔓 Session aborted by ${source}! Penalty timer started.`);
+    if (lockInterval) clearInterval(lockInterval);
+    lockInterval = null;
+
+    currentState = 'aborted';
+    lastKeepAliveTime = 0; // <-- DISARM WATCHDOG
+
+    // Add to debt bank if enabled
+    if (ENABLE_TIME_PAYBACK) {
+        const paybackToAdd = ABORT_PAYBACK_MINUTES * 60;
+        pendingPaybackSeconds += paybackToAdd;
+        log(
+            `   -> Added ${paybackToAdd}s to payback bank. Total: ${pendingPaybackSeconds}s`
+        );
+    }
+    if (COUNT_STREAKS) {
+        log(`   -> Streak reset to 0.`);
+        streaks = 0; // Aborting resets streaks
+    }
+
+    lockSecondsRemaining = 0;
+    penaltySecondsRemaining = penaltySecondsConfig;
+
+    // Start penalty timer
+    penaltyInterval = setInterval(() => {
+        if (penaltySecondsRemaining > 0) penaltySecondsRemaining--;
+        else completeSession();
+    }, 1000);
+
+    return true;
 };
 
 /**
@@ -172,8 +222,19 @@ const startLockInterval = () => {
     stopAllTimers();
 
     lockSecondsRemaining = lockSecondsConfig;
+    lastKeepAliveTime = Date.now(); // <-- ARM WATCHDOG
 
     lockInterval = setInterval(() => {
+        // --- Watchdog Check (LOCKED state only) ---
+        if (
+            lastKeepAliveTime > 0 &&
+            Date.now() - lastKeepAliveTime > KEEP_ALIVE_TIMEOUT_MS
+        ) {
+            log('Keep-alive watchdog timeout. Aborting session.');
+            triggerAbort('Watchdog');
+            return; // Stop processing
+        }
+
         if (lockSecondsRemaining > 0) {
             lockSecondsRemaining--;
             totalLockedSessionSeconds++;
@@ -208,6 +269,7 @@ const startCountdownInterval = () => {
             if (countdownInterval) clearInterval(countdownInterval);
             countdownInterval = null;
             currentState = 'locked';
+            // Arming is handled inside startLockInterval()
             startLockInterval();
         }
     }, 1000);
@@ -221,6 +283,7 @@ const stopTestMode = () => {
     testInterval = null;
     currentState = 'ready';
     testSecondsRemaining = 0;
+    lastKeepAliveTime = 0; // Disarm watchdog
 };
 
 /**
@@ -230,6 +293,7 @@ const startTestInterval = () => {
     log(`Starting test mode timer for ${TEST_DURATION_SECONDS} seconds.`);
     stopAllTimers();
     testSecondsRemaining = TEST_DURATION_SECONDS;
+    // NOTE: Watchdog is NOT armed here
 
     testInterval = setInterval(() => {
         if (testSecondsRemaining > 0) {
@@ -248,6 +312,7 @@ const completeSession = () => {
     log('Session COMPLETED. Awaiting mock server restart to reset.');
     stopAllTimers();
     currentState = 'completed';
+    lastKeepAliveTime = 0; // Disarm watchdog
     lockSecondsRemaining = 0;
     penaltySecondsRemaining = 0;
     testSecondsRemaining = 0;
@@ -356,6 +421,7 @@ Endpoints:
 - POST /start
 - POST /abort
 - POST /start-test
+- POST /keepalive
 - GET /reward
 - GET /log
 - POST /update-wifi
@@ -368,6 +434,20 @@ Endpoints:
  */
 app.get('/log', (req, res) => {
     res.type('text/plain').send(logBuffer.join('\n'));
+});
+
+/**
+ * POST /keepalive
+ * "Pets" the watchdog to prevent a timeout.
+ */
+app.post('/keepalive', (req, res) => {
+    if (currentState === 'locked') {
+        lastKeepAliveTime = Date.now();
+        log('API: /keepalive received (watchdog petted).');
+    } else {
+        log('API: /keepalive received (ignored, not locked).');
+    }
+    res.sendStatus(200);
 });
 
 /**
@@ -522,13 +602,14 @@ app.post('/start', (req, res) => {
         // No delays, lock immediately
         log('   -> No delays. Locking immediately.');
         currentState = 'locked';
-        startLockInterval();
+        startLockInterval(); // This will arm the watchdog
         res.json({ status: 'locked', durationSeconds: lockSecondsRemaining });
     } else {
         // Start countdown
         log('   -> Starting countdown...');
         currentState = 'countdown';
         lockSecondsRemaining = 0; // Main timer not running yet
+        // Watchdog is NOT armed here
         startCountdownInterval();
         res.json({
             status: 'countdown',
@@ -554,7 +635,7 @@ app.post('/start-test', (req, res) => {
         `🔬 /start-test request. Engaging relays for ${TEST_DURATION_SECONDS}s.`
     );
     currentState = 'testing';
-    startTestInterval();
+    startTestInterval(); // Watchdog is NOT armed
 
     res.json({
         status: 'testing',
@@ -573,42 +654,21 @@ app.post('/abort', (req, res) => {
         countdownInterval = null;
         countdownSecondsRemaining.fill(0);
         currentState = 'ready';
+        // lastKeepAliveTime = 0; // Already 0
         res.json({ status: 'ready', message: 'Countdown canceled.' });
     } else if (currentState === 'locked') {
-        log('🔓 Session aborted by user! Penalty timer started.');
-        if (lockInterval) clearInterval(lockInterval);
-        lockInterval = null;
-
-        currentState = 'aborted';
-
-        // Add to debt bank if enabled
-        if (ENABLE_TIME_PAYBACK) {
-            // Use the static payback config
-            const paybackToAdd = ABORT_PAYBACK_MINUTES * 60;
-            pendingPaybackSeconds += paybackToAdd;
-            log(
-                `   -> Added ${paybackToAdd}s to payback bank. Total: ${pendingPaybackSeconds}s`
-            );
+        if (triggerAbort('API')) {
+            res.json({
+                status: 'aborted',
+                penaltySeconds: penaltySecondsRemaining,
+            });
+        } else {
+            // This shouldn't happen
+            res.status(500).json({ status: 'error', message: 'Abort failed.' });
         }
-        if (COUNT_STREAKS) {
-            log(`   -> Streak reset to 0.`);
-            streaks = 0; // Aborting resets streaks
-        }
-
-        lockSecondsRemaining = 0;
-        penaltySecondsRemaining = penaltySecondsConfig;
-
-        penaltyInterval = setInterval(() => {
-            if (penaltySecondsRemaining > 0) penaltySecondsRemaining--;
-            else completeSession();
-        }, 1000);
-        res.json({
-            status: 'aborted',
-            penaltySeconds: penaltySecondsRemaining,
-        });
     } else if (currentState === 'testing') {
         log('🔓 Test mode aborted by user.');
-        stopTestMode();
+        stopTestMode(); // This will disarm
         res.json({ status: 'ready', message: 'Test mode stopped.' });
     } else {
         log('API: /abort FAILED (not abortable)');

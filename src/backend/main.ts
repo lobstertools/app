@@ -259,33 +259,6 @@ function startDiscoveryService() {
             }
         }
     }, 30000); // Pruner still *runs* every 30 seconds
-
-    // 4. Server-Side Keep-Alive Poller
-    setInterval(async () => {
-        for (const [id, device] of deviceCache.entries()) {
-            if (device.state === 'ready') {
-                const targetUrl = buildTargetUrl(
-                    device.address,
-                    device.port,
-                    '/status' // Polling /status is a good keep-alive
-                );
-                try {
-                    await axios.get(targetUrl, { timeout: 2000 });
-                    refreshDeviceTimestamp(id);
-                } catch (error: unknown) {
-                    let message = 'Unknown error';
-                    if (isAxiosError(error)) {
-                        message = error.message;
-                    } else if (error instanceof Error) {
-                        message = error.message;
-                    }
-                    log(
-                        `[KeepAlive] Device ${device.name} (ID: ${id}) failed keep-alive poll: ${message}`
-                    );
-                }
-            }
-        }
-    }, 30000); // Poll every 30 seconds
 }
 
 // =================================================================
@@ -734,20 +707,58 @@ app.get('/api/devices/:id/health', async (req: Request, res: Response) => {
 });
 
 /**
- * Keep-alive endpoint.
+ * Keep-alive endpoint. (Called by the FRONTEND)
+ * This refreshes the device in the *server's* cache AND
+ * forwards the keep-alive call to the *device* itself
+ * to "pet" its watchdog.
  */
-app.post('/api/devices/:id/keepalive', (req: Request, res: Response) => {
+app.post('/api/devices/:id/keepalive', async (req: Request, res: Response) => {
     const { id } = req.params;
     const device = deviceCache.get(id);
 
-    if (device) {
-        refreshDeviceTimestamp(id);
-        res.status(200).json({ status: 'ok' });
-    } else {
-        res.status(404).json({
+    if (!device) {
+        return res.status(404).json({
             status: 'error',
             message: 'Device not in cache.',
         });
+    }
+
+    // 1. Refresh the server's cache immediately
+    refreshDeviceTimestamp(id);
+
+    // 2. If device is 'ready', forward the keep-alive call to it
+    if (device.state === 'ready') {
+        const targetUrl = buildTargetUrl(
+            device.address,
+            device.port,
+            '/keepalive'
+        );
+        try {
+            // Forward the POST /keepalive request to the device
+            await axios.post(targetUrl, {}, { timeout: 2000 });
+            // If successful, just return OK. The server cache is already updated.
+            return res.status(200).json({ status: 'ok' });
+        } catch (error: unknown) {
+            // The device is unreachable.
+            let message = 'Device is unreachable.';
+            if (isAxiosError(error)) {
+                message = error.message;
+            } else if (error instanceof Error) {
+                message = error.message;
+            }
+            log(
+                `[KeepAlive] Failed to forward keep-alive to ${device.name}: ${message}`
+            );
+            // Return a 503 Service Unavailable to the frontend
+            return res.status(503).json({
+                status: 'error',
+                message: 'Device is unreachable.',
+            });
+        }
+    } else {
+        // Device is in cache, but not 'ready' (e.g., 'new_unprovisioned')
+        // No need to forward, just return OK for the cache update.
+        return res.status(200).json({ status: 'ok' });
     }
 });
 

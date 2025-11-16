@@ -461,7 +461,7 @@ export const DeviceManagerProvider = ({
         if (!activeDevice || !isFullyConnected) return;
 
         sendKeepAlive();
-        const keepAliveTimer = setInterval(sendKeepAlive, 60000);
+        const keepAliveTimer = setInterval(sendKeepAlive, 30000);
         return () => clearInterval(keepAliveTimer);
     }, [activeDevice, connectionHealth, sendKeepAlive]);
 
