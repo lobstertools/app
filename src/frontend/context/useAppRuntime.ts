@@ -4,10 +4,16 @@ export interface AppRuntimeContextState {
     isElectron: boolean;
     isBackendReady: boolean;
     isDevelopmentMode: boolean;
+    // Welcome Guide
     showWelcomeOnStartup: boolean;
     setShowWelcomeOnStartup: (show: boolean) => void;
     isWelcomeGuideOpen: boolean;
     setWelcomeGuideOpen: (isOpen: boolean) => void;
+    // App Settings
+    isAppSettingsModalOpen: boolean;
+    setAppSettingsModalOpen: (isOpen: boolean) => void;
+    locale: string;
+    setLocale: (locale: string) => void;
 }
 
 export const AppRuntimeContext = createContext<

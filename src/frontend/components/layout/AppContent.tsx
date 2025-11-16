@@ -1,13 +1,10 @@
-import { MoonOutlined, SunOutlined } from '@ant-design/icons';
 import {
     Layout,
     Typography,
-    Button,
     Card,
     Space,
     Row,
     Col,
-    Tooltip,
     theme as antdTheme,
     Tag,
 } from 'antd';
@@ -21,11 +18,13 @@ import { DeviceConfigurationMenu } from '../device/DeviceConfigurationMenu';
 import { DeviceLogModal } from '../device/DeviceLogModal';
 import { SessionStats } from '../session/SessionStats';
 import { WelcomeScreen } from '../onboarding/WelcomeScreen';
+import { ApplicationSettingsMenu } from '../settings/ApplicationSettingsMenu';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
 
 import lobsterLogo from '../../assets/lobster-logo.png';
+import { ApplicationSettingsModal } from '../settings/ApplicationSettingsModal';
 
 /**
  * Inner component to hold the main layout and logic.
@@ -74,27 +73,11 @@ export const AppContent = ({
                     <Space size={12} align="center">
                         <StatusBadge />
                         <DeviceConfigurationMenu />
-                    </Space>
-
-                    <Tooltip
-                        title={
-                            theme === 'light'
-                                ? 'Switch to Dark Mode'
-                                : 'Switch to Light Mode'
-                        }
-                    >
-                        <Button
-                            icon={
-                                theme === 'light' ? (
-                                    <MoonOutlined />
-                                ) : (
-                                    <SunOutlined />
-                                )
-                            }
-                            onClick={toggleTheme}
-                            shape="circle"
+                        <ApplicationSettingsMenu
+                            theme={theme}
+                            toggleTheme={toggleTheme}
                         />
-                    </Tooltip>
+                    </Space>
                 </Header>
 
                 {/* Main Content Area */}
@@ -147,6 +130,7 @@ export const AppContent = ({
                 <DeviceManagerModal />
                 <DeviceLogModal />
                 <WelcomeScreen />
+                <ApplicationSettingsModal />
             </Layout>
         </>
     );

@@ -3,6 +3,10 @@ import { ReactNode, useEffect, useState } from 'react';
 import '../types/electron.d.ts';
 import { AppRuntimeContext, AppRuntimeContextState } from './useAppRuntime.ts';
 
+// --- LocalStorage Keys ---
+const LOCALE_STORAGE_KEY = 'lobster-app-locale';
+const WELCOME_STORAGE_KEY = 'lobster-show-welcome-on-startup';
+
 export const AppRuntimeProvider = ({ children }: { children: ReactNode }) => {
     const [isElectron, setIsElectron] = useState(false);
     const [isBackendReady, setIsBackendReady] = useState(false);
@@ -13,9 +17,7 @@ export const AppRuntimeProvider = ({ children }: { children: ReactNode }) => {
     // --- Persistent Welcome Screen State ---
     const [showWelcomeOnStartup, setShowWelcomeOnStartupState] = useState(
         () => {
-            const saved = localStorage.getItem(
-                'lobster-show-welcome-on-startup'
-            );
+            const saved = localStorage.getItem(WELCOME_STORAGE_KEY); // Use constant
             // Default to 'true' if it's not found
             return saved === null ? true : JSON.parse(saved);
         }
@@ -24,15 +26,28 @@ export const AppRuntimeProvider = ({ children }: { children: ReactNode }) => {
     // --- Temporary Modal State ---
     const [isWelcomeGuideOpen, setWelcomeGuideOpen] = useState(false);
 
+    // --- Application Settings State ---
+    const [isAppSettingsModalOpen, setAppSettingsModalOpen] = useState(false);
+    const [locale, setLocaleState] = useState(() => {
+        const savedLocale = localStorage.getItem(LOCALE_STORAGE_KEY);
+        // Default to '' (browser default) if not found
+        return savedLocale === null ? '' : savedLocale;
+    });
+
     /**
      * Updates the persistent setting in state and localStorage.
      */
     const setShowWelcomeOnStartup = (show: boolean) => {
         setShowWelcomeOnStartupState(show);
-        localStorage.setItem(
-            'lobster-show-welcome-on-startup',
-            JSON.stringify(show)
-        );
+        localStorage.setItem(WELCOME_STORAGE_KEY, JSON.stringify(show)); // Use constant
+    };
+
+    /**
+     * Updates the locale in state and localStorage.
+     */
+    const setLocale = (newLocale: string) => {
+        setLocaleState(newLocale);
+        localStorage.setItem(LOCALE_STORAGE_KEY, newLocale);
     };
 
     useEffect(() => {
@@ -71,10 +86,16 @@ export const AppRuntimeProvider = ({ children }: { children: ReactNode }) => {
         isElectron,
         isBackendReady,
         isDevelopmentMode,
+        // Welcome
         showWelcomeOnStartup,
         setShowWelcomeOnStartup,
         isWelcomeGuideOpen,
         setWelcomeGuideOpen,
+        // Settings
+        isAppSettingsModalOpen,
+        setAppSettingsModalOpen,
+        locale,
+        setLocale,
     };
 
     return (

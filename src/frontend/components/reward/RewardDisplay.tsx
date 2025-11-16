@@ -22,6 +22,7 @@ import {
 } from 'antd';
 import { useState, useEffect } from 'react';
 import { RewardImage } from './RewardImage';
+import { useAppRuntime } from '../../context/useAppRuntime';
 
 const { Title, Text } = Typography;
 
@@ -31,14 +32,18 @@ const { Title, Text } = Typography;
  */
 export const RewardDisplay = () => {
     const { currentState, rewardHistory } = useSession();
+    const { locale } = useAppRuntime();
 
-    const [selectedIndex, setSelectedIndex] = useState(0); // For history
+    const [selectedIndex, setSelectedIndex] = useState(0);
     const { token } = antdTheme.useToken();
 
     // Reset history index when state changes
     useEffect(() => {
         setSelectedIndex(0);
     }, [rewardHistory, currentState]);
+
+    // Use browser default if locale is '', otherwise use the selected locale
+    const displayLocale = locale || undefined;
 
     const placeholderStyles: React.CSSProperties = {
         height: '400px',
@@ -144,7 +149,7 @@ export const RewardDisplay = () => {
                                 title="Code Generated On"
                                 value={new Date(
                                     currentReward.timestamp
-                                ).toLocaleString('nl-NL')}
+                                ).toLocaleString(displayLocale)}
                                 prefix={<ClockCircleOutlined />}
                                 valueStyle={{ fontSize: '1rem' }}
                             />

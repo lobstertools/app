@@ -31,12 +31,8 @@ import {
     ExclamationCircleOutlined,
     UndoOutlined,
     FieldTimeOutlined,
-    BugOutlined,
-    QuestionCircleOutlined,
 } from '@ant-design/icons';
 import { useMemo } from 'react';
-import { InternalDebugView } from '../debug/InternalDebugView';
-import { useAppRuntime } from '../../context/useAppRuntime';
 
 const { Text } = Typography;
 
@@ -58,8 +54,6 @@ export const DeviceConfigurationMenu = () => {
         openDeviceModal,
         factoryResetDevice,
     } = useDeviceManager();
-
-    const { setWelcomeGuideOpen } = useAppRuntime();
 
     const [modalApi, contextHolder] = Modal.useModal();
 
@@ -153,18 +147,6 @@ export const DeviceConfigurationMenu = () => {
             onOk() {
                 factoryResetDevice(activeDevice.id);
             },
-        });
-    };
-
-    /**
-     * Shows the internal state debug modal.
-     */
-    const showDebugModal = () => {
-        modalApi.info({
-            title: 'Internal Debug State',
-            content: <InternalDebugView />,
-            width: 800,
-            maskClosable: true,
         });
     };
 
@@ -265,8 +247,6 @@ export const DeviceConfigurationMenu = () => {
             disabled: false,
         };
     } else {
-        // This block now catches 'locked', 'countdown', 'completed', 'connecting', etc.
-        // The "Stop Session" logic has been removed.
         mainActionItem = {
             key: 'main-action-disabled',
             label: 'Start Hardware Test', // Show the default action
@@ -380,22 +360,6 @@ export const DeviceConfigurationMenu = () => {
                     danger: true,
                 },
                 { key: 'setup-features', type: 'divider' as const },
-                ...((import.meta as any).env?.DEV
-                    ? [
-                          {
-                              key: 'debug-view',
-                              label: 'Internal Debug View',
-                              icon: <BugOutlined />,
-                              onClick: showDebugModal,
-                          },
-                      ]
-                    : []),
-                {
-                    key: 'welcome-guide',
-                    label: 'View Welcome Guide',
-                    icon: <QuestionCircleOutlined />,
-                    onClick: () => setWelcomeGuideOpen(true),
-                },
                 {
                     key: 'change-device',
                     label: 'Device Manager',
