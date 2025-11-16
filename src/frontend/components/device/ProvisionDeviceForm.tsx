@@ -92,15 +92,13 @@ export const ProvisionDeviceForm = ({
                     These settings are sent once and stored on the device.
                 </Text>
 
-                {/* --- Info Block --- */}
                 <Alert
-                    message="Settings are Permanent"
-                    description="These settings are permanent. A factory reset is required to change them, which erases all data (streaks, debt, etc.)"
-                    type="warning"
+                    message="Review Your Configuration"
+                    description="While Wi-Fi settings can be updated later from the device's settings page, all other device configurations (like payback rules and abort delays) are permanent. Changing them will require a factory reset."
+                    type="info"
                     showIcon
                     style={{ marginTop: 16 }}
                 />
-
                 <Divider>Wi-Fi Credentials</Divider>
 
                 {/* --- Wi-Fi Section --- */}
