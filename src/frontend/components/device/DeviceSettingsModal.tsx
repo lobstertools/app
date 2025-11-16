@@ -15,6 +15,7 @@ import {
     Tag,
     Col,
     Row,
+    Tooltip,
 } from 'antd';
 import {
     WifiOutlined,
@@ -23,10 +24,14 @@ import {
     ExclamationCircleOutlined,
     CheckCircleOutlined,
     UsbOutlined,
+    FireOutlined,
+    ClockCircleOutlined,
+    CloseCircleOutlined,
 } from '@ant-design/icons';
 import { useDeviceManager } from '../../context/useDeviceManager';
 import { useState } from 'react';
 import { useSession } from '../../context/useSessionContext';
+import { formatSeconds } from '../../utils/time';
 
 const { Text } = Typography;
 const { useModal } = Modal;
@@ -44,7 +49,7 @@ export const DeviceSettingsModal = () => {
         isUpdatingWifi,
         factoryResetDevice,
     } = useDeviceManager();
-    const { currentState } = useSession();
+    const { currentState, status } = useSession();
 
     const [form] = Form.useForm();
     const [modalApi, contextHolder] = useModal();
@@ -98,6 +103,7 @@ export const DeviceSettingsModal = () => {
         });
     };
 
+    // --- Device Config Items ---
     const configItems = [
         {
             key: 'channels',
@@ -124,6 +130,65 @@ export const DeviceSettingsModal = () => {
             label: 'Payback Amount',
             children: `${activeDevice?.config?.abortPaybackMinutes || 'N/A'} min`,
             span: 2,
+        },
+    ];
+
+    // --- Session Stat Items  ---
+    const {
+        streaks = 0,
+        totalLockedSessionSeconds = 0,
+        completedSessions = 0,
+        abortedSessions = 0,
+    } = status || {};
+
+    const sessionStatItems = [
+        {
+            key: 'streaks',
+            label: (
+                <Tooltip title="Current Session Streak">
+                    <Space>
+                        <FireOutlined />
+                        Streak
+                    </Space>
+                </Tooltip>
+            ),
+            children: streaks,
+        },
+        {
+            key: 'timeLocked',
+            label: (
+                <Tooltip title="Total Time Locked">
+                    <Space>
+                        <ClockCircleOutlined />
+                        Time Locked
+                    </Space>
+                </Tooltip>
+            ),
+            children: formatSeconds(totalLockedSessionSeconds),
+        },
+        {
+            key: 'completed',
+            label: (
+                <Tooltip title="Total Sessions Completed">
+                    <Space>
+                        <CheckCircleOutlined />
+                        Completed Sessions
+                    </Space>
+                </Tooltip>
+            ),
+            children: completedSessions,
+        },
+        {
+            key: 'aborted',
+            label: (
+                <Tooltip title="Total Sessions Aborted">
+                    <Space>
+                        <CloseCircleOutlined />
+                        Aborted Sessions
+                    </Space>
+                </Tooltip>
+            ),
+            children: abortedSessions,
         },
     ];
 
@@ -208,6 +273,14 @@ export const DeviceSettingsModal = () => {
             ),
             children: (
                 <Space direction="vertical" style={{ width: '100%' }}>
+                    <Divider orientation="left">Session Statistics</Divider>
+                    <Descriptions
+                        bordered
+                        items={sessionStatItems}
+                        size="small"
+                        column={2}
+                    />
+
                     <Divider orientation="left">Device Configuration</Divider>
                     <Descriptions bordered items={configItems} size="small" />
 
