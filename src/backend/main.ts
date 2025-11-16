@@ -259,6 +259,15 @@ function startDiscoveryService() {
             }
         }
     }, 30000); // Pruner still *runs* every 30 seconds
+
+    // 4. Periodic mDNS Reset
+    // This forces the mDNS browser to clear its internal cache and
+    // re-discover devices that may have rebooted without sending a
+    // graceful 'down' packet.
+    setInterval(() => {
+        log('[mDNS] Periodic refresh: Resetting mDNS discovery service...');
+        resetMDNSDiscovery();
+    }, 30000); // Reset every 60 seconds
 }
 
 // =================================================================
