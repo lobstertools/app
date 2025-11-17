@@ -14,6 +14,12 @@ export const AppRuntimeProvider = ({ children }: { children: ReactNode }) => {
     // Is the app running in a dev environment (Vite)?
     const isDevelopmentMode = (import.meta as any).env?.DEV || false;
 
+    // --- Application Version ---
+    // VITE_APP_VERSION is injected by the build process (see .github/workflows/build-app.yml)
+    // It defaults to '0.0.0-dev' if not provided (e.g., in local dev)
+    const version = (import.meta as any).env?.VITE_APP_VERSION || '0.0.0-dev';
+    const isBeta = version.includes('-beta');
+
     // --- Persistent Welcome Screen State ---
     const [showWelcomeOnStartup, setShowWelcomeOnStartupState] = useState(
         () => {
@@ -86,6 +92,8 @@ export const AppRuntimeProvider = ({ children }: { children: ReactNode }) => {
         isElectron,
         isBackendReady,
         isDevelopmentMode,
+        version,
+        isBeta,
         // Welcome
         showWelcomeOnStartup,
         setShowWelcomeOnStartup,

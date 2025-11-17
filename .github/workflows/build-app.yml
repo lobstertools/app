@@ -65,6 +65,8 @@ jobs:
         if: github.ref_type == 'tag'
         run: yarn build
         env:
+          # Pass the tag (e.g., "v1.2.3") as an env var to the Vite build
+          VITE_APP_VERSION: ${{ github.ref_name }}
           # GITHUB_TOKEN is required by electron-builder to publish
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
