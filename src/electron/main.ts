@@ -1,4 +1,11 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import {
+    app,
+    BrowserWindow,
+    ipcMain,
+    dialog,
+    Menu,
+    MenuItemConstructorOptions,
+} from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
@@ -234,6 +241,7 @@ const createWindow = () => {
     if (IS_DEV) {
         console.log(`[Electron] Loading dev server: ${LOBSTER_DEV_SERVER_URL}`);
         mainWindow.loadURL(LOBSTER_DEV_SERVER_URL!);
+        // Automatically open dev tools in development
         mainWindow.webContents.openDevTools();
     } else {
         const frontendIndexPath = path.join(
@@ -246,12 +254,57 @@ const createWindow = () => {
             `[Electron] Loading production build: ${frontendIndexPath}`
         );
         mainWindow.loadFile(frontendIndexPath);
+        // Dev tools are NOT opened in production
     }
 };
 
 // --- Electron App Lifecycle Events ---
 
 app.on('ready', () => {
+    // --- Create Minimal Menu ---
+    const menuTemplate: MenuItemConstructorOptions[] = [];
+
+    // Add macOS app menu
+    if (process.platform === 'darwin') {
+        menuTemplate.push({
+            label: app.name,
+            submenu: [
+                { role: 'about' },
+                { type: 'separator' },
+                { role: 'services' },
+                { type: 'separator' },
+                { role: 'hide' },
+                { role: 'hideOthers' },
+                { role: 'unhide' },
+                { type: 'separator' },
+                { role: 'quit' },
+            ],
+        });
+    } else {
+        // Add Windows/Linux File menu
+        menuTemplate.push({
+            label: 'File',
+            submenu: [{ role: 'quit' }],
+        });
+    }
+
+    // Add "View" menu with DevTools *only* in development
+    if (IS_DEV) {
+        menuTemplate.push({
+            label: 'View',
+            submenu: [
+                { role: 'reload' },
+                { role: 'forceReload' },
+                { role: 'toggleDevTools' },
+            ],
+        });
+    }
+    // --- End Fix ---
+
+    const menu = Menu.buildFromTemplate(menuTemplate);
+    Menu.setApplicationMenu(menu);
+    // --- End Menu ---
+
     app.commandLine.appendSwitch('disable-features', 'Autofill');
 
     createWindow();
