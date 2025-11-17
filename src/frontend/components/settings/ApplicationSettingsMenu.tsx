@@ -5,6 +5,7 @@ import {
     SettingOutlined,
     BugOutlined,
     SlidersOutlined,
+    InfoCircleOutlined,
 } from '@ant-design/icons';
 import { Button, Dropdown, MenuProps, Modal, Tooltip } from 'antd';
 import { useAppRuntime } from '../../context/useAppRuntime';
@@ -24,8 +25,12 @@ export const ApplicationSettingsMenu = ({
     theme,
     toggleTheme,
 }: ApplicationSettingsMenuProps) => {
-    const { isDevelopmentMode, setWelcomeGuideOpen, setAppSettingsModalOpen } =
-        useAppRuntime();
+    const {
+        isDevelopmentMode,
+        setWelcomeGuideOpen,
+        setAppSettingsModalOpen,
+        setAboutModalOpen,
+    } = useAppRuntime();
     const [modalApi, contextHolder] = Modal.useModal();
 
     // Control both dropdown and tooltip open states
@@ -77,6 +82,12 @@ export const ApplicationSettingsMenu = ({
                   },
               ]
             : []),
+        {
+            key: 'about-app',
+            label: 'About Lobster',
+            icon: <InfoCircleOutlined />,
+            onClick: () => setAboutModalOpen(true),
+        },
     ];
 
     // Handler for when the dropdown open state changes

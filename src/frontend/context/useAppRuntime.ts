@@ -14,6 +14,8 @@ export interface AppRuntimeContextState {
     // App Settings
     isAppSettingsModalOpen: boolean;
     setAppSettingsModalOpen: (isOpen: boolean) => void;
+    isAboutModalOpen: boolean;
+    setAboutModalOpen: (isOpen: boolean) => void;
     locale: string;
     setLocale: (locale: string) => void;
 }

@@ -31,6 +31,7 @@ export const AppRuntimeProvider = ({ children }: { children: ReactNode }) => {
 
     // --- Temporary Modal State ---
     const [isWelcomeGuideOpen, setWelcomeGuideOpen] = useState(false);
+    const [isAboutModalOpen, setAboutModalOpen] = useState(false);
 
     // --- Application Settings State ---
     const [isAppSettingsModalOpen, setAppSettingsModalOpen] = useState(false);
@@ -104,6 +105,9 @@ export const AppRuntimeProvider = ({ children }: { children: ReactNode }) => {
         setAppSettingsModalOpen,
         locale,
         setLocale,
+        // About
+        isAboutModalOpen,
+        setAboutModalOpen,
     };
 
     return (
