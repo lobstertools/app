@@ -58,8 +58,9 @@ export interface DiscoveredDevice {
 export interface ActiveDevice {
     id: string;
     name: string;
-    address: string; // IP address
+    address: string;
     version: string;
+    isBeta: boolean;
     features: string[];
     numberOfChannels: number;
     config: {

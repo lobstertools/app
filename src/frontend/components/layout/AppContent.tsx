@@ -26,6 +26,7 @@ const { Title } = Typography;
 import lobsterLogo from '../../assets/lobster-logo.png';
 import { ApplicationSettingsModal } from '../settings/ApplicationSettingsModal';
 import { DeviceSettingsModal } from '../device/DeviceSettingsModal';
+import { BetaWarningBanner } from './BetaWarningBanner';
 
 /**
  * Inner component to hold the main layout and logic.
@@ -43,6 +44,8 @@ export const AppContent = ({
 
     return (
         <>
+            <BetaWarningBanner />
+
             <Layout
                 style={{
                     minHeight: '100vh',

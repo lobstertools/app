@@ -199,6 +199,9 @@ export const DeviceManagerProvider = ({
                 const fullDevice = response.data;
                 fullDevice.id = device.id; // Ensure the ID is set
 
+                const fwVersion = fullDevice.version || '';
+                fullDevice.isBeta = fwVersion.includes('-beta');
+
                 setActiveDevice(fullDevice);
                 localStorage.setItem(
                     'lobster-active-device',
