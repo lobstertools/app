@@ -48,7 +48,6 @@ export const DeviceConfigurationMenu = () => {
         connectionHealth,
         fetchDeviceLogs,
         activeDevice,
-        openDeviceModal,
         openDeviceSettingsModal,
     } = useDeviceManager();
 
@@ -348,11 +347,6 @@ export const DeviceConfigurationMenu = () => {
                 alignItems: 'center',
                 color: token.colorTextSecondary,
             }}
-            onClick={
-                !activeDevice && title === 'No Device'
-                    ? openDeviceModal
-                    : undefined
-            }
         >
             <Space size="small" align="center">
                 {icon}
