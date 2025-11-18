@@ -21,7 +21,7 @@ export interface DeviceManagerContextState {
     isProvisioning: boolean;
     isLogModalOpen: boolean;
     logContent: string;
-    scanForDevices: () => void;
+    scanForDevices: (silent?: boolean) => void;
     provisionDevice: (
         deviceId: string,
         data: DeviceProvisioningData

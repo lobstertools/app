@@ -74,17 +74,24 @@ export const DeviceManagerProvider = ({
      * Triggers a new scan for BLE (new) and mDNS (ready) devices.
      * Populates the `discoveredDevices` list.
      */
-    const scanForDevices = useCallback(async () => {
-        setIsScanning(true);
+    const scanForDevices = useCallback(async (silent = false) => {
+        if (!silent) {
+            setIsScanning(true);
+        }
         try {
             const response =
                 await apiClient.get<DiscoveredDevice[]>('/devices');
+            // Since the backend handles cache, this returns the current "Truth"
             setDiscoveredDevices(response.data);
         } catch (err) {
             console.error('Failed to fetch devices:', err);
-            notification.error({ message: 'Failed to scan for devices' });
+            if (!silent) {
+                notification.error({ message: 'Failed to scan for devices' });
+            }
         } finally {
-            setIsScanning(false);
+            if (!silent) {
+                setIsScanning(false);
+            }
         }
     }, []);
 
@@ -478,7 +485,7 @@ export const DeviceManagerProvider = ({
         if (!activeDevice || !isFullyConnected) return;
 
         sendKeepAlive();
-        const keepAliveTimer = setInterval(sendKeepAlive, 30000);
+        const keepAliveTimer = setInterval(sendKeepAlive, 10000);
         return () => clearInterval(keepAliveTimer);
     }, [activeDevice, connectionHealth, sendKeepAlive]);
 

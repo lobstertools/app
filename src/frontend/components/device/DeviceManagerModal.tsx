@@ -69,12 +69,22 @@ export const DeviceManagerModal = () => {
 
     // Scan for all device types when modal opens
     useEffect(() => {
-        if (isDeviceModalOpen) {
-            scanForDevices();
-            if (isElectron) {
-                scanForSerialPorts();
-            }
+        if (!isDeviceModalOpen) return;
+
+        // 1. Initial Scan (triggers loading spinner)
+        scanForDevices(false);
+        if (isElectron) {
+            scanForSerialPorts();
         }
+
+        // 2. Active Polling Loop (Silent)
+        // Poll every 2 seconds while the modal is open.
+        // This picks up new devices immediately as the backend finds them.
+        const intervalId = setInterval(() => {
+            scanForDevices(true); // Silent = true
+        }, 2000);
+
+        return () => clearInterval(intervalId);
     }, [isDeviceModalOpen, scanForDevices, isElectron, scanForSerialPorts]);
 
     const handleCancel = () => {

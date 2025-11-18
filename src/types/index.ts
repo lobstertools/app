@@ -1,5 +1,7 @@
 // --- Core Status Types ---
 
+import { Peripheral } from '@abandonware/noble';
+
 /** Describes the setup state of a device (e.g., in BLE provisioning or on the network). */
 export type DeviceProvisioningState = 'ready' | 'new_unprovisioned';
 
@@ -45,10 +47,13 @@ export interface ConnectionHealth {
 /** Represents a device found during a scan (BLE or mDNS). Minimal info only. */
 export interface DiscoveredDevice {
     id: string; // mDNS fqdn or BLE peripheral UUID
-    name: string;
-    state: DeviceProvisioningState;
+    name: string; // 'lobster-lock' (mDNS) or 'Lobster Lock-XYZ' (BLE)
+    state: 'ready' | 'new_unprovisioned';
     address: string; // IP address (mDNS) or peripheral.id (BLE)
-    lastSeen: number;
+    port: number;
+    lastSeen: number; // Date.now()
+    peripheral?: Peripheral; // Store the noble object for BLE devices
+    failedAttempts: number;
 }
 
 export type BuildType = 'beta' | 'debug' | 'mock' | 'release';
