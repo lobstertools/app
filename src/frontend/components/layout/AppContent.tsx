@@ -132,6 +132,7 @@ export const AppContent = ({
 
                 {/* Global Modals */}
                 <SessionLockModal />
+                <TestSessionModal />
                 <DeviceManagerModal />
                 <DeviceLogModal />
                 <WelcomeScreen />

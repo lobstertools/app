@@ -1,6 +1,7 @@
 import { useSession } from '../../context/useSessionContext';
 import { red, blue, grey } from '@ant-design/colors';
 import { Typography, Space } from 'antd';
+import { formatSeconds } from '../../utils/time';
 
 const { Text } = Typography;
 
@@ -17,7 +18,7 @@ export const StatusBadge = () => {
         let color: string;
         let text: string;
         let showTimer = false;
-        let timerValue = 0;
+        let timerValue = '';
 
         switch (currentState) {
             // --- Session States ---
@@ -45,7 +46,7 @@ export const StatusBadge = () => {
                 color = blue[5];
                 text = 'TESTING';
                 showTimer = true;
-                timerValue = sessionTimeRemaining || 0;
+                timerValue = formatSeconds(sessionTimeRemaining) || '';
                 break;
 
             // --- Connection / App States ---
@@ -87,7 +88,7 @@ export const StatusBadge = () => {
                 </Text>
                 {showTimer && (
                     <Text style={{ color: '#fff', fontFamily: 'monospace' }}>
-                        ({timerValue}s)
+                        ({timerValue})
                     </Text>
                 )}
             </Space>

@@ -262,7 +262,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
             await apiClient.post(`/devices/${activeDevice.id}/session/test`);
             notification.success({
                 message: 'Test Mode Started',
-                description: 'Relays will engage for 60 seconds.',
+                description: 'Relays engaged.',
             });
             await fetchSessionStatus(); // Re-sync immediately
         } catch (err: unknown) {
