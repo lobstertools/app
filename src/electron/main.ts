@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 import { fork, ChildProcess, spawn, execSync } from 'child_process';
 import { SerialPort } from 'serialport';
+import { shell } from 'electron/common';
 
 // --- ESM Polyfills ---
 const require = createRequire(import.meta.url);
@@ -218,6 +219,18 @@ const createWindow = () => {
             contextIsolation: true,
             nodeIntegration: false,
         },
+    });
+
+    mainWindow.webContents.setWindowOpenHandler((details) => {
+        // Check if the URL is http or https
+        if (
+            details.url.startsWith('https:') ||
+            details.url.startsWith('http:')
+        ) {
+            shell.openExternal(details.url);
+        }
+        // 'deny' prevents Electron from creating a new BrowserWindow
+        return { action: 'deny' };
     });
 
     // --- Listener for Page Load/Reload ---
