@@ -18,6 +18,15 @@ contextBridge.exposeInMainWorld('api', {
     },
 
     /**
+     *Registers a listener for the 'open-about-modal' signal from the main menu.
+     */
+    onOpenAboutModal: (callback: () => void) => {
+        const listener = () => callback();
+        ipcRenderer.on('open-about-modal', listener);
+        return () => ipcRenderer.removeListener('open-about-modal', listener);
+    },
+
+    /**
      * Asks the main process to open a file dialog for firmware.
      * @returns A promise that resolves with the selected file path or null.
      */

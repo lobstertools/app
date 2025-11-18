@@ -14,6 +14,12 @@ export interface IpcApi {
     onBackendReady: (callback: () => void) => () => void;
 
     /**
+     * Registers a listener for the 'open-about-modal' signal.
+     * @returns A function to remove the listener.
+     */
+    onOpenAboutModal: (callback: () => void) => () => void;
+
+    /**
      * Asks the main process to open a file dialog for firmware.
      * @returns A promise that resolves with the selected file path or null.
      */

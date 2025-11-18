@@ -263,7 +263,14 @@ app.on('ready', () => {
         menuTemplate.push({
             label: app.name,
             submenu: [
-                { role: 'about' },
+                {
+                    label: `About ${app.name}`,
+                    click: () => {
+                        if (mainWindow && !mainWindow.isDestroyed()) {
+                            mainWindow.webContents.send('open-about-modal');
+                        }
+                    },
+                },
                 { type: 'separator' },
                 { role: 'services' },
                 { type: 'separator' },

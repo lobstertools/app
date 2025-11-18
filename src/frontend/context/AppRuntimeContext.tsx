@@ -76,6 +76,7 @@ export const AppRuntimeProvider = ({ children }: { children: ReactNode }) => {
 
     useEffect(() => {
         let removeBackendListener: (() => void) | undefined;
+        let removeAboutListener: (() => void) | undefined;
 
         // Check for the Electron preload API on mount
         if (window.api) {
@@ -83,14 +84,20 @@ export const AppRuntimeProvider = ({ children }: { children: ReactNode }) => {
             console.log(
                 'Frontend (Electron): waiting for backend-ready signal...'
             );
-            // This listener is defined in preload.cts
+
+            // Existing Backend Ready Listener
             removeBackendListener = window.api.onBackendReady(() => {
                 console.log('Frontend Received: backend-ready signal!');
                 setIsBackendReady(true);
             });
+
+            // NEW: Listen for "About" menu click
+            removeAboutListener = window.api.onOpenAboutModal(() => {
+                console.log('Frontend Received: open-about-modal signal');
+                setAboutModalOpen(true);
+            });
         } else {
-            // BROWSER MODE:
-            // We are in a standalone browser. Assume the backend is ready.
+            // BROWSER MODE logic...
             console.log(
                 'Frontend (Browser): Standalone mode. Assuming backend is ready.'
             );
@@ -98,13 +105,12 @@ export const AppRuntimeProvider = ({ children }: { children: ReactNode }) => {
             setIsBackendReady(true);
         }
 
-        // Cleanup listener on unmount
+        // Cleanup listeners on unmount
         return () => {
-            if (removeBackendListener) {
-                removeBackendListener();
-            }
+            if (removeBackendListener) removeBackendListener();
+            if (removeAboutListener) removeAboutListener();
         };
-    }, []); // This effect runs only once on mount
+    }, []);
 
     const value: AppRuntimeContextState = {
         isElectron,

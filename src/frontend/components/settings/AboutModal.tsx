@@ -92,13 +92,14 @@ export const AboutAppModal = () => {
                         Source Code (GitHub)
                     </Button>
                     <Button
-                        href="mailto:lobster@pobox.com"
-                        icon={<MailOutlined />}
+                        href="https://reddit.com/r/lobster-tools"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        icon={<GithubOutlined />}
                         block
                     >
-                        Contact Email
+                        Support Reddit
                     </Button>
-
                     <Divider style={{ margin: '16px 0' }} />
 
                     {/* License */}
