@@ -74,7 +74,7 @@ export const AboutAppModal = () => {
                     size="middle"
                 >
                     <Button
-                        href="https://lobster-tools.github.io"
+                        href="https://lobstertools.github.io"
                         target="_blank"
                         rel="noopener noreferrer"
                         icon={<GlobalOutlined />}
@@ -83,7 +83,7 @@ export const AboutAppModal = () => {
                         Project Website
                     </Button>
                     <Button
-                        href="https://github.com/lobster-tools"
+                        href="https://github.com/lobstertools"
                         target="_blank"
                         rel="noopener noreferrer"
                         icon={<GithubOutlined />}
@@ -92,7 +92,7 @@ export const AboutAppModal = () => {
                         Source Code (GitHub)
                     </Button>
                     <Button
-                        href="https://reddit.com/r/lobster-tools"
+                        href="https://reddit.com/r/lobstertools"
                         target="_blank"
                         rel="noopener noreferrer"
                         icon={<RedditOutlined />}

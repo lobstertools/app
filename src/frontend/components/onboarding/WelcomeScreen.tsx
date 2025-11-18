@@ -114,7 +114,7 @@ const HardwareStep = () => {
                 <br />
                 <Button
                     type="link"
-                    href="https://lobster-tools.github.io"
+                    href="https://lobstertools.github.io"
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{
@@ -124,7 +124,7 @@ const HardwareStep = () => {
                         fontSize: '1.1em',
                     }}
                 >
-                    <strong>https://lobster-tools.github.io</strong>
+                    <strong>https://lobstertools.github.io</strong>
                 </Button>
             </Paragraph>
 
