@@ -7,6 +7,9 @@ import {
     ClockCircleOutlined,
     LeftOutlined,
     RightOutlined,
+    UsbOutlined,
+    DisconnectOutlined,
+    ExperimentOutlined,
 } from '@ant-design/icons';
 import {
     Typography,
@@ -55,13 +58,9 @@ export const RewardDisplay = () => {
         borderRadius: '8px',
         border: `1px dashed ${token.colorBorder}`,
         padding: '24px',
+        textAlign: 'center',
     };
 
-    const currentReward = rewardHistory[selectedIndex];
-
-    /**
-     * Instructions for opening the physical lock.
-     */
     const OpeningInstructions = (
         <div style={{ width: '100%' }}>
             <Title level={5}>How to Open the Reward Lock</Title>
@@ -89,7 +88,73 @@ export const RewardDisplay = () => {
         </div>
     );
 
-    // Show a placeholder if the session is active
+    // --- 1. Handle Connection & Error States ---
+
+    if (currentState === 'no_device_selected') {
+        return (
+            <div style={placeholderStyles}>
+                <Space direction="vertical" align="center" size="middle">
+                    <UsbOutlined
+                        style={{
+                            fontSize: '32px',
+                            color: token.colorTextDisabled,
+                        }}
+                    />
+                    <Text type="secondary">No device selected.</Text>
+                    <Text type="secondary">
+                        Please connect a Lobster Controller to view rewards.
+                    </Text>
+                </Space>
+            </div>
+        );
+    }
+
+    if (currentState === 'connecting') {
+        return (
+            <div style={placeholderStyles}>
+                <Space direction="vertical" align="center" size="middle">
+                    <Spin size="large" />
+                    <Text>Connecting to Lobster Controller...</Text>
+                </Space>
+            </div>
+        );
+    }
+
+    if (currentState === 'testing') {
+        return (
+            <div style={placeholderStyles}>
+                <Space direction="vertical" align="center" size="middle">
+                    <Spin indicator={<ExperimentOutlined />} size="large" />
+                    <Text>Testing hardware connection...</Text>
+                </Space>
+            </div>
+        );
+    }
+
+    if (
+        currentState === 'device_unreachable' ||
+        currentState === 'server_unreachable'
+    ) {
+        return (
+            <div style={placeholderStyles}>
+                <Space direction="vertical" align="center" size="middle">
+                    <DisconnectOutlined
+                        style={{ fontSize: '32px', color: token.colorError }}
+                    />
+                    <Text type="danger" strong>
+                        Connection Lost
+                    </Text>
+                    <Text type="secondary">
+                        Unable to communicate with the device.
+                    </Text>
+                </Space>
+            </div>
+        );
+    }
+
+    // --- 2. Handle Active Session (Hidden Rewards) ---
+    // While locked, aborted, or counting down, the reward is hidden.
+
     if (
         currentState === 'locked' ||
         currentState === 'aborted' ||
@@ -111,7 +176,7 @@ export const RewardDisplay = () => {
             icon = <FireOutlined style={{ fontSize: '32px', color: red[5] }} />;
         } else if (currentState === 'countdown') {
             message =
-                'The reward code will be generated after the session starts and completes.';
+                'The reward code will be generated after the session starts.';
             icon = (
                 <LoadingOutlined
                     style={{ fontSize: '32px', color: token.colorTextDisabled }}
@@ -121,20 +186,18 @@ export const RewardDisplay = () => {
 
         return (
             <div style={placeholderStyles}>
-                {' '}
-                {icon}{' '}
-                <Text
-                    type="secondary"
-                    style={{ marginTop: '16px', textAlign: 'center' }}
-                >
-                    {' '}
-                    {message}{' '}
-                </Text>{' '}
+                <Space direction="vertical" align="center" size="middle">
+                    {icon}
+                    <Text type="secondary">{message}</Text>
+                </Space>
             </div>
         );
     }
 
-    // Show the reward image and history
+    // --- 3. Handle Visible Reward (Completed or Ready with history) ---
+
+    const currentReward = rewardHistory[selectedIndex];
+
     if (currentReward) {
         return (
             <Space direction="vertical" style={{ width: '100%' }} size="large">
@@ -190,24 +253,15 @@ export const RewardDisplay = () => {
         );
     }
 
-    // Show loading spinners if no reward is loaded yet
-    if (currentState === 'ready' && rewardHistory.length === 0) {
-        return (
-            <div style={placeholderStyles}>
-                <Spin tip="Waiting for device to generate new reward code..." />
-            </div>
-        );
-    }
+    // --- 4. Fallback / Waiting for first generation ---
+    // If we are 'ready' but have no history yet.
 
     return (
         <div style={placeholderStyles}>
-            <Spin
-                tip={
-                    currentState === 'completed'
-                        ? 'Loading Your Reward!'
-                        : 'Loading Reward Data...'
-                }
-            />
+            <Space direction="vertical" align="center" size="middle">
+                <Spin size="large" />
+                <Text>Waiting for device to generate new reward code...</Text>
+            </Space>
         </div>
     );
 };

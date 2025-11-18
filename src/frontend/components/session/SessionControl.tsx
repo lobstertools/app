@@ -602,9 +602,12 @@ export const SessionControl = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
+                        flexDirection: 'column',
+                        gap: '16px',
                     }}
                 >
-                    <Spin tip="Connecting..." size="large" />
+                    <Spin size="large" />
+                    <Text>Connecting...</Text>
                 </div>
             );
         }
