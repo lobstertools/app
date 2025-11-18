@@ -2,8 +2,8 @@ import {
     InfoCircleOutlined,
     GlobalOutlined,
     GithubOutlined,
-    MailOutlined,
     BookOutlined,
+    RedditOutlined,
 } from '@ant-design/icons';
 import { Modal, Row, Col, Button, Space, Divider, Typography } from 'antd';
 import { useAppRuntime } from '../../context/useAppRuntime';
@@ -95,7 +95,7 @@ export const AboutAppModal = () => {
                         href="https://reddit.com/r/lobster-tools"
                         target="_blank"
                         rel="noopener noreferrer"
-                        icon={<GithubOutlined />}
+                        icon={<RedditOutlined />}
                         block
                     >
                         Support Reddit
