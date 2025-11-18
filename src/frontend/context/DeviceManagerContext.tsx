@@ -181,6 +181,41 @@ export const DeviceManagerProvider = ({
     }, []);
 
     /**
+     * Helper to fetch and update device details.
+     * Used by selectDevice and by the startup effect.
+     */
+    const refreshDeviceDetails = useCallback(async (deviceId: string) => {
+        const response = await apiClient.get<DeviceDetailsResponse>(
+            `/devices/${deviceId}/details`
+        );
+        const fullDevice = response.data;
+        fullDevice.id = deviceId; // Ensure the ID is set
+
+        const fwVersion = (fullDevice.version || '').toLowerCase();
+
+        // Determine BuildType based on version string priorities
+        if (fwVersion.includes('mock')) {
+            fullDevice.buildType = 'mock';
+        } else if (fwVersion.includes('debug')) {
+            fullDevice.buildType = 'debug';
+        } else if (fwVersion.includes('local')) {
+            fullDevice.buildType = 'debug';
+        } else if (fwVersion.includes('beta')) {
+            fullDevice.buildType = 'beta';
+        } else {
+            // Fallback for standard production builds
+            fullDevice.buildType = 'release';
+        }
+
+        setActiveDevice(fullDevice);
+        localStorage.setItem(
+            'lobster-active-device',
+            JSON.stringify(fullDevice)
+        );
+        return fullDevice;
+    }, []);
+
+    /**
      * Sets a 'ready' discovered device as the new `activeDevice`.
      * Fetches its full details and saves it to localStorage.
      * @param device The device (from `discoveredDevices`) to select.
@@ -199,35 +234,7 @@ export const DeviceManagerProvider = ({
             setIsDeviceModalOpen(false);
 
             try {
-                const response = await apiClient.get<DeviceDetailsResponse>(
-                    `/devices/${device.id}/details`
-                );
-                const fullDevice = response.data;
-                fullDevice.id = device.id; // Ensure the ID is set
-
-                const fwVersion = (fullDevice.version || '').toLowerCase();
-
-                // Determine BuildType based on version string priorities
-                // Priority: Mock -> Debug -> Local -> Beta -> Release
-                if (fwVersion.includes('mock')) {
-                    fullDevice.buildType = 'mock';
-                } else if (fwVersion.includes('debug')) {
-                    fullDevice.buildType = 'debug';
-                } else if (fwVersion.includes('local')) {
-                    fullDevice.buildType = 'debug';
-                } else if (fwVersion.includes('beta')) {
-                    fullDevice.buildType = 'beta';
-                } else {
-                    // Fallback for standard production builds
-                    // Ensure 'release' is added to your BuildType union type
-                    fullDevice.buildType = 'release';
-                }
-
-                setActiveDevice(fullDevice);
-                localStorage.setItem(
-                    'lobster-active-device',
-                    JSON.stringify(fullDevice)
-                );
+                await refreshDeviceDetails(device.id);
             } catch (err) {
                 console.error('Failed to fetch device details:', err);
                 notification.error({
@@ -238,7 +245,7 @@ export const DeviceManagerProvider = ({
                 clearDevice(); // Go back to 'no device' state
             }
         },
-        [clearDevice]
+        [clearDevice, refreshDeviceDetails]
     );
 
     /**
@@ -470,6 +477,29 @@ export const DeviceManagerProvider = ({
     }, [activeDevice]);
 
     // --- Effects ---
+
+    // Startup Device Refresh
+    useEffect(() => {
+        // Only run if we have an active device (from localStorage) AND backend is ready
+        if (isBackendReady && activeDevice?.id) {
+            console.log('[DeviceManager] Refreshing active device details...');
+            refreshDeviceDetails(activeDevice.id).catch((err) => {
+                console.warn('[DeviceManager] Startup refresh failed:', err);
+
+                // If the backend explicitly returns 404 (Not Found),
+                // it means the device ID in localStorage is invalid or expired.
+                // We MUST clear it to stop the UI from polling a dead ID.
+                if (axios.isAxiosError(err) && err.response?.status === 404) {
+                    console.warn(
+                        '[DeviceManager] Stale device ID detected (404). Clearing...'
+                    );
+                    clearDevice();
+                }
+            });
+        }
+        // Disable exhaustive-deps because we only want this to run once when 'isBackendReady' flips to true
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isBackendReady]);
 
     useEffect(() => {
         fetchHealth();
