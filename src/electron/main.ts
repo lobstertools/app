@@ -50,7 +50,7 @@ const sendBackendReadySignal = () => {
     }
 };
 
-const startBackend = (_: BrowserWindow) => {
+const startBackend = () => {
     if (IS_DEV) {
         console.log(
             '[Electron] Dev mode: Not starting backend (assuming external server).'
@@ -318,7 +318,7 @@ app.on('ready', () => {
     createWindow();
 
     if (mainWindow) {
-        startBackend(mainWindow);
+        startBackend();
     }
 
     // --- IPC handler: open-firmware-dialog ---
