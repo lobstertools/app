@@ -261,10 +261,9 @@ const createWindow = () => {
 // --- Electron App Lifecycle Events ---
 
 app.on('ready', () => {
-    // --- Create Minimal Menu ---
     const menuTemplate: MenuItemConstructorOptions[] = [];
 
-    // Add macOS app menu
+    // 1. Add macOS app menu OR Windows/Linux File menu
     if (process.platform === 'darwin') {
         menuTemplate.push({
             label: app.name,
@@ -288,7 +287,23 @@ app.on('ready', () => {
         });
     }
 
-    // Add "View" menu with DevTools *only* in development
+    // 2. Add the "Edit" menu (REQUIRED for Copy/Paste/SelectAll)
+    menuTemplate.push({
+        label: 'Edit',
+        submenu: [
+            { role: 'undo' },
+            { role: 'redo' },
+            { type: 'separator' },
+            { role: 'cut' },
+            { role: 'copy' },
+            { role: 'paste' },
+            { role: 'delete' },
+            { type: 'separator' },
+            { role: 'selectAll' },
+        ],
+    });
+
+    // 3. Add "View" menu with DevTools *only* in development
     if (IS_DEV) {
         menuTemplate.push({
             label: 'View',
@@ -299,12 +314,10 @@ app.on('ready', () => {
             ],
         });
     }
-    // --- End Fix ---
 
+    // --- Build and Set Menu ---
     const menu = Menu.buildFromTemplate(menuTemplate);
     Menu.setApplicationMenu(menu);
-    // --- End Menu ---
-
     app.commandLine.appendSwitch('disable-features', 'Autofill');
 
     createWindow();
