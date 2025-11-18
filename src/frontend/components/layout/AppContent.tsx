@@ -14,7 +14,7 @@ import { DeviceManagerModal } from '../device/DeviceManagerModal';
 import { RewardDisplay } from '../reward/RewardDisplay';
 import { SessionControl } from '../session/SessionControl';
 import { SessionLockModal } from '../session/SessionLockModal';
-import { DeviceConfigurationMenu } from '../device/DeviceConfigurationMenu';
+import { DeviceMenu } from '../device/DeviceMenu';
 import { DeviceLogModal } from '../device/DeviceLogModal';
 import { SessionStats } from '../session/SessionStats';
 import { WelcomeScreen } from '../onboarding/WelcomeScreen';
@@ -78,7 +78,7 @@ export const AppContent = ({
 
                     <Space size={12} align="center">
                         <StatusBadge />
-                        <DeviceConfigurationMenu />
+                        <DeviceMenu />
                         <ApplicationSettingsMenu
                             theme={theme}
                             toggleTheme={toggleTheme}

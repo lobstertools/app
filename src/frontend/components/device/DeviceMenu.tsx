@@ -37,7 +37,7 @@ const { Text } = Typography;
  * Diagnostic indicator for connection health, logs, and device actions.
  * Sits in the header.
  */
-export const DeviceConfigurationMenu = () => {
+export const DeviceMenu = () => {
     const { token } = antdTheme.useToken();
 
     // Get all needed state/functions from useSession
@@ -58,6 +58,8 @@ export const DeviceConfigurationMenu = () => {
     const paybackEnabled = activeDevice?.config?.enableTimePayback || false;
     const paybackMinutes = activeDevice?.config?.abortPaybackMinutes || 0;
     const abortDelaySeconds = activeDevice?.config?.abortDelaySeconds || 0;
+    const appVersion = activeDevice?.version || 'N/A';
+    const appBuildType = activeDevice?.buildType || 'N/A';
 
     // Pulling features from activeDevice
     const hasLedFeature = useMemo(
@@ -223,7 +225,7 @@ export const DeviceConfigurationMenu = () => {
     } else {
         mainActionItem = {
             key: 'main-action-disabled',
-            label: 'Start Hardware Test', // Show the default action
+            label: 'Start Hardware Test',
             icon: <ExperimentOutlined />,
             disabled: true, // But disable it
         };
@@ -264,6 +266,12 @@ export const DeviceConfigurationMenu = () => {
                         {
                             key: 'device-id',
                             label: `Device: ${displayDeviceId || 'N/A'}`,
+                            icon: <HddOutlined />,
+                            disabled: true,
+                        },
+                        {
+                            key: 'version-info',
+                            label: `Version: ${appVersion} (${appBuildType})`,
                             icon: <HddOutlined />,
                             disabled: true,
                         },
@@ -377,7 +385,7 @@ export const DeviceConfigurationMenu = () => {
             <Dropdown
                 menu={{ items: menuItems }}
                 trigger={['click']}
-                disabled={!activeDevice && title !== 'No Device'} // Disable if connecting
+                disabled={!activeDevice && title !== 'No Device'}
             >
                 {triggerComponent}
             </Dropdown>
