@@ -201,10 +201,12 @@ export const DeviceManagerProvider = ({
                 const fwVersion = (fullDevice.version || '').toLowerCase();
 
                 // Determine BuildType based on version string priorities
-                // Priority: Mock -> Debug -> Beta -> Release
+                // Priority: Mock -> Debug -> Local -> Beta -> Release
                 if (fwVersion.includes('mock')) {
                     fullDevice.buildType = 'mock';
                 } else if (fwVersion.includes('debug')) {
+                    fullDevice.buildType = 'debug';
+                } else if (fwVersion.includes('local')) {
                     fullDevice.buildType = 'debug';
                 } else if (fwVersion.includes('beta')) {
                     fullDevice.buildType = 'beta';
