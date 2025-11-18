@@ -195,12 +195,24 @@ export const DeviceManagerProvider = ({
                 const response = await apiClient.get<DeviceDetailsResponse>(
                     `/devices/${device.id}/details`
                 );
-
                 const fullDevice = response.data;
                 fullDevice.id = device.id; // Ensure the ID is set
 
-                const fwVersion = fullDevice.version || '';
-                fullDevice.isBeta = fwVersion.includes('-beta');
+                const fwVersion = (fullDevice.version || '').toLowerCase();
+
+                // Determine BuildType based on version string priorities
+                // Priority: Mock -> Debug -> Beta -> Release
+                if (fwVersion.includes('mock')) {
+                    fullDevice.buildType = 'mock';
+                } else if (fwVersion.includes('debug')) {
+                    fullDevice.buildType = 'debug';
+                } else if (fwVersion.includes('beta')) {
+                    fullDevice.buildType = 'beta';
+                } else {
+                    // Fallback for standard production builds
+                    // Ensure 'release' is added to your BuildType union type
+                    fullDevice.buildType = 'release';
+                }
 
                 setActiveDevice(fullDevice);
                 localStorage.setItem(

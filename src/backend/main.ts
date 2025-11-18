@@ -178,8 +178,16 @@ function startMDNSDiscovery() {
 
     // Called when a device gracefully leaves the network
     bonjourBrowser.on('down', (service) => {
-        deviceCache.delete(service.fqdn);
-        log(`[mDNS] Device offline: ${service.name} (ID: ${service.fqdn})`);
+        // --- FIX 1: Sticky Caching ---
+        // When a device reboots, it broadcasts a "Goodbye" (down) packet.
+        // Previously, we deleted it immediately, creating a race condition where
+        // the frontend couldn't poll it while it rebooted.
+        // Now, we log it but keep it in cache. The HTTP poll loop will recover
+        // the connection when the device is back up, or the 5-minute pruner will kill it.
+        log(
+            `[mDNS] Device reported 'down': ${service.name} (ID: ${service.fqdn}). Keeping in cache for polling.`
+        );
+        // deviceCache.delete(service.fqdn); // <--- DISABLED DELETION
     });
 }
 
@@ -260,14 +268,16 @@ function startDiscoveryService() {
         }
     }, 30000); // Pruner still *runs* every 30 seconds
 
-    // 4. Periodic mDNS Reset
-    // This forces the mDNS browser to clear its internal cache and
-    // re-discover devices that may have rebooted without sending a
-    // graceful 'down' packet.
+    // 4. Periodic mDNS Reset -- REMOVED TO PREVENT BLIND SPOTS
+    // The previous logic aggressively reset the mDNS browser every 60s.
+    // This caused race conditions where we missed "Hello" packets from rebooting devices.
+    // Since we now use "Sticky Caching" (ignoring 'down' events), we don't need this aggressive reset.
+    /*
     setInterval(() => {
         log('[mDNS] Periodic refresh: Resetting mDNS discovery service...');
         resetMDNSDiscovery();
-    }, 30000); // Reset every 60 seconds
+    }, 30000);
+    */
 }
 
 // =================================================================
@@ -589,6 +599,7 @@ app.post(
 
         deviceCache.delete(id);
         log(`Device ${id} reset and removed from cache.`);
+        // Only reset mDNS on explicit Factory Reset to help discover re-broadcasting devices
         resetMDNSDiscovery();
 
         res.status(200).json({

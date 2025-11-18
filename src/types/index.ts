@@ -51,6 +51,8 @@ export interface DiscoveredDevice {
     lastSeen: number;
 }
 
+export type BuildType = 'beta' | 'debug' | 'mock' | 'release';
+
 /**
  * Represents the fully loaded, selected device and its static properties.
  * This is created when a DiscoveredDevice is selected.
@@ -60,7 +62,7 @@ export interface ActiveDevice {
     name: string;
     address: string;
     version: string;
-    isBeta: boolean;
+    buildType: BuildType;
     features: string[];
     numberOfChannels: number;
     config: {

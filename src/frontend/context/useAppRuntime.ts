@@ -1,8 +1,9 @@
 import { createContext, useContext } from 'react';
+import { BuildType } from '../../types';
 
 export interface AppRuntimeContextState {
     version: string;
-    isBeta: boolean;
+    buildType: BuildType;
     isElectron: boolean;
     isBackendReady: boolean;
     isDevelopmentMode: boolean;

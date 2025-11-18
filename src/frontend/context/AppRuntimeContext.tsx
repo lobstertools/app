@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useState } from 'react';
 
 import '../types/electron.d.ts';
 import { AppRuntimeContext, AppRuntimeContextState } from './useAppRuntime.ts';
+import { BuildType } from '../../types/index.ts';
 
 // --- LocalStorage Keys ---
 const LOCALE_STORAGE_KEY = 'lobster-app-locale';
@@ -17,8 +18,24 @@ export const AppRuntimeProvider = ({ children }: { children: ReactNode }) => {
     // --- Application Version ---
     // VITE_APP_VERSION is injected by the build process (see .github/workflows/build-app.yml)
     // It defaults to '0.0.0-dev' if not provided (e.g., in local dev)
-    const version = (import.meta as any).env?.VITE_APP_VERSION || '0.0.0-dev';
-    const isBeta = version.includes('-beta');
+    let version = (import.meta as any).env?.VITE_APP_VERSION || '0.0.0-debug';
+    version = version.toLowerCase();
+
+    let buildType: BuildType = 'release';
+
+    // Determine BuildType based on version string priorities
+    // Priority: Mock -> Debug -> Beta -> Release
+    if (version.includes('mock')) {
+        buildType = 'mock';
+    } else if (version.includes('debug')) {
+        buildType = 'debug';
+    } else if (version.includes('beta')) {
+        buildType = 'beta';
+    } else {
+        // Fallback for standard production builds
+        // Ensure 'release' is added to your BuildType union type
+        buildType = 'release';
+    }
 
     // --- Persistent Welcome Screen State ---
     const [showWelcomeOnStartup, setShowWelcomeOnStartupState] = useState(
@@ -94,7 +111,7 @@ export const AppRuntimeProvider = ({ children }: { children: ReactNode }) => {
         isBackendReady,
         isDevelopmentMode,
         version,
-        isBeta,
+        buildType,
         // Welcome
         showWelcomeOnStartup,
         setShowWelcomeOnStartup,
