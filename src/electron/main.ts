@@ -26,6 +26,9 @@ if (require('electron-squirrel-startup')) {
 let backendProcess: ChildProcess | null = null;
 let mainWindow: BrowserWindow | null = null;
 
+// --- Global State for Connection Handshake ---
+let isBackendReady = false;
+
 // --- Paths ---
 const LOBSTER_DEV_SERVER_URL = process.env['LOBSTER_DEV_SERVER_URL'];
 const IS_DEV = !!LOBSTER_DEV_SERVER_URL;
@@ -39,45 +42,23 @@ const preloadScriptPath = path.join(
     'preload.cjs'
 );
 
-const startBackend = (mainWindow: BrowserWindow) => {
+// Helper to send the signal safely to the renderer
+const sendBackendReadySignal = () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        console.log('[Electron] Sending backend-ready signal to frontend...');
+        mainWindow.webContents.send('backend-ready');
+    }
+};
+
+const startBackend = (_: BrowserWindow) => {
     if (IS_DEV) {
         console.log(
-            '[Electron] Dev mode: Not starting backend (already running).'
+            '[Electron] Dev mode: Not starting backend (assuming external server).'
         );
-
-        // We check the window's state. It's possible electronmon restarted
-        // the app *after* the window already loaded.
-        const webContents = mainWindow.webContents;
-
-        const sendReadySignal = () => {
-            // Check if webContents and the window are still valid
-            if (!webContents.isDestroyed() && !mainWindow.isDestroyed()) {
-                console.log(
-                    '[Electron] Window is ready. Sending backend-ready signal.'
-                );
-                webContents.send('backend-ready');
-            } else {
-                console.log(
-                    '[Electron] Window was destroyed before backend-ready could be sent.'
-                );
-            }
-        };
-
-        // Check if the window is *still loading*
-        if (webContents.isLoading()) {
-            console.log(
-                '[Electron] Window is still loading. Waiting for did-finish-load.'
-            );
-            // If it is, wait for the event
-            webContents.once('did-finish-load', sendReadySignal);
-        } else {
-            // If it's *NOT* loading, it means the event already fired.
-            // Send the signal immediately.
-            console.log(
-                '[Electron] Window is already loaded. Sending signal immediately.'
-            );
-            sendReadySignal();
-        }
+        // In dev mode, we assume the backend is running externally.
+        isBackendReady = true;
+        // We do not send the signal here immediately because the window might
+        // not be ready. The 'did-finish-load' listener in createWindow handles it.
         return;
     }
 
@@ -91,13 +72,12 @@ const startBackend = (mainWindow: BrowserWindow) => {
         backendProcess.stdout.on('data', (data) => {
             const output = data.toString();
             console.log(`[Backend]: ${output.trim()}`);
+
+            // Detect the specific ready signal from the server
             if (output.includes('LOBSTER_BACKEND_READY')) {
-                console.log(
-                    '[Electron] Detected backend is ready! Notifying frontend.'
-                );
-                // In prod, we can just send. The window will buffer
-                // the event until it's ready.
-                mainWindow.webContents.send('backend-ready');
+                console.log('[Electron] Detected backend is ready!');
+                isBackendReady = true;
+                sendBackendReadySignal();
             }
         });
     }
@@ -110,10 +90,12 @@ const startBackend = (mainWindow: BrowserWindow) => {
 
     backendProcess.on('exit', (code) => {
         console.log(`[Backend] Exited with code: ${code}`);
+        isBackendReady = false;
     });
 
     backendProcess.on('error', (err) => {
         console.error('[Backend] Failed to start.', err);
+        isBackendReady = false;
     });
 };
 
@@ -238,10 +220,24 @@ const createWindow = () => {
         },
     });
 
+    // --- Listener for Page Load/Reload ---
+    mainWindow.webContents.on('did-finish-load', () => {
+        // If backend is ALREADY ready (e.g. dev mode, or page reload),
+        // we must tell the frontend again.
+        if (isBackendReady) {
+            // Small delay to allow React to hydrate and register the effect
+            setTimeout(() => {
+                console.log(
+                    '[Electron] Window loaded/reloaded. Re-sending backend-ready.'
+                );
+                sendBackendReadySignal();
+            }, 500);
+        }
+    });
+
     if (IS_DEV) {
         console.log(`[Electron] Loading dev server: ${LOBSTER_DEV_SERVER_URL}`);
         mainWindow.loadURL(LOBSTER_DEV_SERVER_URL!);
-        // Automatically open dev tools in development
         mainWindow.webContents.openDevTools();
     } else {
         const frontendIndexPath = path.join(
@@ -254,7 +250,6 @@ const createWindow = () => {
             `[Electron] Loading production build: ${frontendIndexPath}`
         );
         mainWindow.loadFile(frontendIndexPath);
-        // Dev tools are NOT opened in production
     }
 };
 
