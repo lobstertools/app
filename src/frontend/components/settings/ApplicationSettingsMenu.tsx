@@ -55,6 +55,22 @@ export const ApplicationSettingsMenu = ({
     };
 
     const menuItems: MenuProps['items'] = [
+        // --- Group 1: Configuration & Hardware ---
+        {
+            key: 'change-device',
+            label: 'Device Manager',
+            icon: <SettingOutlined />,
+            onClick: openDeviceModal,
+        },
+        {
+            key: 'app-settings',
+            label: 'Application Settings',
+            icon: <SlidersOutlined />,
+            onClick: () => setAppSettingsModalOpen(true),
+        },
+        { type: 'divider' },
+
+        // --- Group 2: Appearance ---
         {
             key: 'theme-toggle',
             label:
@@ -64,18 +80,23 @@ export const ApplicationSettingsMenu = ({
             icon: theme === 'light' ? <MoonOutlined /> : <SunOutlined />,
             onClick: toggleTheme,
         },
-        {
-            key: 'app-settings',
-            label: 'Application Settings',
-            icon: <SlidersOutlined />,
-            onClick: () => setAppSettingsModalOpen(true),
-        },
+        { type: 'divider' },
+
+        // --- Group 3: Help & Info ---
         {
             key: 'welcome-guide',
             label: 'View Welcome Guide',
             icon: <QuestionCircleOutlined />,
             onClick: () => setWelcomeGuideOpen(true),
         },
+        {
+            key: 'about-app',
+            label: 'About Lobster',
+            icon: <InfoCircleOutlined />,
+            onClick: () => setAboutModalOpen(true),
+        },
+
+        // --- Group 4: Development (Conditional) ---
         ...(isDevelopmentMode
             ? [
                   { key: 'divider-debug', type: 'divider' as const },
@@ -87,18 +108,6 @@ export const ApplicationSettingsMenu = ({
                   },
               ]
             : []),
-        {
-            key: 'about-app',
-            label: 'About Lobster',
-            icon: <InfoCircleOutlined />,
-            onClick: () => setAboutModalOpen(true),
-        },
-        {
-            key: 'change-device',
-            label: 'Device Manager',
-            icon: <SettingOutlined />,
-            onClick: openDeviceModal,
-        },
     ];
 
     // Handler for when the dropdown open state changes
