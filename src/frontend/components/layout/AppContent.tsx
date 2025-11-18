@@ -6,7 +6,6 @@ import {
     Row,
     Col,
     theme as antdTheme,
-    Tag,
 } from 'antd';
 import { useSession } from '../../context/useSessionContext';
 import { StatusBadge } from '../device/StatusBadge';
@@ -67,12 +66,15 @@ export const AppContent = ({
                     }}
                 >
                     <img src={lobsterLogo} alt="Lobster Logo" width={30} />
-                    <Title level={3} style={{ margin: 0 }}>
+                    <Title
+                        level={3}
+                        style={{
+                            margin: '0 24px 0 0',
+                        }}
+                    >
                         Lobster
                     </Title>
-                    <Tag color="red" style={{ marginRight: '32px' }}>
-                        Beta
-                    </Tag>
+
                     <SessionStats />
                     <div style={{ flex: 1 }} />
 
