@@ -11,6 +11,7 @@ import { Button, Dropdown, MenuProps, Modal, Tooltip } from 'antd';
 import { useAppRuntime } from '../../context/useAppRuntime';
 import { InternalDebugView } from '../debug/InternalDebugView';
 import { useState } from 'react';
+import { useDeviceManager } from '../../context/useDeviceManager';
 
 interface ApplicationSettingsMenuProps {
     theme: 'light' | 'dark';
@@ -31,6 +32,10 @@ export const ApplicationSettingsMenu = ({
         setAppSettingsModalOpen,
         setAboutModalOpen,
     } = useAppRuntime();
+
+    // Get all needed state/functions from useDeviceManager
+    const { openDeviceModal } = useDeviceManager();
+
     const [modalApi, contextHolder] = Modal.useModal();
 
     // Control both dropdown and tooltip open states
@@ -87,6 +92,12 @@ export const ApplicationSettingsMenu = ({
             label: 'About Lobster',
             icon: <InfoCircleOutlined />,
             onClick: () => setAboutModalOpen(true),
+        },
+        {
+            key: 'change-device',
+            label: 'Device Manager',
+            icon: <SettingOutlined />,
+            onClick: openDeviceModal,
         },
     ];
 

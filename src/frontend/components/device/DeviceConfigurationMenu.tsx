@@ -26,7 +26,6 @@ import {
     HddOutlined,
     CheckCircleOutlined,
     UsbOutlined,
-    SettingOutlined,
     FieldTimeOutlined,
     SlidersOutlined,
 } from '@ant-design/icons';
@@ -324,7 +323,6 @@ export const DeviceConfigurationMenu = () => {
                         connectionHealth.device.status !== 'ok',
                 },
                 mainActionItem,
-                { key: 'setup-features', type: 'divider' as const },
                 {
                     key: 'device-settings',
                     label: 'Device Settings',
@@ -334,12 +332,6 @@ export const DeviceConfigurationMenu = () => {
                         !activeDevice ||
                         (currentState !== 'ready' &&
                             currentState !== 'completed'),
-                },
-                {
-                    key: 'change-device',
-                    label: 'Device Manager',
-                    icon: <SettingOutlined />,
-                    onClick: openDeviceModal,
                 },
             ],
         },
