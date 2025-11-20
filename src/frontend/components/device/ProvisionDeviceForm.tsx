@@ -31,8 +31,8 @@ export const ProvisionDeviceForm = ({
     const [form] = Form.useForm();
     const [error, setError] = useState<string | null>(null);
 
-    // Get the "payback" fields based on the "enable" checkbox
-    const enablePayback = Form.useWatch('enableTimePayback', form);
+    // Watch the "enablePaybackTime" field to conditionally render the minutes input
+    const enablePaybackTime = Form.useWatch('enablePaybackTime', form);
 
     // Use the context for provisioning and loading state
     const { provisionDevice, isProvisioning } = useDeviceManager();
@@ -43,11 +43,14 @@ export const ProvisionDeviceForm = ({
     const handleFinish = async (values: DeviceProvisioningData) => {
         setError(null);
 
-        // Ensure numeric values are numbers, not strings
+        // Construct the payload:
+        // If enablePaybackTime is false, force paybackTimeMinutes to 0.
+        // Otherwise, use the value from the form.
         const payload: DeviceProvisioningData = {
             ...values,
-            abortDelaySeconds: Number(values.abortDelaySeconds),
-            abortPaybackMinutes: Number(values.abortPaybackMinutes),
+            paybackTimeMinutes: values.enablePaybackTime
+                ? values.paybackTimeMinutes
+                : 0,
         };
 
         // Call the context function
@@ -71,10 +74,9 @@ export const ProvisionDeviceForm = ({
                 layout="vertical"
                 onFinish={handleFinish}
                 initialValues={{
-                    abortDelaySeconds: 3,
-                    countStreaks: true,
-                    enableTimePayback: true,
-                    abortPaybackMinutes: 15,
+                    enableStreaks: true,
+                    enablePaybackTime: true,
+                    paybackTimeMinutes: 15,
                 }}
             >
                 {error && (
@@ -94,7 +96,7 @@ export const ProvisionDeviceForm = ({
 
                 <Alert
                     message="Review Your Configuration"
-                    description="While Wi-Fi settings can be updated later from the device's settings page, all other device configurations (like payback rules and abort delays) are permanent. Changing them will require a factory reset."
+                    description="Wi-Fi settings can be updated later. Session preferences (Payback, Streaks) are stored permanently in the session config until a factory reset."
                     type="info"
                     showIcon
                     style={{ marginTop: 16 }}
@@ -120,34 +122,20 @@ export const ProvisionDeviceForm = ({
                     <Input.Password placeholder="Your Wi-Fi Password" />
                 </Form.Item>
 
-                <Divider>Device Configuration</Divider>
-
-                {/* --- Abort Pedal Section --- */}
-                <Form.Item
-                    name="abortDelaySeconds"
-                    label="Abort Pedal Hold Time (Seconds)"
-                    rules={[{ required: true }]}
-                    help="The number of seconds the abort pedal must be held down to trigger an early session abort. This helps prevent accidental presses."
-                >
-                    <InputNumber min={1} max={10} style={{ width: '100%' }} />
-                </Form.Item>
-
-                <Divider style={{ marginTop: '48px' }}>
-                    Abort Deterrents
-                </Divider>
+                <Divider>Abort Deterrents</Divider>
 
                 {/* --- Streaks Section --- */}
                 <Form.Item
-                    name="countStreaks"
+                    name="enableStreaks"
                     valuePropName="checked"
-                    help="The device will track consecutive completed sessions. This 'Streak' is visible as a badge in the app to provide motivation and a reminder of your success."
+                    help="The device will track consecutive completed sessions. This 'Streak' is visible as a badge in the app to provide motivation."
                 >
                     <Checkbox>Enable Session Streaks</Checkbox>
                 </Form.Item>
 
                 {/* --- Payback Section --- */}
                 <Form.Item
-                    name="enableTimePayback"
+                    name="enablePaybackTime"
                     valuePropName="checked"
                     help="Discourages bailing out. When a session is aborted (via pedal, UI, or power loss), a 'time debt' is created and added to the start of your next session."
                 >
@@ -156,15 +144,21 @@ export const ProvisionDeviceForm = ({
                     </Checkbox>
                 </Form.Item>
 
-                {enablePayback && (
+                {/* Conditionally render the minutes input based on the checkbox */}
+                {enablePaybackTime && (
                     <Form.Item
-                        name="abortPaybackMinutes"
-                        label="Payback Time per Abort (Minutes)"
-                        rules={[{ required: true }]}
+                        name="paybackTimeMinutes"
+                        label="Payback Time per Abort (10 to 60 Minutes)"
+                        rules={[
+                            {
+                                required: true,
+                                message: 'Please set the payback time',
+                            },
+                        ]}
                     >
                         <InputNumber
-                            min={1}
-                            max={180}
+                            min={10}
+                            max={60}
                             style={{ width: '100%' }}
                         />
                     </Form.Item>

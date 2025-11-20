@@ -31,13 +31,13 @@ import {
     FieldTimeOutlined,
 } from '@ant-design/icons';
 import { useEffect, useMemo, useState } from 'react';
-import { SessionFormData } from '../../../types';
 import { formatSeconds } from '../../utils/time';
 import { CountdownDisplay } from './CountdownDisplay';
 import { useDeviceManager } from '../../context/useDeviceManager';
 import {
     useSession,
     MAX_CHANNELS_TO_RENDER,
+    SessionFormData,
 } from '../../context/useSessionContext';
 
 const { Title, Text } = Typography;
@@ -209,8 +209,10 @@ export const SessionControl = () => {
         const { status } = useSession();
         const { activeDevice } = useDeviceManager();
         const pendingPaybackSeconds = status?.pendingPaybackSeconds || 0;
-        const paybackEnabled = activeDevice?.config?.enableTimePayback || false;
-        const paybackMinutes = activeDevice?.config?.abortPaybackMinutes || 0;
+        const paybackTimeEnabled =
+            activeDevice?.config?.enablePaybackTime || false;
+        const paybackTimeMinutes =
+            activeDevice?.config?.paybackTimeMinutes || 0;
 
         return (
             <Form
@@ -322,7 +324,7 @@ export const SessionControl = () => {
                         }}
                     </Form.Item>
 
-                    {paybackEnabled && pendingPaybackSeconds > 0 && (
+                    {paybackTimeEnabled && pendingPaybackSeconds > 0 && (
                         <Text type="secondary" style={{ display: 'block' }}>
                             <FieldTimeOutlined style={{ marginRight: 8 }} />
                             You have{' '}
@@ -472,7 +474,7 @@ export const SessionControl = () => {
                     </Form.Item>
                 </Space>
 
-                {paybackEnabled && (
+                {paybackTimeEnabled && (
                     <div
                         style={{
                             marginBottom: 8,
@@ -484,8 +486,8 @@ export const SessionControl = () => {
                             <FieldTimeOutlined style={{ marginRight: 8 }} />
                             Time Payback is enabled: Aborting will add{' '}
                             <Text strong>
-                                {paybackMinutes}{' '}
-                                {paybackMinutes > 1 ? 'minutes' : 'minute'}
+                                {paybackTimeMinutes}{' '}
+                                {paybackTimeMinutes > 1 ? 'minutes' : 'minute'}
                             </Text>{' '}
                             to your next session.
                         </Text>

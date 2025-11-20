@@ -8,7 +8,7 @@ import { Alert } from 'antd';
  * non-production state (Beta/Debug/Mock App, or Beta/Debug/Mock Firmware).
  */
 export const BuildWarningBanner: React.FC = () => {
-    // 1. Get the App Build Type (renamed to appBuild for clarity)
+    // 1. Get the App Build Type
     const { buildType: appBuild } = useAppRuntime();
     const { activeDevice } = useDeviceManager();
 

@@ -43,10 +43,10 @@ const PROV_SERVICE_UUID = '5a160000-8334-469b-a316-c340cf29188f';
 
 const PROV_SSID_CHAR_UUID = '5a160001-8334-469b-a316-c340cf29188f';
 const PROV_PASS_CHAR_UUID = '5a160002-8334-469b-a316-c340cf29188f';
-const PROV_ABORT_DELAY_CHAR_UUID = '5a160003-8334-469b-a316-c340cf29188f';
-const PROV_COUNT_STREAKS_CHAR_UUID = '5a160004-8334-469b-a316-c340cf29188f';
-const PROV_ENABLE_PAYBACK_CHAR_UUID = '5a160005-8334-469b-a316-c340cf29188f';
-const PROV_ABORT_PAYBACK_CHAR_UUID = '5a160006-8334-469b-a316-c340cf29188f';
+const PROV_ENABLE_STREAKS_CHAR_UUID = '5a160004-8334-469b-a316-c340cf29188f';
+const PROV_ENABLE_PAYBACK_TIME_CHAR_UUID =
+    '5a160005-8334-469b-a316-c340cf29188f';
+const PROV_PAYBACK_TIME_CHAR_UUID = '5a160006-8334-469b-a316-c340cf29188f';
 
 // mDNS Service Type
 const MDNS_SERVICE_TYPE = 'lobster-lock';
@@ -345,23 +345,16 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
     const { id } = req.params;
 
     // Extract all fields from the body
-    const {
-        ssid,
-        pass,
-        abortDelaySeconds,
-        countStreaks,
-        enableTimePayback,
-        abortPaybackMinutes,
-    } = req.body as DeviceProvisioningData;
+    const { ssid, pass, enableStreaks, enablePaybackTime, paybackTimeMinutes } =
+        req.body as DeviceProvisioningData;
 
     // Validate all required fields
     const missingFields = [
         { key: 'ssid', val: ssid },
         { key: 'pass', val: pass },
-        { key: 'abortDelaySeconds', val: abortDelaySeconds },
-        { key: 'countStreaks', val: countStreaks },
-        { key: 'enableTimePayback', val: enableTimePayback },
-        { key: 'abortPaybackMinutes', val: abortPaybackMinutes },
+        { key: 'enableStreaks', val: enableStreaks },
+        { key: 'enablePaybackTime', val: enablePaybackTime },
+        { key: 'paybackTimeMinutes', val: paybackTimeMinutes },
     ]
         .filter(
             (field: { key: string; val: unknown }) => field.val === undefined
@@ -405,17 +398,16 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         await peripheral.connectAsync();
         log(`[Provision] Connected. Discovering services...`);
 
-        // Discover ALL characteristics at once
+        // Discover services and characteristics
         const { characteristics } =
             await peripheral.discoverSomeServicesAndCharacteristicsAsync(
                 [PROV_SERVICE_UUID],
                 [
                     PROV_SSID_CHAR_UUID,
                     PROV_PASS_CHAR_UUID,
-                    PROV_ABORT_DELAY_CHAR_UUID,
-                    PROV_COUNT_STREAKS_CHAR_UUID,
-                    PROV_ENABLE_PAYBACK_CHAR_UUID,
-                    PROV_ABORT_PAYBACK_CHAR_UUID,
+                    PROV_ENABLE_STREAKS_CHAR_UUID,
+                    PROV_ENABLE_PAYBACK_TIME_CHAR_UUID,
+                    PROV_PAYBACK_TIME_CHAR_UUID,
                 ]
             );
 
@@ -428,34 +420,31 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         const passChar = characteristics.find(
             (c) => normalize(c.uuid) === normalize(PROV_PASS_CHAR_UUID)
         );
-        const abortDelayChar = characteristics.find(
-            (c) => normalize(c.uuid) === normalize(PROV_ABORT_DELAY_CHAR_UUID)
-        );
-        const countStreaksChar = characteristics.find(
-            (c) => normalize(c.uuid) === normalize(PROV_COUNT_STREAKS_CHAR_UUID)
-        );
-        const enablePaybackChar = characteristics.find(
+        const enableStreaksChar = characteristics.find(
             (c) =>
-                normalize(c.uuid) === normalize(PROV_ENABLE_PAYBACK_CHAR_UUID)
+                normalize(c.uuid) === normalize(PROV_ENABLE_STREAKS_CHAR_UUID)
         );
-        const abortPaybackChar = characteristics.find(
-            (c) => normalize(c.uuid) === normalize(PROV_ABORT_PAYBACK_CHAR_UUID)
+        const enablePaybackTimeChar = characteristics.find(
+            (c) =>
+                normalize(c.uuid) ===
+                normalize(PROV_ENABLE_PAYBACK_TIME_CHAR_UUID)
+        );
+        const paybackTimeChar = characteristics.find(
+            (c) => normalize(c.uuid) === normalize(PROV_PAYBACK_TIME_CHAR_UUID)
         );
 
-        // Validate ALL characteristics
+        // Validate required characteristics
         if (
             !ssidChar ||
             !passChar ||
-            !abortDelayChar ||
-            !countStreaksChar ||
-            !enablePaybackChar ||
-            !abortPaybackChar
+            !enableStreaksChar ||
+            !enablePaybackTimeChar ||
+            !paybackTimeChar
         ) {
-            // Check which one is missing for a better error message (optional)
             log(`[Provision] Missing characteristics:
                 ssid: ${!!ssidChar}, pass: ${!!passChar},
-                abortDelay: ${!!abortDelayChar}, countStreaks: ${!!countStreaksChar},
-                enablePayback: ${!!enablePaybackChar}, abortPayback: ${!!abortPaybackChar}
+                enableStreaks: ${!!enableStreaksChar},
+                enablePaybackTime: ${!!enablePaybackTimeChar}, paybackTime: ${!!paybackTimeChar}
             `);
             throw new Error(
                 'Could not find all required provisioning characteristics.'
@@ -467,29 +456,24 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         // --- DATA CONVERSION ---
         // LE = Little-Endian, BE = Big-Endian.
 
-        // abortDelaySeconds (number) -> 4-byte Buffer (UInt32 LE)
-        const abortDelayBuf = Buffer.alloc(4);
-        abortDelayBuf.writeUInt32LE(abortDelaySeconds, 0);
+        // enableStreaks (boolean) -> 1-byte Buffer
+        const enableStreaksBuf = Buffer.alloc(1);
+        enableStreaksBuf.writeUInt8(enableStreaks ? 1 : 0, 0);
 
-        // countStreaks (boolean) -> 1-byte Buffer
-        const countStreaksBuf = Buffer.alloc(1);
-        countStreaksBuf.writeUInt8(countStreaks ? 1 : 0, 0);
+        // enablePaybackTime (boolean) -> 1-byte Buffer
+        const enablePaybackTimeBuf = Buffer.alloc(1);
+        enablePaybackTimeBuf.writeUInt8(enablePaybackTime ? 1 : 0, 0);
 
-        // wnableTimePayback (boolean) -> 1-byte Buffer
-        const enablePaybackBuf = Buffer.alloc(1);
-        enablePaybackBuf.writeUInt8(enableTimePayback ? 1 : 0, 0);
-
-        // abortPaybackMinutes (number) -> 2-byte Buffer (UInt16 LE)
-        const abortPaybackBuf = Buffer.alloc(2);
-        abortPaybackBuf.writeUInt16LE(abortPaybackMinutes, 0);
+        // paybackTimeMinutes (number) -> 2-byte Buffer (UInt16 LE)
+        const paybackTimeBuf = Buffer.alloc(2);
+        paybackTimeBuf.writeUInt16LE(paybackTimeMinutes, 0);
         // --- END DATA CONVERSION ---
 
         await ssidChar.writeAsync(Buffer.from(ssid), false);
         await passChar.writeAsync(Buffer.from(pass || ''), false);
-        await abortDelayChar.writeAsync(abortDelayBuf, false);
-        await countStreaksChar.writeAsync(countStreaksBuf, false);
-        await enablePaybackChar.writeAsync(enablePaybackBuf, false);
-        await abortPaybackChar.writeAsync(abortPaybackBuf, false);
+        await enableStreaksChar.writeAsync(enableStreaksBuf, false);
+        await enablePaybackTimeChar.writeAsync(enablePaybackTimeBuf, false);
+        await paybackTimeChar.writeAsync(paybackTimeBuf, false);
 
         log(`[Provision] Credentials and settings sent! Disconnecting...`);
         await peripheral.disconnectAsync();

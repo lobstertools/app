@@ -1,12 +1,7 @@
 import { useMemo, ReactNode, useCallback, useEffect, useState } from 'react';
 import { notification, Alert } from 'antd';
 
-import {
-    Reward,
-    SessionFormData,
-    SessionStatusResponse,
-    ComputedAppStatus,
-} from '../../types';
+import { Reward, SessionStatusResponse, ComputedAppStatus } from '../../types';
 
 import { apiClient } from '../lib/apiClient';
 import axios from 'axios';
@@ -15,6 +10,7 @@ import {
     MAX_CHANNELS_TO_RENDER,
     SessionContext,
     SessionContextState,
+    SessionFormData,
 } from './useSessionContext';
 
 /**

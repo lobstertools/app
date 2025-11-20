@@ -71,10 +71,9 @@ export interface ActiveDevice {
     features: string[];
     numberOfChannels: number;
     config: {
-        abortDelaySeconds: number;
-        countStreaks: boolean;
-        enableTimePayback: boolean;
-        abortPaybackMinutes: number;
+        enableStreaks: boolean;
+        enablePaybackTime: boolean;
+        paybackTimeMinutes: number;
     };
 }
 
@@ -113,26 +112,11 @@ export interface Reward {
     timestamp: string;
 }
 
-/** * New type for the data sent during provisioning
- */
+/** Provisioning data */
 export interface DeviceProvisioningData {
     ssid: string;
     pass: string;
-    abortDelaySeconds: number;
-    countStreaks: boolean;
-    enableTimePayback: boolean;
-    abortPaybackMinutes: number;
-}
-
-/** * Type for the session configuration form
- */
-export interface SessionFormData {
-    type: 'time-range' | 'fixed' | 'random';
-    timeRangeSelection: 'short' | 'medium' | 'long';
-    duration?: number;
-    penaltyDuration?: number;
-    rangeMin?: number;
-    rangeMax?: number;
-    hideTimer: boolean;
-    startDelays: number[];
+    enableStreaks: boolean;
+    enablePaybackTime: boolean;
+    paybackTimeMinutes: number;
 }

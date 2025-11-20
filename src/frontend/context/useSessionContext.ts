@@ -1,12 +1,18 @@
 import { createContext, useContext } from 'react';
-import {
-    ComputedAppStatus,
-    Reward,
-    SessionFormData,
-    SessionStatusResponse,
-} from '../../types';
+import { ComputedAppStatus, Reward, SessionStatusResponse } from '../../types';
 
 export const MAX_CHANNELS_TO_RENDER = 4;
+
+export interface SessionFormData {
+    type: 'time-range' | 'fixed' | 'random';
+    timeRangeSelection: 'short' | 'medium' | 'long';
+    duration?: number;
+    penaltyDuration?: number;
+    rangeMin?: number;
+    rangeMax?: number;
+    hideTimer: boolean;
+    startDelays: number[];
+}
 
 export interface SessionContextState {
     status: SessionStatusResponse | null;

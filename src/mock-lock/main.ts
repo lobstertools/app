@@ -34,10 +34,9 @@ const FEATURES = ['LED_Indicator', 'Abort_Pedal'];
 const TEST_DURATION_SECONDS = 60; // 60 second test
 
 // These settings mimic what would be saved in flash from provisioning
-const ABORT_DELAY_SECONDS = 3;
-const COUNT_STREAKS = true;
-const ENABLE_TIME_PAYBACK = true;
-const ABORT_PAYBACK_MINUTES = 10;
+const ENABLE_STREAKS = true;
+const ENABLE_PAYBACK_TIME = true;
+const PAYBACK_TIME_MINUTES = 10;
 
 interface Reward {
     code: string;
@@ -118,7 +117,7 @@ const initializeState = () => {
     log(`   -> Channels: ${NUMBER_OF_CHANNELS}`);
     log(`   -> Features: ${FEATURES.join(', ')}`);
     log(
-        `   -> Config: Payback ${ABORT_PAYBACK_MINUTES} min, Streaks ${COUNT_STREAKS}`
+        `   -> Config: Payback ${PAYBACK_TIME_MINUTES} min, Streaks ${ENABLE_STREAKS}`
     );
 
     stopAllTimers();
@@ -190,14 +189,14 @@ const triggerAbort = (source: string): boolean => {
     lastKeepAliveTime = 0; // <-- DISARM WATCHDOG
 
     // Add to debt bank if enabled
-    if (ENABLE_TIME_PAYBACK) {
-        const paybackToAdd = ABORT_PAYBACK_MINUTES * 60;
+    if (ENABLE_PAYBACK_TIME) {
+        const paybackToAdd = PAYBACK_TIME_MINUTES * 60;
         pendingPaybackSeconds += paybackToAdd;
         log(
             `   -> Added ${paybackToAdd}s to payback bank. Total: ${pendingPaybackSeconds}s`
         );
     }
-    if (COUNT_STREAKS) {
+    if (ENABLE_STREAKS) {
         log(`   -> Streak reset to 0.`);
         streaks = 0; // Aborting resets streaks
     }
@@ -318,7 +317,7 @@ const completeSession = () => {
     testSecondsRemaining = 0;
     countdownSecondsRemaining.fill(0);
 
-    if (COUNT_STREAKS) {
+    if (ENABLE_STREAKS) {
         streaks++;
         log(`Streak count incremented to: ${streaks}`);
     }
@@ -489,19 +488,18 @@ app.post('/update-wifi', (req, res) => {
  */
 app.get('/details', (req, res) => {
     log('API: /details requested.');
-    // This matches the ActiveDevice type
     res.json({
         id: DEVICE_ID,
         name: DEVICE_ID,
-        address: '127.0.0.1', // Address is illustrative here
+        address: '127.0.0.1',
         version: DEVICE_VERSION,
         features: FEATURES,
         numberOfChannels: NUMBER_OF_CHANNELS,
+        buildType: 'mock',
         config: {
-            abortDelaySeconds: ABORT_DELAY_SECONDS,
-            countStreaks: COUNT_STREAKS,
-            enableTimePayback: ENABLE_TIME_PAYBACK,
-            abortPaybackMinutes: ABORT_PAYBACK_MINUTES,
+            enableStreaks: ENABLE_STREAKS,
+            enablePaybackTime: ENABLE_PAYBACK_TIME,
+            paybackTimeMinutes: PAYBACK_TIME_MINUTES,
         },
     } as ActiveDevice);
 });

@@ -111,24 +111,19 @@ export const DeviceSettingsModal = () => {
             children: activeDevice?.numberOfChannels || 'N/A',
         },
         {
-            key: 'abortDelay',
-            label: 'Abort Delay',
-            children: `${activeDevice?.config?.abortDelaySeconds || 'N/A'} sec`,
-        },
-        {
             key: 'streaks',
             label: 'Streaks Enabled',
-            children: activeDevice?.config?.countStreaks ? 'Yes' : 'No',
+            children: activeDevice?.config?.enableStreaks ? 'Yes' : 'No',
         },
         {
             key: 'payback',
-            label: 'Time Payback',
-            children: activeDevice?.config?.enableTimePayback ? 'Yes' : 'No',
+            label: 'Payback Time Enabled',
+            children: activeDevice?.config?.enablePaybackTime ? 'Yes' : 'No',
         },
         {
             key: 'paybackMins',
-            label: 'Payback Amount',
-            children: `${activeDevice?.config?.abortPaybackMinutes || 'N/A'} min`,
+            label: 'Payback Time',
+            children: `${activeDevice?.config?.paybackTimeMinutes || 'N/A'} min`,
             span: 2,
         },
     ];

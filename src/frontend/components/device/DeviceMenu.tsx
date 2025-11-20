@@ -55,9 +55,8 @@ export const DeviceMenu = () => {
     const deviceName = activeDevice?.name;
     const displayDeviceAddress = activeDevice?.address || 'N/A';
     const channelCount = activeDevice?.numberOfChannels || 0;
-    const paybackEnabled = activeDevice?.config?.enableTimePayback || false;
-    const paybackMinutes = activeDevice?.config?.abortPaybackMinutes || 0;
-    const abortDelaySeconds = activeDevice?.config?.abortDelaySeconds || 0;
+    const paybackTimeEnabled = activeDevice?.config?.enablePaybackTime || false;
+    const paybackTimeMinutes = activeDevice?.config?.paybackTimeMinutes || 0;
     const appVersion = activeDevice?.version || 'N/A';
     const appBuildType = activeDevice?.buildType || 'N/A';
 
@@ -88,7 +87,7 @@ export const DeviceMenu = () => {
         } else if (connectionHealth.server.status === 'error') {
             color = red[5];
             title = 'Server Unreachable';
-            icon = <CloudOutlined spin style={{ color: color }} />;
+            icon = <CloudOutlined style={{ color: color }} />;
             description =
                 'The UI cannot reach the server. Check your connection.';
             displayDeviceId = 'N/A';
@@ -289,16 +288,10 @@ export const DeviceMenu = () => {
                         },
                         {
                             key: 'payback',
-                            label: paybackEnabled
-                                ? `Time payback: ${paybackMinutes} min`
-                                : 'Time payback: Disabled',
+                            label: paybackTimeEnabled
+                                ? `Payback Time: ${paybackTimeMinutes} min`
+                                : 'Payback Time: Disabled',
                             icon: <FieldTimeOutlined />,
-                            disabled: true,
-                        },
-                        {
-                            key: 'abort-delay',
-                            label: `Abort Delay: ${abortDelaySeconds} sec`,
-                            icon: <StopOutlined />,
                             disabled: true,
                         },
                     ],
