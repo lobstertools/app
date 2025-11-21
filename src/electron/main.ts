@@ -213,6 +213,8 @@ const createWindow = () => {
     mainWindow = new BrowserWindow({
         width: 1600,
         height: 1000,
+        minWidth: 1024,
+        minHeight: 768,
         icon: path.join(__dirname, '..', '..', 'build-assets', 'icon.png'),
         webPreferences: {
             preload: preloadScriptPath,
