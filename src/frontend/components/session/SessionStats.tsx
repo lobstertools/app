@@ -7,6 +7,7 @@ import {
     CheckCircleOutlined,
     CloseCircleOutlined,
     ClockCircleOutlined,
+    WarningOutlined,
 } from '@ant-design/icons';
 
 /**
@@ -43,6 +44,7 @@ export const SessionStats = () => {
         totalLockedSessionSeconds = 0,
         completedSessions = 0,
         abortedSessions = 0,
+        pendingPaybackSeconds = 0,
     } = status;
 
     return (
@@ -79,6 +81,17 @@ export const SessionStats = () => {
                     {abortedSessions}
                 </Tag>
             </Tooltip>
+            {pendingPaybackSeconds > 0 && (
+                <Tooltip title="Accumulated Payback Debt">
+                    <Tag
+                        icon={<WarningOutlined />}
+                        color="volcano"
+                        style={{ margin: 0 }}
+                    >
+                        {formatSeconds(pendingPaybackSeconds)}
+                    </Tag>
+                </Tooltip>
+            )}
         </Space>
     );
 };
