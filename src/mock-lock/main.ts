@@ -19,7 +19,7 @@ import cors from 'cors';
 import readline from 'readline';
 import bonjour from 'bonjour';
 
-import { ActiveDevice, SessionStatusResponse } from '../types/';
+import { ActiveDevice, Reward, SessionStatusResponse } from '../types/';
 
 const app = express();
 const PORT = 3003;
@@ -37,11 +37,6 @@ const TEST_DURATION_SECONDS = 60; // 60 second test
 const ENABLE_STREAKS = true;
 const ENABLE_PAYBACK_TIME = true;
 const PAYBACK_TIME_MINUTES = 10;
-
-interface Reward {
-    code: string;
-    timestamp: string;
-}
 
 let streaks = 0;
 let totalLockedSessionSeconds = 0;
@@ -83,15 +78,92 @@ const log = (message: string) => {
 };
 
 /**
- * Generates a 32-character reward code.
+ * NATO Phonetic Alphabet Lookup
  */
-const generateSessionCode = (): string => {
-    const chars = ['U', 'D', 'L', 'R'];
-    let result = '';
-    for (let i = 0; i < 32; i++) {
-        result += chars[Math.floor(Math.random() * chars.length)];
+const getNatoWord = (char: string): string => {
+    const map: { [key: string]: string } = {
+        A: 'Alpha',
+        B: 'Bravo',
+        C: 'Charlie',
+        D: 'Delta',
+        E: 'Echo',
+        F: 'Foxtrot',
+        G: 'Golf',
+        H: 'Hotel',
+        I: 'India',
+        J: 'Juliett',
+        K: 'Kilo',
+        L: 'Lima',
+        M: 'Mike',
+        N: 'November',
+        O: 'Oscar',
+        P: 'Papa',
+        Q: 'Quebec',
+        R: 'Romeo',
+        S: 'Sierra',
+        T: 'Tango',
+        U: 'Uniform',
+        V: 'Victor',
+        W: 'Whiskey',
+        X: 'X-ray',
+        Y: 'Yankee',
+        Z: 'Zulu',
+    };
+    return map[char] || '';
+};
+
+/**
+ * Calculates the Alpha-Numeric Checksum (NATO-00)
+ * Format: "Alpha-92"
+ */
+const calculateChecksum = (code: string): string => {
+    let weightedSum = 0;
+    let rollingVal = 0;
+    const mapping: { [key: string]: number } = { U: 1, D: 2, L: 3, R: 4 };
+
+    for (let i = 0; i < code.length; i++) {
+        const char = code[i];
+        const val = mapping[char] || 0;
+
+        // Alpha-Tag Logic (Weighted Sum)
+        weightedSum += val * (i + 1);
+
+        // Numeric Logic (Rolling Hash)
+        rollingVal = (rollingVal * 3 + val) % 100;
     }
-    return result;
+
+    // Map to A-Z
+    const alphaIndex = weightedSum % 26;
+    const alphaChar = String.fromCharCode('A'.charCodeAt(0) + alphaIndex);
+
+    return `${getNatoWord(alphaChar)}-${rollingVal.toString().padStart(2, '0')}`;
+};
+
+/**
+ * Generates a unique reward entry (code + checksum).
+ * Ensures checksum does not collide with existing history.
+ */
+const generateUniqueReward = (): Reward => {
+    const chars = ['U', 'D', 'L', 'R'];
+    let code = '';
+    let checksum = '';
+    let collision = true;
+
+    while (collision) {
+        // 1. Generate Candidate Code
+        code = '';
+        for (let i = 0; i < 32; i++) {
+            code += chars[Math.floor(Math.random() * chars.length)];
+        }
+
+        // 2. Calculate Checksum
+        checksum = calculateChecksum(code);
+
+        // 3. Check collision against existing history
+        collision = rewardHistory.some((r) => r.checksum === checksum);
+    }
+
+    return { code, checksum };
 };
 
 /**
@@ -125,29 +197,19 @@ const initializeState = () => {
     rewardHistory = [];
     // Generate some fake historical codes
     const numberOfHistoricalCodes = 4;
-    for (let i = 1; i <= numberOfHistoricalCodes; i++) {
-        const pastDate = new Date();
-        pastDate.setDate(
-            pastDate.getDate() - (i * 7 + Math.floor(Math.random() * 3))
-        );
-        const historicalReward: Reward = {
-            code: generateSessionCode(),
-            timestamp: pastDate.toISOString(),
-        };
-        rewardHistory.push(historicalReward);
+    for (let i = 0; i < numberOfHistoricalCodes; i++) {
+        rewardHistory.push(generateUniqueReward());
     }
 
+    // No real need to reverse since they are random, but mimicking structure
     rewardHistory.reverse();
     log(`   -> Generated ${numberOfHistoricalCodes} historical reward codes.`);
 
     // Generate the one "current" code
-    const newCode: Reward = {
-        code: generateSessionCode(),
-        timestamp: new Date().toISOString(),
-    };
-    rewardHistory.unshift(newCode);
+    const newReward = generateUniqueReward();
+    rewardHistory.unshift(newReward);
     log(
-        `Generated new reward code for this session: ${newCode.code.substring(0, 8)}...`
+        `Generated new reward code for this session: ${newReward.code.substring(0, 8)}... (${newReward.checksum})`
     );
 
     streaks = 5;
@@ -321,13 +383,19 @@ const completeSession = () => {
         streaks++;
         log(`Streak count incremented to: ${streaks}`);
     }
+
     // Generate a new code for the *next* session
-    const newCode: Reward = {
-        code: generateSessionCode(),
-        timestamp: new Date().toISOString(),
-    };
-    rewardHistory.unshift(newCode);
-    log(`Generated new reward code for next session.`);
+    const newReward = generateUniqueReward();
+    rewardHistory.unshift(newReward);
+
+    // Keep buffer size reasonable (simulate C++ circular buffer somewhat)
+    if (rewardHistory.length > 10) {
+        rewardHistory.pop();
+    }
+
+    log(
+        `Generated new reward code for next session: ${newReward.code.substring(0, 8)}... (${newReward.checksum})`
+    );
 };
 
 /**

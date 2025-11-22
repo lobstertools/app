@@ -4,12 +4,12 @@ import {
     LockOutlined,
     FireOutlined,
     LoadingOutlined,
-    ClockCircleOutlined,
     LeftOutlined,
     RightOutlined,
     UsbOutlined,
     DisconnectOutlined,
     ExperimentOutlined,
+    IdcardOutlined,
 } from '@ant-design/icons';
 import {
     Typography,
@@ -25,7 +25,6 @@ import {
 } from 'antd';
 import { useState, useEffect } from 'react';
 import { RewardImage } from './RewardImage';
-import { useAppRuntime } from '../../context/useAppRuntime';
 
 const { Title, Text } = Typography;
 
@@ -35,7 +34,6 @@ const { Title, Text } = Typography;
  */
 export const RewardDisplay = () => {
     const { currentState, rewardHistory } = useSession();
-    const { locale } = useAppRuntime();
 
     const [selectedIndex, setSelectedIndex] = useState(0);
     const { token } = antdTheme.useToken();
@@ -44,9 +42,6 @@ export const RewardDisplay = () => {
     useEffect(() => {
         setSelectedIndex(0);
     }, [rewardHistory, currentState]);
-
-    // Use browser default if locale is '', otherwise use the selected locale
-    const displayLocale = locale || undefined;
 
     const placeholderStyles: React.CSSProperties = {
         height: '400px',
@@ -209,13 +204,20 @@ export const RewardDisplay = () => {
                     <Row justify="space-between" align="middle">
                         <Col>
                             <Statistic
-                                title="Code Generated On"
-                                value={new Date(
-                                    currentReward.timestamp
-                                ).toLocaleString(displayLocale)}
-                                prefix={<ClockCircleOutlined />}
+                                value={currentReward.checksum}
+                                prefix={<IdcardOutlined />}
                                 valueStyle={{ fontSize: '1rem' }}
                             />
+                            <Text
+                                type="secondary"
+                                style={{
+                                    fontSize: '12px',
+                                    display: 'block',
+                                    marginTop: '4px',
+                                }}
+                            >
+                                Use this name to verify your reward code.
+                            </Text>
                         </Col>
                         {/* History navigation buttons */}
                         {rewardHistory.length > 1 && (

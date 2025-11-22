@@ -109,7 +109,7 @@ export interface SessionStartRequest {
 
 export interface Reward {
     code: string;
-    timestamp: string;
+    checksum: string;
 }
 
 /** Provisioning data */
