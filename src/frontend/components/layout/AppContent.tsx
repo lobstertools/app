@@ -11,7 +11,7 @@ import { useSession } from '../../context/useSessionContext';
 import { StatusBadge } from '../device/StatusBadge';
 import { DeviceManagerModal } from '../device/DeviceManagerModal';
 import { RewardDisplay } from '../reward/RewardDisplay';
-import { SessionControl } from '../session/SessionControl';
+import { SessionConfiguration } from '../session/SessionConfiguration';
 import { SessionLockModal } from '../session/SessionLockModal';
 import { DeviceMenu } from '../device/DeviceMenu';
 import { DeviceLogModal } from '../device/DeviceLogModal';
@@ -101,10 +101,10 @@ export const AppContent = ({
                                     // Special layout for countdown: full width
                                     <Col xs={24} lg={24}>
                                         <Card
-                                            title="Session Control"
+                                            title="Session Configuration"
                                             style={{ minHeight: '100%' }}
                                         >
-                                            <SessionControl />
+                                            <SessionConfiguration />
                                         </Card>
                                     </Col>
                                 ) : (
@@ -112,10 +112,10 @@ export const AppContent = ({
                                     <>
                                         <Col xs={24} lg={12}>
                                             <Card
-                                                title="Session Control"
+                                                title="Session Configuration"
                                                 style={{ minHeight: '100%' }}
                                             >
-                                                <SessionControl />
+                                                <SessionConfiguration />
                                             </Card>
                                         </Col>
                                         <Col xs={24} lg={12}>

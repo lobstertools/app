@@ -42,7 +42,7 @@ const { Title, Text } = Typography;
  * Renders the multi-step wizard for configuring and starting a new session.
  * This is the main control panel for the 'ready' state.
  */
-export const SessionControl = () => {
+export const SessionConfiguration = () => {
     const { currentState, startSession, isLocking, sessionTimeRemaining } =
         useSession();
     const { activeDevice, openDeviceModal } = useDeviceManager();
