@@ -8,6 +8,9 @@ import {
     Alert,
     Typography,
     Divider,
+    Row,
+    Col,
+    Card,
 } from 'antd';
 import { useState } from 'react';
 import { DiscoveredDevice, DeviceProvisioningData } from '../../../types';
@@ -77,6 +80,10 @@ export const ProvisionDeviceForm = ({
                     enableStreaks: true,
                     enablePaybackTime: true,
                     paybackTimeMinutes: 15,
+                    ch1Enabled: true,
+                    ch2Enabled: true,
+                    ch3Enabled: false,
+                    ch4Enabled: false,
                 }}
             >
                 {error && (
@@ -101,7 +108,8 @@ export const ProvisionDeviceForm = ({
                     showIcon
                     style={{ marginTop: 16 }}
                 />
-                <Divider>Wi-Fi Credentials</Divider>
+
+                <Divider orientation="left">Wi-Fi Credentials</Divider>
 
                 {/* --- Wi-Fi Section --- */}
                 <Form.Item
@@ -122,7 +130,56 @@ export const ProvisionDeviceForm = ({
                     <Input.Password placeholder="Your Wi-Fi Password" />
                 </Form.Item>
 
-                <Divider>Abort Deterrents</Divider>
+                <Divider orientation="left">Hardware Configuration</Divider>
+                <Text
+                    type="secondary"
+                    style={{ display: 'block', marginBottom: 16 }}
+                >
+                    Select which outputs are physically connected to MagLocks.
+                </Text>
+
+                <Card size="small" style={{ marginBottom: 24 }}>
+                    <Row gutter={16}>
+                        <Col span={6}>
+                            <Form.Item
+                                name="ch1Enabled"
+                                valuePropName="checked"
+                                noStyle
+                            >
+                                <Checkbox>Ch 1</Checkbox>
+                            </Form.Item>
+                        </Col>
+                        <Col span={6}>
+                            <Form.Item
+                                name="ch2Enabled"
+                                valuePropName="checked"
+                                noStyle
+                            >
+                                <Checkbox>Ch 2</Checkbox>
+                            </Form.Item>
+                        </Col>
+                        <Col span={6}>
+                            <Form.Item
+                                name="ch3Enabled"
+                                valuePropName="checked"
+                                noStyle
+                            >
+                                <Checkbox>Ch 3</Checkbox>
+                            </Form.Item>
+                        </Col>
+                        <Col span={6}>
+                            <Form.Item
+                                name="ch4Enabled"
+                                valuePropName="checked"
+                                noStyle
+                            >
+                                <Checkbox>Ch 4</Checkbox>
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                </Card>
+
+                <Divider orientation="left">Abort Deterrents</Divider>
 
                 {/* --- Streaks Section --- */}
                 <Form.Item

@@ -34,11 +34,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { formatSeconds } from '../../utils/time';
 import { CountdownDisplay } from './CountdownDisplay';
 import { useDeviceManager } from '../../context/useDeviceManager';
-import {
-    useSession,
-    MAX_CHANNELS_TO_RENDER,
-    SessionFormData,
-} from '../../context/useSessionContext';
+import { useSession, SessionFormData } from '../../context/useSessionContext';
 
 const { Title, Text } = Typography;
 
@@ -56,13 +52,22 @@ export const SessionControl = () => {
     const [useMultiDelay, setUseMultiDelay] = useState(false);
     const { token } = antdTheme.useToken();
 
-    const numChannels = useMemo(() => {
-        return Math.min(
-            activeDevice?.numberOfChannels || 1,
-            MAX_CHANNELS_TO_RENDER
-        );
+    // Calculate enabled channels for the UI based on the new API structure
+    const enabledChannels = useMemo(() => {
+        if (!activeDevice) return [];
+        const list = [];
+        if (activeDevice.channels.ch1)
+            list.push({ key: 'delayCh1', label: 'MagLock 1' });
+        if (activeDevice.channels.ch2)
+            list.push({ key: 'delayCh2', label: 'MagLock 2' });
+        if (activeDevice.channels.ch3)
+            list.push({ key: 'delayCh3', label: 'MagLock 3' });
+        if (activeDevice.channels.ch4)
+            list.push({ key: 'delayCh4', label: 'MagLock 4' });
+        return list;
     }, [activeDevice]);
-    const canUseMultiChannel = numChannels > 1;
+
+    const canUseMultiChannel = enabledChannels.length > 1;
 
     // Reset form when returning to 'ready' state
     useEffect(() => {
@@ -208,7 +213,7 @@ export const SessionControl = () => {
     const ConfigurationForm = () => {
         const { status } = useSession();
         const { activeDevice } = useDeviceManager();
-        const pendingPaybackSeconds = status?.pendingPaybackSeconds || 0;
+        const pendingPaybackSeconds = status?.stats?.pendingPaybackSeconds || 0;
         const paybackTimeEnabled =
             activeDevice?.config?.enablePaybackTime || false;
         const paybackTimeMinutes =
@@ -227,8 +232,11 @@ export const SessionControl = () => {
                     rangeMax: 45,
                     penaltyDuration: 120,
                     hideTimer: false,
-                    startDelays: Array(MAX_CHANNELS_TO_RENDER).fill(30),
                     useMultiChannelDelay: false,
+                    delayCh1: 30,
+                    delayCh2: 30,
+                    delayCh3: 30,
+                    delayCh4: 30,
                 }}
             >
                 <Space direction="vertical" style={{ width: '100%' }}>
@@ -345,20 +353,17 @@ export const SessionControl = () => {
                         Set a countdown period before the MagLock engages.
                     </Text>
 
-                    <Form.Item name="useMultiChannelDelay" hidden>
-                        <input />
-                    </Form.Item>
-
-                    {/* Show toggle only if device has multiple channels */}
+                    {/* Show toggle only if device has multiple enabled channels */}
                     {canUseMultiChannel && (
                         <Form.Item
+                            name="useMultiChannelDelay"
                             label="Delay Mode"
+                            valuePropName="checked"
                             style={{ marginBottom: 8 }}
                         >
                             <Switch
                                 checkedChildren="Per-MagLock"
                                 unCheckedChildren="Single Delay"
-                                checked={useMultiDelay}
                                 onChange={(checked) => {
                                     setUseMultiDelay(checked);
                                 }}
@@ -366,11 +371,11 @@ export const SessionControl = () => {
                         </Form.Item>
                     )}
 
-                    {/* Single delay inputs */}
+                    {/* Single delay inputs (binds to delayCh1) */}
                     {!useMultiDelay && (
                         <>
                             <Form.Item
-                                name={['startDelays', 0]}
+                                name="delayCh1"
                                 label="Start Delay (0-120 seconds)"
                             >
                                 <InputNumber
@@ -385,7 +390,7 @@ export const SessionControl = () => {
                                 style={{ marginTop: -16, display: 'block' }}
                             >
                                 {canUseMultiChannel
-                                    ? 'All MagLocks will activate after this delay.'
+                                    ? 'All enabled MagLocks will activate after this delay.'
                                     : 'Wait before the lock session begins.'}
                             </Text>
                         </>
@@ -395,24 +400,22 @@ export const SessionControl = () => {
                     {useMultiDelay && (
                         <>
                             <Row gutter={[16, 16]}>
-                                {Array.from({ length: numChannels }).map(
-                                    (_, index) => (
-                                        <Col xs={24} sm={12} key={index}>
-                                            <Form.Item
-                                                name={['startDelays', index]}
-                                                label={`MagLock ${index + 1} Delay (sec)`}
-                                                style={{ marginBottom: 0 }}
-                                            >
-                                                <InputNumber
-                                                    min={0}
-                                                    max={120}
-                                                    addonAfter="sec"
-                                                    style={{ width: '100%' }}
-                                                />
-                                            </Form.Item>
-                                        </Col>
-                                    )
-                                )}
+                                {enabledChannels.map((ch) => (
+                                    <Col xs={24} sm={12} key={ch.key}>
+                                        <Form.Item
+                                            name={ch.key} // Binds to delayCh1, delayCh2...
+                                            label={`${ch.label} Delay (sec)`}
+                                            style={{ marginBottom: 0 }}
+                                        >
+                                            <InputNumber
+                                                min={0}
+                                                max={120}
+                                                addonAfter="sec"
+                                                style={{ width: '100%' }}
+                                            />
+                                        </Form.Item>
+                                    </Col>
+                                ))}
                             </Row>
                             <Text
                                 type="secondary"

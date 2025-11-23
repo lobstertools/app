@@ -39,16 +39,16 @@ const ENABLE_PAYBACK_TIME = true;
 const PAYBACK_TIME_MINUTES = 10;
 
 let streaks = 0;
-let totalLockedSessionSeconds = 0;
-let completedSessions = 0;
-let abortedSessions = 0;
+let totalLockedTimeSeconds = 0;
+let completed = 0;
+let aborted = 0;
 let pendingPaybackSeconds = 0;
 
 let currentState = 'ready';
 let lockSecondsRemaining = 0;
 let penaltySecondsRemaining = 0;
 let testSecondsRemaining = 0;
-let countdownSecondsRemaining: number[] = new Array(NUMBER_OF_CHANNELS).fill(0);
+let currentDelays = { ch1: 0, ch2: 0, ch3: 0, ch4: 0 };
 let hideTimer = false;
 
 let lockSecondsConfig = 0;
@@ -213,9 +213,9 @@ const initializeState = () => {
     );
 
     streaks = 5;
-    totalLockedSessionSeconds = 50000;
-    completedSessions = 12;
-    abortedSessions = 2;
+    totalLockedTimeSeconds = 50000;
+    completed = 12;
+    aborted = 2;
     pendingPaybackSeconds = 600;
 
     currentState = 'ready';
@@ -224,7 +224,7 @@ const initializeState = () => {
     testSecondsRemaining = 0;
     lastKeepAliveTime = 0; // Disarm watchdog
 
-    countdownSecondsRemaining = new Array(NUMBER_OF_CHANNELS).fill(0);
+    currentDelays = { ch1: 0, ch2: 0, ch3: 0, ch4: 0 };
     hideTimer = false;
     lockSecondsConfig = 0;
     penaltySecondsConfig = 0;
@@ -265,6 +265,7 @@ const triggerAbort = (source: string): boolean => {
 
     lockSecondsRemaining = 0;
     penaltySecondsRemaining = penaltySecondsConfig;
+    aborted++; // Increment stat
 
     // Start penalty timer
     penaltyInterval = setInterval(() => {
@@ -298,7 +299,7 @@ const startLockInterval = () => {
 
         if (lockSecondsRemaining > 0) {
             lockSecondsRemaining--;
-            totalLockedSessionSeconds++;
+            totalLockedTimeSeconds++;
         } else {
             completeSession();
         }
@@ -314,15 +315,18 @@ const startCountdownInterval = () => {
 
     countdownInterval = setInterval(() => {
         let allZero = true;
-        for (let i = 0; i < NUMBER_OF_CHANNELS; i++) {
-            if (countdownSecondsRemaining[i] > 0) {
+
+        // Iterate delays object
+        // Typecast keys for simple iteration in mock
+        (['ch1', 'ch2', 'ch3', 'ch4'] as const).forEach((key) => {
+            if (currentDelays[key] > 0) {
                 allZero = false;
-                countdownSecondsRemaining[i]--;
-                if (countdownSecondsRemaining[i] === 0) {
-                    log(`Channel ${i + 1} closed (delay finished).`);
+                currentDelays[key]--;
+                if (currentDelays[key] === 0) {
+                    log(`Channel ${key} closed (delay finished).`);
                 }
             }
-        }
+        });
 
         // When all delays hit 0, transition to LOCKED
         if (allZero) {
@@ -377,7 +381,9 @@ const completeSession = () => {
     lockSecondsRemaining = 0;
     penaltySecondsRemaining = 0;
     testSecondsRemaining = 0;
-    countdownSecondsRemaining.fill(0);
+    currentDelays = { ch1: 0, ch2: 0, ch3: 0, ch4: 0 };
+
+    completed++; // Increment stat
 
     if (ENABLE_STREAKS) {
         streaks++;
@@ -564,6 +570,14 @@ app.get('/details', (req, res) => {
         features: FEATURES,
         numberOfChannels: NUMBER_OF_CHANNELS,
         buildType: 'mock',
+        // Mock all channels enabled
+        channels: {
+            ch1: true,
+            ch2: true,
+            ch3: true,
+            ch4: true,
+        },
+        enabledChannelsMask: 0x0f, // 1111
         config: {
             enableStreaks: ENABLE_STREAKS,
             enablePaybackTime: ENABLE_PAYBACK_TIME,
@@ -610,7 +624,7 @@ app.post('/start', (req, res) => {
         duration, // in minutes
         penaltyDuration, // in minutes
         hideTimer: shouldHideTimer,
-        delays, // in seconds
+        delays, // nested object { ch1: x, ... }
     } = req.body;
 
     const durationMins = Number(duration);
@@ -632,11 +646,11 @@ app.post('/start', (req, res) => {
         });
     }
 
-    if (!Array.isArray(delays) || delays.length !== NUMBER_OF_CHANNELS) {
-        log(`API: /start FAILED (invalid delays array)`);
+    if (!delays || typeof delays !== 'object') {
+        log(`API: /start FAILED (invalid delays object)`);
         return res.status(400).json({
             status: 'error',
-            message: `Invalid 'delays' array. Expected ${NUMBER_OF_CHANNELS} items.`,
+            message: `Invalid 'delays' object.`,
         });
     }
 
@@ -649,19 +663,24 @@ app.post('/start', (req, res) => {
     penaltySecondsConfig = penaltyMins * 60;
     hideTimer = shouldHideTimer || false; // Default to false
 
-    // Parse channel delays
-    let maxDelay = 0;
-    countdownSecondsRemaining = delays.map((d) => {
-        const delay = Number(d || 0);
-        if (delay > maxDelay) maxDelay = delay;
-        return delay;
-    });
+    // Parse channel delays from object
+    currentDelays.ch1 = Number(delays.ch1 || 0);
+    currentDelays.ch2 = Number(delays.ch2 || 0);
+    currentDelays.ch3 = Number(delays.ch3 || 0);
+    currentDelays.ch4 = Number(delays.ch4 || 0);
+
+    const maxDelay = Math.max(
+        currentDelays.ch1,
+        currentDelays.ch2,
+        currentDelays.ch3,
+        currentDelays.ch4
+    );
 
     log(
         `🔒 /start request. Base Duration: ${durationMins} min. Payback: ${pendingPaybackSeconds}s. Total: ${lockSecondsConfig}s. Hide: ${hideTimer}.`
     );
     log(
-        `   -> Channel Delays: [${countdownSecondsRemaining.join(', ')}]s. Max Delay: ${maxDelay}s.`
+        `   -> Channel Delays: Ch1:${currentDelays.ch1}s, Ch2:${currentDelays.ch2}s... Max Delay: ${maxDelay}s.`
     );
 
     if (maxDelay === 0) {
@@ -679,7 +698,8 @@ app.post('/start', (req, res) => {
         startCountdownInterval();
         res.json({
             status: 'countdown',
-            channelDelays: countdownSecondsRemaining,
+            // Note: Mock returns flattened delays in logs, API doesn't need to return them in /start response per se,
+            // but the frontend polls /status immediately anyway.
         });
     }
 });
@@ -718,7 +738,7 @@ app.post('/abort', (req, res) => {
         log('🔓 Countdown aborted by user. No penalty.');
         if (countdownInterval) clearInterval(countdownInterval);
         countdownInterval = null;
-        countdownSecondsRemaining.fill(0);
+        currentDelays = { ch1: 0, ch2: 0, ch3: 0, ch4: 0 };
         currentState = 'ready';
         // lastKeepAliveTime = 0; // Already 0
         res.json({ status: 'ready', message: 'Countdown canceled.' });
@@ -780,14 +800,23 @@ app.get('/status', (req, res) => {
         penaltySecondsRemaining,
         testSecondsRemaining,
         hideTimer: hideTimer,
-        countdownSecondsRemaining,
 
-        // Accumulated stats
-        streaks,
-        abortedSessions,
-        completedSessions,
-        totalLockedSessionSeconds,
-        pendingPaybackSeconds,
+        // Nested Delays Object
+        delays: {
+            ch1: currentDelays.ch1,
+            ch2: currentDelays.ch2,
+            ch3: currentDelays.ch3,
+            ch4: currentDelays.ch4,
+        },
+
+        // Nested Stats Object
+        stats: {
+            streaks,
+            aborted,
+            completed,
+            totalLockedTimeSeconds,
+            pendingPaybackSeconds,
+        },
     } as SessionStatusResponse);
 });
 

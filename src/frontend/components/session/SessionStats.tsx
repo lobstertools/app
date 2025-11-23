@@ -32,20 +32,20 @@ export const SessionStats = () => {
     // The 'status' object is provided by the context
     const { status } = useSession();
 
-    // Don't render anything if there's no device/status
-    if (!status) {
+    // Don't render anything if there's no device status or stats object
+    if (!status || !status.stats) {
         return null;
     }
 
-    // Extract stats. The 'status' object (SessionStatusResponse)
-    // is populated by the fetchSessionStatus poller.
+    // Extract stats from the nested 'stats' object.
+    // Updated to match new API property names.
     const {
         streaks = 0,
-        totalLockedSessionSeconds = 0,
-        completedSessions = 0,
-        abortedSessions = 0,
+        totalLockedTimeSeconds = 0,
+        completed = 0,
+        aborted = 0,
         pendingPaybackSeconds = 0,
-    } = status;
+    } = status.stats;
 
     return (
         <Space size="small">
@@ -60,7 +60,7 @@ export const SessionStats = () => {
                     color="blue"
                     style={{ margin: 0 }}
                 >
-                    {formatSeconds(totalLockedSessionSeconds)}
+                    {formatSeconds(totalLockedTimeSeconds)}
                 </Tag>
             </Tooltip>
             <Tooltip title="Total Sessions Completed">
@@ -69,7 +69,7 @@ export const SessionStats = () => {
                     color="green"
                     style={{ margin: 0 }}
                 >
-                    {completedSessions}
+                    {completed}
                 </Tag>
             </Tooltip>
             <Tooltip title="Total Sessions Aborted">
@@ -78,7 +78,7 @@ export const SessionStats = () => {
                     color="red"
                     style={{ margin: 0 }}
                 >
-                    {abortedSessions}
+                    {aborted}
                 </Tag>
             </Tooltip>
             {pendingPaybackSeconds > 0 && (

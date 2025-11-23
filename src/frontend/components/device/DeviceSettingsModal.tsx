@@ -29,7 +29,7 @@ import {
     CloseCircleOutlined,
 } from '@ant-design/icons';
 import { useDeviceManager } from '../../context/useDeviceManager';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useSession } from '../../context/useSessionContext';
 import { formatSeconds } from '../../utils/time';
 
@@ -103,12 +103,27 @@ export const DeviceSettingsModal = () => {
         });
     };
 
+    // Calculate display string for enabled channels
+    const enabledChannelsString = useMemo(() => {
+        if (!activeDevice?.channels) return 'N/A';
+        const { ch1, ch2, ch3, ch4 } = activeDevice.channels;
+        const list = [];
+        if (ch1) list.push('1');
+        if (ch2) list.push('2');
+        if (ch3) list.push('3');
+        if (ch4) list.push('4');
+
+        if (list.length === 0) return 'None';
+        if (list.length === 4) return 'All (4)';
+        return list.join(', ');
+    }, [activeDevice]);
+
     // --- Device Config Items ---
     const configItems = [
         {
             key: 'channels',
-            label: 'Channels',
-            children: activeDevice?.numberOfChannels || 'N/A',
+            label: 'Enabled Channels',
+            children: enabledChannelsString,
         },
         {
             key: 'streaks',
@@ -131,10 +146,10 @@ export const DeviceSettingsModal = () => {
     // --- Session Stat Items  ---
     const {
         streaks = 0,
-        totalLockedSessionSeconds = 0,
-        completedSessions = 0,
-        abortedSessions = 0,
-    } = status || {};
+        totalLockedTimeSeconds = 0,
+        completed = 0,
+        aborted = 0,
+    } = status?.stats || {};
 
     const sessionStatItems = [
         {
@@ -159,7 +174,7 @@ export const DeviceSettingsModal = () => {
                     </Space>
                 </Tooltip>
             ),
-            children: formatSeconds(totalLockedSessionSeconds),
+            children: formatSeconds(totalLockedTimeSeconds),
         },
         {
             key: 'completed',
@@ -171,7 +186,7 @@ export const DeviceSettingsModal = () => {
                     </Space>
                 </Tooltip>
             ),
-            children: completedSessions,
+            children: completed,
         },
         {
             key: 'aborted',
@@ -183,7 +198,7 @@ export const DeviceSettingsModal = () => {
                     </Space>
                 </Tooltip>
             ),
-            children: abortedSessions,
+            children: aborted,
         },
     ];
 

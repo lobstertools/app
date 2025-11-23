@@ -69,7 +69,15 @@ export interface ActiveDevice {
     version: string;
     buildType: BuildType;
     features: string[];
-    numberOfChannels: number;
+
+    channels: {
+        ch1: boolean;
+        ch2: boolean;
+        ch3: boolean;
+        ch4: boolean;
+    };
+
+    // Deterrent Configuration
     config: {
         enableStreaks: boolean;
         enablePaybackTime: boolean;
@@ -87,24 +95,39 @@ export interface SessionStatusResponse {
 
     lockSecondsRemaining: number;
     penaltySecondsRemaining: number;
-    countdownSecondsRemaining: number[];
     testSecondsRemaining: number;
+
+    delays: {
+        ch1?: number;
+        ch2?: number;
+        ch3?: number;
+        ch4?: number;
+    };
 
     hideTimer?: boolean;
 
-    // Accumulated stats
-    streaks: number;
-    abortedSessions: number;
-    completedSessions: number;
-    totalLockedSessionSeconds: number;
-    pendingPaybackSeconds: number;
+    // Accumulated session numbers
+    stats: {
+        streaks: number;
+        aborted: number;
+        completed: number;
+        totalLockedTimeSeconds: number;
+        pendingPaybackSeconds: number;
+    };
 }
 
 /** The request payload to start a new session on the device. */
 export interface SessionStartRequest {
     duration: number;
     hideTimer: boolean;
-    startDelays: number[];
+    penaltyDuration: number;
+
+    delays: {
+        ch1: number;
+        ch2: number;
+        ch3: number;
+        ch4: number;
+    };
 }
 
 export interface Reward {
@@ -119,4 +142,8 @@ export interface DeviceProvisioningData {
     enableStreaks: boolean;
     enablePaybackTime: boolean;
     paybackTimeMinutes: number;
+    ch1Enabled: boolean;
+    ch2Enabled: boolean;
+    ch3Enabled: boolean;
+    ch4Enabled: boolean;
 }

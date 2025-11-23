@@ -7,11 +7,18 @@ export interface SessionFormData {
     type: 'time-range' | 'fixed' | 'random';
     timeRangeSelection: 'short' | 'medium' | 'long';
     duration?: number;
-    penaltyDuration?: number;
     rangeMin?: number;
     rangeMax?: number;
     hideTimer: boolean;
-    startDelays: number[];
+    penaltyDuration: number;
+
+    delayCh1: number;
+    delayCh2: number;
+    delayCh3: number;
+    delayCh4: number;
+
+    /** Whether to apply specific delays per channel or use delayCh1 for all. */
+    useMultiChannelDelay: boolean;
 }
 
 export interface SessionContextState {

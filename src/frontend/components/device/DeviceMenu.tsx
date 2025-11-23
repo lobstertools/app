@@ -54,11 +54,25 @@ export const DeviceMenu = () => {
     // Pulling static config from activeDevice
     const deviceName = activeDevice?.name;
     const displayDeviceAddress = activeDevice?.address || 'N/A';
-    const channelCount = activeDevice?.numberOfChannels || 0;
     const paybackTimeEnabled = activeDevice?.config?.enablePaybackTime || false;
     const paybackTimeMinutes = activeDevice?.config?.paybackTimeMinutes || 0;
     const appVersion = activeDevice?.version || 'N/A';
     const appBuildType = activeDevice?.buildType || 'N/A';
+
+    // Calculate display string for enabled channels
+    const enabledChannelsString = useMemo(() => {
+        if (!activeDevice?.channels) return 'N/A';
+        const { ch1, ch2, ch3, ch4 } = activeDevice.channels;
+        const list = [];
+        if (ch1) list.push('1');
+        if (ch2) list.push('2');
+        if (ch3) list.push('3');
+        if (ch4) list.push('4');
+
+        if (list.length === 0) return 'None';
+        if (list.length === 4) return 'All (4)';
+        return list.join(', ');
+    }, [activeDevice]);
 
     // Pulling features from activeDevice
     const hasLedFeature = useMemo(
@@ -282,7 +296,7 @@ export const DeviceMenu = () => {
                         },
                         {
                             key: 'channels',
-                            label: `Channels: ${channelCount || 'N/A'}`,
+                            label: `Enabled Channels: ${enabledChannelsString}`,
                             icon: <ApiOutlined />,
                             disabled: true,
                         },

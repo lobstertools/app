@@ -44,9 +44,13 @@ const PROV_SERVICE_UUID = '5a160000-8334-469b-a316-c340cf29188f';
 const PROV_SSID_CHAR_UUID = '5a160001-8334-469b-a316-c340cf29188f';
 const PROV_PASS_CHAR_UUID = '5a160002-8334-469b-a316-c340cf29188f';
 const PROV_ENABLE_STREAKS_CHAR_UUID = '5a160004-8334-469b-a316-c340cf29188f';
-const PROV_ENABLE_PAYBACK_TIME_CHAR_UUID =
-    '5a160005-8334-469b-a316-c340cf29188f';
+// eslint-disable-next-line prettier/prettier
+const PROV_ENABLE_PAYBACK_TIME_CHAR_UUID = '5a160005-8334-469b-a316-c340cf29188f';
 const PROV_PAYBACK_TIME_CHAR_UUID = '5a160006-8334-469b-a316-c340cf29188f';
+const PROV_CH1_ENABLE_UUID = '5a16000A-8334-469b-a316-c340cf29188f';
+const PROV_CH2_ENABLE_UUID = '5a16000B-8334-469b-a316-c340cf29188f';
+const PROV_CH3_ENABLE_UUID = '5a16000C-8334-469b-a316-c340cf29188f';
+const PROV_CH4_ENABLE_UUID = '5a16000D-8334-469b-a316-c340cf29188f';
 
 // mDNS Service Type
 const MDNS_SERVICE_TYPE = 'lobster-lock';
@@ -345,8 +349,17 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
     const { id } = req.params;
 
     // Extract all fields from the body
-    const { ssid, pass, enableStreaks, enablePaybackTime, paybackTimeMinutes } =
-        req.body as DeviceProvisioningData;
+    const {
+        ssid,
+        pass,
+        enableStreaks,
+        enablePaybackTime,
+        paybackTimeMinutes,
+        ch1Enabled,
+        ch2Enabled,
+        ch3Enabled,
+        ch4Enabled,
+    } = req.body as DeviceProvisioningData;
 
     // Validate all required fields
     const missingFields = [
@@ -408,30 +421,35 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
                     PROV_ENABLE_STREAKS_CHAR_UUID,
                     PROV_ENABLE_PAYBACK_TIME_CHAR_UUID,
                     PROV_PAYBACK_TIME_CHAR_UUID,
+                    PROV_CH1_ENABLE_UUID,
+                    PROV_CH2_ENABLE_UUID,
+                    PROV_CH3_ENABLE_UUID,
+                    PROV_CH4_ENABLE_UUID,
                 ]
             );
 
         const normalize = (uuid: string) =>
             uuid.toLowerCase().replace(/-/g, '');
 
-        const ssidChar = characteristics.find(
-            (c) => normalize(c.uuid) === normalize(PROV_SSID_CHAR_UUID)
+        // Helper to find char
+        const findChar = (targetUuid: string) =>
+            characteristics.find(
+                (c) => normalize(c.uuid) === normalize(targetUuid)
+            );
+
+        const ssidChar = findChar(PROV_SSID_CHAR_UUID);
+        const passChar = findChar(PROV_PASS_CHAR_UUID);
+        const enableStreaksChar = findChar(PROV_ENABLE_STREAKS_CHAR_UUID);
+        const enablePaybackTimeChar = findChar(
+            PROV_ENABLE_PAYBACK_TIME_CHAR_UUID
         );
-        const passChar = characteristics.find(
-            (c) => normalize(c.uuid) === normalize(PROV_PASS_CHAR_UUID)
-        );
-        const enableStreaksChar = characteristics.find(
-            (c) =>
-                normalize(c.uuid) === normalize(PROV_ENABLE_STREAKS_CHAR_UUID)
-        );
-        const enablePaybackTimeChar = characteristics.find(
-            (c) =>
-                normalize(c.uuid) ===
-                normalize(PROV_ENABLE_PAYBACK_TIME_CHAR_UUID)
-        );
-        const paybackTimeChar = characteristics.find(
-            (c) => normalize(c.uuid) === normalize(PROV_PAYBACK_TIME_CHAR_UUID)
-        );
+        const paybackTimeChar = findChar(PROV_PAYBACK_TIME_CHAR_UUID);
+
+        // Channel Config Characteristics
+        const ch1Char = findChar(PROV_CH1_ENABLE_UUID);
+        const ch2Char = findChar(PROV_CH2_ENABLE_UUID);
+        const ch3Char = findChar(PROV_CH3_ENABLE_UUID);
+        const ch4Char = findChar(PROV_CH4_ENABLE_UUID);
 
         // Validate required characteristics
         if (
@@ -439,13 +457,13 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
             !passChar ||
             !enableStreaksChar ||
             !enablePaybackTimeChar ||
-            !paybackTimeChar
+            !paybackTimeChar ||
+            !ch1Char ||
+            !ch2Char ||
+            !ch3Char ||
+            !ch4Char
         ) {
-            log(`[Provision] Missing characteristics:
-                ssid: ${!!ssidChar}, pass: ${!!passChar},
-                enableStreaks: ${!!enableStreaksChar},
-                enablePaybackTime: ${!!enablePaybackTimeChar}, paybackTime: ${!!paybackTimeChar}
-            `);
+            log(`[Provision] Missing characteristics.`);
             throw new Error(
                 'Could not find all required provisioning characteristics.'
             );
@@ -467,6 +485,12 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         // paybackTimeMinutes (number) -> 2-byte Buffer (UInt16 LE)
         const paybackTimeBuf = Buffer.alloc(2);
         paybackTimeBuf.writeUInt16LE(paybackTimeMinutes, 0);
+
+        const getBoolBuf = (val: boolean | undefined) => {
+            const b = Buffer.alloc(1);
+            b.writeUInt8(val ? 1 : 0, 0);
+            return b;
+        };
         // --- END DATA CONVERSION ---
 
         await ssidChar.writeAsync(Buffer.from(ssid), false);
@@ -474,6 +498,11 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         await enableStreaksChar.writeAsync(enableStreaksBuf, false);
         await enablePaybackTimeChar.writeAsync(enablePaybackTimeBuf, false);
         await paybackTimeChar.writeAsync(paybackTimeBuf, false);
+
+        await ch1Char.writeAsync(getBoolBuf(ch1Enabled || false), false);
+        await ch2Char.writeAsync(getBoolBuf(ch2Enabled || false), false);
+        await ch3Char.writeAsync(getBoolBuf(ch3Enabled || false), false);
+        await ch4Char.writeAsync(getBoolBuf(ch4Enabled || false), false);
 
         log(`[Provision] Credentials and settings sent! Disconnecting...`);
         await peripheral.disconnectAsync();
@@ -768,15 +797,23 @@ app.get(
         const errorResponse = {
             status: 'ready',
             message: 'Device not found or not ready.',
-            lockTimeRemainingSeconds: 0,
-            penaltyTimeRemainingSeconds: 0,
-            rewardTimeRemainingSeconds: 0,
-            testTimeRemainingSeconds: 0,
+            lockSecondsRemaining: 0,
+            penaltySecondsRemaining: 0,
+            testSecondsRemaining: 0,
             hideTimer: false,
-            channelDelaysRemainingSeconds: [],
-            streaks: 0,
-            totalLockedSessionTimeSeconds: 0,
-            pendingPaybackSeconds: 0,
+            delays: {
+                ch1: 0,
+                ch2: 0,
+                ch3: 0,
+                ch4: 0,
+            },
+            stats: {
+                streaks: 0,
+                aborted: 0,
+                completed: 0,
+                totalLockedTimeSeconds: 0,
+                pendingPaybackSeconds: 0,
+            },
         };
 
         if (!device || device.state !== 'ready') {

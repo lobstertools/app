@@ -1,13 +1,17 @@
 import { useMemo, ReactNode, useCallback, useEffect, useState } from 'react';
 import { notification, Alert } from 'antd';
 
-import { Reward, SessionStatusResponse, ComputedAppStatus } from '../../types';
+import {
+    Reward,
+    SessionStatusResponse,
+    ComputedAppStatus,
+    SessionStartRequest,
+} from '../../types';
 
 import { apiClient } from '../lib/apiClient';
 import axios from 'axios';
 import { useDeviceManager } from './useDeviceManager';
 import {
-    MAX_CHANNELS_TO_RENDER,
     SessionContext,
     SessionContextState,
     SessionFormData,
@@ -87,8 +91,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
      * Sends the final /start command to the device with session payload.
      */
     const sendLockCommand = useCallback(
-        async (payload: unknown) => {
-            // 'payload' is intentionally any for this function
+        async (payload: SessionStartRequest) => {
             if (!activeDevice) return;
             if (currentState !== 'ready') {
                 notification.error({
@@ -141,16 +144,21 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
             timeRangeSelection,
             duration,
             penaltyDuration,
+            hideTimer,
             rangeMin,
             rangeMax,
-            hideTimer,
-            startDelays,
+            useMultiChannelDelay,
+            delayCh1,
+            delayCh2,
+            delayCh3,
+            delayCh4,
         } = values;
 
         // --- Calculate final duration ---
         let finalDurationMinutes: number;
         const getRandom = (min: number, max: number) =>
             Math.floor(Math.random() * (max - min + 1)) + min;
+
         switch (type) {
             case 'time-range':
                 if (timeRangeSelection === 'short')
@@ -180,29 +188,36 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
                 return;
         }
 
-        // --- Calculate final delays ---
-        const numChannels = Math.min(
-            activeDevice.numberOfChannels || 1,
-            MAX_CHANNELS_TO_RENDER
-        );
-        let delaysToUse: number[] = [];
+        // --- Calculate final delays per physical channel ---
+        const delaysObject = {
+            ch1: 0,
+            ch2: 0,
+            ch3: 0,
+            ch4: 0,
+        };
 
-        if (startDelays.length > 1) {
-            delaysToUse = startDelays.slice(0, numChannels);
+        if (useMultiChannelDelay) {
+            if (activeDevice.channels.ch1) delaysObject.ch1 = delayCh1 || 0;
+            if (activeDevice.channels.ch2) delaysObject.ch2 = delayCh2 || 0;
+            if (activeDevice.channels.ch3) delaysObject.ch3 = delayCh3 || 0;
+            if (activeDevice.channels.ch4) delaysObject.ch4 = delayCh4 || 0;
         } else {
-            const singleDelay = startDelays[0] || 0;
-            delaysToUse = Array(numChannels).fill(singleDelay);
+            const commonDelay = delayCh1 || 0;
+            if (activeDevice.channels.ch1) delaysObject.ch1 = commonDelay;
+            if (activeDevice.channels.ch2) delaysObject.ch2 = commonDelay;
+            if (activeDevice.channels.ch3) delaysObject.ch3 = commonDelay;
+            if (activeDevice.channels.ch4) delaysObject.ch4 = commonDelay;
         }
 
         // --- Build payload and send ---
-        const payload = {
+        const payload: SessionStartRequest = {
             duration: finalDurationMinutes,
-            penaltyDuration,
             hideTimer,
-            delays: delaysToUse,
+            delays: delaysObject,
+            penaltyDuration,
         };
 
-        sendLockCommand(payload);
+        sendLockCommand(payload as unknown as SessionStartRequest);
     };
 
     /**
@@ -373,10 +388,19 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
 
     /**
      * Memoized value for the channel countdown timers.
+     * Maps the 'delays' object { ch1: 10, ch2: 0 } to an array [10, 0, ...] for the UI.
      */
     const channelDelays = useMemo(() => {
         if (!status || status.status !== 'countdown') return [];
-        return status.countdownSecondsRemaining || [];
+
+        // Extract from the 'delays' object
+        // We map only the channels that exist/are valid numbers
+        return [
+            status.delays?.ch1 ?? 0,
+            status.delays?.ch2 ?? 0,
+            status.delays?.ch3 ?? 0,
+            status.delays?.ch4 ?? 0,
+        ];
     }, [status]);
 
     // Package all state and functions into the context value

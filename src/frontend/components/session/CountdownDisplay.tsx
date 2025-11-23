@@ -1,4 +1,5 @@
 import { useSession } from '../../context/useSessionContext';
+import { useDeviceManager } from '../../context/useDeviceManager';
 import {
     Typography,
     Button,
@@ -19,49 +20,66 @@ const { Title } = Typography;
  * Shows timers for each channel and the main "time to lock".
  */
 export const CountdownDisplay = () => {
-    const { status, abortSession, channelDelays } = useSession();
+    const { status, abortSession } = useSession();
+    const { activeDevice } = useDeviceManager();
     const { token } = antdTheme.useToken();
 
-    if (!status) return <Spin />;
+    if (!status || !activeDevice) return <Spin />;
 
-    const delays = channelDelays || [];
-    const timeToLock = Math.max(0, ...delays); // Longest delay is the time to lock
-    const closedCount = delays.filter((d) => d === 0).length; // Count relays already on
+    // Extract individual channel delays from status object
+    // Only render channels that are physically enabled in the device config
+    const activeDelays = [];
+
+    if (activeDevice.channels.ch1) {
+        activeDelays.push({ id: 1, val: status.delays?.ch1 ?? 0 });
+    }
+    if (activeDevice.channels.ch2) {
+        activeDelays.push({ id: 2, val: status.delays?.ch2 ?? 0 });
+    }
+    if (activeDevice.channels.ch3) {
+        activeDelays.push({ id: 3, val: status.delays?.ch3 ?? 0 });
+    }
+    if (activeDevice.channels.ch4) {
+        activeDelays.push({ id: 4, val: status.delays?.ch4 ?? 0 });
+    }
+
+    const maxDelay = Math.max(0, ...activeDelays.map((d) => d.val));
+    const closedCount = activeDelays.filter((d) => d.val === 0).length;
 
     return (
         <div style={{ padding: '24px 8px', textAlign: 'center' }}>
             <Title level={2}>Session Starting...</Title>
             <Statistic
-                title="Main Lock Engages In"
-                value={formatSeconds(timeToLock)}
+                title="All Locks Engage In"
+                value={formatSeconds(maxDelay)}
                 valueStyle={{ fontSize: '3rem', fontFamily: 'monospace' }}
             />
             <Divider />
-            <Title level={5}>
-                Channel Status ({closedCount} / {delays.length} closed)
-            </Title>
+            <Title level={5}>Channel Status ({closedCount} Closed)</Title>
             <Row
                 gutter={[16, 16]}
                 style={{ maxWidth: 400, margin: '16px auto' }}
             >
-                {delays.map((delay, index) => (
-                    <Col span={12} key={index}>
+                {activeDelays.map((delay) => (
+                    <Col span={12} key={delay.id}>
                         <Card
                             size="small"
                             style={{
                                 background:
-                                    delay === 0
+                                    delay.val === 0
                                         ? token.colorSuccessBg
                                         : token.colorBgContainer,
                             }}
                         >
                             <Statistic
-                                title={`Channel ${index + 1}`}
-                                value={delay > 0 ? `${delay}s` : 'CLOSED'}
+                                title={`Ch ${delay.id}`}
+                                value={
+                                    delay.val > 0 ? `${delay.val}s` : 'CLOSED'
+                                }
                                 valueStyle={{
                                     fontSize: '1.2rem',
                                     color:
-                                        delay === 0
+                                        delay.val === 0
                                             ? token.colorSuccess
                                             : token.colorText,
                                 }}
