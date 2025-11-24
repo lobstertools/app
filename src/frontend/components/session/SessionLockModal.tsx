@@ -32,25 +32,15 @@ export const SessionLockModal = () => {
             styles={{ body: modalBodyStyle }}
             wrapClassName="backdrop-blur-modal"
         >
-            <Title
-                level={2}
-                style={{ color: '#fff', marginBottom: 48, textAlign: 'center' }}
-            >
-                {isTimerHidden
-                    ? 'Session Locked: Tension Mode'
-                    : 'Session Locked'}
+            <Title level={2} style={{ color: '#fff', marginBottom: 48, textAlign: 'center' }}>
+                {isTimerHidden ? 'Session Locked: Tension Mode' : 'Session Locked'}
             </Title>
             <div style={{ textAlign: 'center' }}>
                 {isTimerHidden ? (
                     // Show hidden icon
                     <div>
-                        <EyeInvisibleOutlined
-                            style={{ fontSize: '80px', color: '#ffffff99' }}
-                        />
-                        <Title
-                            level={3}
-                            style={{ color: '#fff', marginTop: 24 }}
-                        >
+                        <EyeInvisibleOutlined style={{ fontSize: '80px', color: '#ffffff99' }} />
+                        <Title level={3} style={{ color: '#fff', marginTop: 24 }}>
                             Timer is Hidden
                         </Title>
                     </div>
@@ -62,11 +52,7 @@ export const SessionLockModal = () => {
                                 Time Remaining
                             </Title>
                         }
-                        value={
-                            status
-                                ? formatSeconds(sessionTimeRemaining)
-                                : '00:00:00'
-                        }
+                        value={status ? formatSeconds(sessionTimeRemaining) : '00:00:00'}
                         valueStyle={{
                             color: '#fff',
                             fontSize: 'clamp(3rem, 10vw, 7rem)',

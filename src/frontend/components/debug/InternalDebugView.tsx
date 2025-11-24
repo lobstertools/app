@@ -45,15 +45,10 @@ export const InternalDebugView = () => {
     const appRuntimeState = useAppRuntime();
 
     // 2. Device Manager State
-    const { connectionHealth, activeDevice, discoveredDevices, serialPorts } =
-        useDeviceManager();
+    const { connectionHealth, activeDevice, discoveredDevices, serialPorts } = useDeviceManager();
 
     // 3. Session State
-    const {
-        currentState,
-        status: rawDeviceStatus,
-        rewardHistory,
-    } = useSession();
+    const { currentState, status: rawDeviceStatus, rewardHistory } = useSession();
 
     return (
         <Space direction="vertical" style={{ width: '100%' }}>

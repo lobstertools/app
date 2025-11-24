@@ -22,16 +22,8 @@ interface ApplicationSettingsMenuProps {
  * A dropdown menu for application-level settings like theme
  * and viewing the welcome guide.
  */
-export const ApplicationSettingsMenu = ({
-    theme,
-    toggleTheme,
-}: ApplicationSettingsMenuProps) => {
-    const {
-        isDevelopmentMode,
-        setWelcomeGuideOpen,
-        setAppSettingsModalOpen,
-        setAboutModalOpen,
-    } = useAppRuntime();
+export const ApplicationSettingsMenu = ({ theme, toggleTheme }: ApplicationSettingsMenuProps) => {
+    const { isDevelopmentMode, setWelcomeGuideOpen, setAppSettingsModalOpen, setAboutModalOpen } = useAppRuntime();
 
     // Get all needed state/functions from useDeviceManager
     const { openDeviceModal } = useDeviceManager();
@@ -73,10 +65,7 @@ export const ApplicationSettingsMenu = ({
         // --- Group 2: Appearance ---
         {
             key: 'theme-toggle',
-            label:
-                theme === 'light'
-                    ? 'Switch to Dark Mode'
-                    : 'Switch to Light Mode',
+            label: theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode',
             icon: theme === 'light' ? <MoonOutlined /> : <SunOutlined />,
             onClick: toggleTheme,
         },

@@ -1,11 +1,4 @@
-import {
-    app,
-    BrowserWindow,
-    ipcMain,
-    dialog,
-    Menu,
-    MenuItemConstructorOptions,
-} from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, Menu, MenuItemConstructorOptions } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
@@ -34,14 +27,7 @@ let isBackendReady = false;
 const LOBSTER_DEV_SERVER_URL = process.env['LOBSTER_DEV_SERVER_URL'];
 const IS_DEV = !!LOBSTER_DEV_SERVER_URL;
 
-const preloadScriptPath = path.join(
-    __dirname,
-    '..',
-    '..',
-    'dist',
-    'electron',
-    'preload.cjs'
-);
+const preloadScriptPath = path.join(__dirname, '..', '..', 'dist', 'electron', 'preload.cjs');
 
 // Helper to send the signal safely to the renderer
 const sendBackendReadySignal = () => {
@@ -53,9 +39,7 @@ const sendBackendReadySignal = () => {
 
 const startBackend = () => {
     if (IS_DEV) {
-        console.log(
-            '[Electron] Dev mode: Not starting backend (assuming external server).'
-        );
+        console.log('[Electron] Dev mode: Not starting backend (assuming external server).');
         // In dev mode, we assume the backend is running externally.
         isBackendReady = true;
         // We do not send the signal here immediately because the window might
@@ -144,19 +128,13 @@ function getEsptoolPath() {
     try {
         const systemPath = findSystemEsptool();
         if (systemPath) {
-            console.log(
-                `[Electron] Found system-installed esptool at: ${systemPath}`
-            );
+            console.log(`[Electron] Found system-installed esptool at: ${systemPath}`);
             return systemPath;
         } else {
-            console.log(
-                '[Electron] No system-installed esptool found, using bundled version.'
-            );
+            console.log('[Electron] No system-installed esptool found, using bundled version.');
         }
     } catch (error: any) {
-        console.error(
-            `[Electron] Error checking for system-installed esptool: ${error.message}`
-        );
+        console.error(`[Electron] Error checking for system-installed esptool: ${error.message}`);
         console.log('[Electron] Defaulting to bundled version.');
     }
 
@@ -164,9 +142,7 @@ function getEsptoolPath() {
     const arch = process.arch;
 
     let toolSubPath = '';
-    console.log(
-        `[Electron] Detecting bundled binary for platform: ${platform}, arch: ${arch}`
-    );
+    console.log(`[Electron] Detecting bundled binary for platform: ${platform}, arch: ${arch}`);
 
     if (platform === 'win32') {
         if (arch === 'x64') {
@@ -225,10 +201,7 @@ const createWindow = () => {
 
     mainWindow.webContents.setWindowOpenHandler((details) => {
         // Check if the URL is http or https
-        if (
-            details.url.startsWith('https:') ||
-            details.url.startsWith('http:')
-        ) {
+        if (details.url.startsWith('https:') || details.url.startsWith('http:')) {
             shell.openExternal(details.url);
         }
         // 'deny' prevents Electron from creating a new BrowserWindow
@@ -242,9 +215,7 @@ const createWindow = () => {
         if (isBackendReady) {
             // Small delay to allow React to hydrate and register the effect
             setTimeout(() => {
-                console.log(
-                    '[Electron] Window loaded/reloaded. Re-sending backend-ready.'
-                );
+                console.log('[Electron] Window loaded/reloaded. Re-sending backend-ready.');
                 sendBackendReadySignal();
             }, 500);
         }
@@ -255,15 +226,8 @@ const createWindow = () => {
         mainWindow.loadURL(LOBSTER_DEV_SERVER_URL!);
         mainWindow.webContents.openDevTools();
     } else {
-        const frontendIndexPath = path.join(
-            __dirname,
-            '..',
-            'frontend',
-            'index.html'
-        );
-        console.log(
-            `[Electron] Loading production build: ${frontendIndexPath}`
-        );
+        const frontendIndexPath = path.join(__dirname, '..', 'frontend', 'index.html');
+        console.log(`[Electron] Loading production build: ${frontendIndexPath}`);
         mainWindow.loadFile(frontendIndexPath);
     }
 };
@@ -324,11 +288,7 @@ app.on('ready', () => {
     if (IS_DEV) {
         menuTemplate.push({
             label: 'View',
-            submenu: [
-                { role: 'reload' },
-                { role: 'forceReload' },
-                { role: 'toggleDevTools' },
-            ],
+            submenu: [{ role: 'reload' }, { role: 'forceReload' }, { role: 'toggleDevTools' }],
         });
     }
 
@@ -346,17 +306,14 @@ app.on('ready', () => {
     // --- IPC handler: open-firmware-dialog ---
     ipcMain.handle('open-firmware-dialog', async () => {
         if (!mainWindow) return null;
-        const { canceled, filePaths } = await dialog.showOpenDialog(
-            mainWindow,
-            {
-                title: 'Select Firmware',
-                properties: ['openFile'],
-                filters: [
-                    { name: 'Firmware', extensions: ['bin'] },
-                    { name: 'All Files', extensions: ['*'] },
-                ],
-            }
-        );
+        const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+            title: 'Select Firmware',
+            properties: ['openFile'],
+            filters: [
+                { name: 'Firmware', extensions: ['bin'] },
+                { name: 'All Files', extensions: ['*'] },
+            ],
+        });
         if (canceled || filePaths.length === 0) {
             return null;
         }
@@ -364,95 +321,83 @@ app.on('ready', () => {
     });
 
     // --- IPC handler: flash-device ---
-    ipcMain.handle(
-        'flash-device',
-        async (_event, args: { port: string; firmwarePath: string }) => {
-            let esptoolPath: string;
-            try {
-                esptoolPath = getEsptoolPath();
-            } catch (err: any) {
-                console.error('[Electron] Error getting esptool path:', err);
-                throw new Error(err.message);
-            }
+    ipcMain.handle('flash-device', async (_event, args: { port: string; firmwarePath: string }) => {
+        let esptoolPath: string;
+        try {
+            esptoolPath = getEsptoolPath();
+        } catch (err: any) {
+            console.error('[Electron] Error getting esptool path:', err);
+            throw new Error(err.message);
+        }
 
-            const flashArgs = [
-                '--port',
-                args.port,
-                '--baud',
-                '115200',
-                '--before',
-                'no-reset',
-                '--after',
-                'no-reset',
-                'write-flash',
-                '0x10000',
-                args.firmwarePath,
-            ];
+        const flashArgs = [
+            '--port',
+            args.port,
+            '--baud',
+            '115200',
+            '--before',
+            'no-reset',
+            '--after',
+            'no-reset',
+            'write-flash',
+            '0x10000',
+            args.firmwarePath,
+        ];
 
-            console.log(`[Electron] Spawning esptool: ${esptoolPath}`);
-            console.log(`[Electron] Args: ${flashArgs.join(' ')}`);
+        console.log(`[Electron] Spawning esptool: ${esptoolPath}`);
+        console.log(`[Electron] Args: ${flashArgs.join(' ')}`);
 
-            const esptool = spawn(esptoolPath, flashArgs);
+        const esptool = spawn(esptoolPath, flashArgs);
 
-            return new Promise((resolve, reject) => {
-                let stderr = '';
+        return new Promise((resolve, reject) => {
+            let stderr = '';
 
-                esptool.stdout.on('data', (data: Buffer) => {
-                    const line = data.toString();
-                    console.log(`[esptool]: ${line.trim()}`);
+            esptool.stdout.on('data', (data: Buffer) => {
+                const line = data.toString();
+                console.log(`[esptool]: ${line.trim()}`);
 
-                    if (!mainWindow) return;
+                if (!mainWindow) return;
 
-                    const progressMatch = line.match(/(\d+(\.\d)?)%/);
-                    if (progressMatch && progressMatch[1]) {
-                        const progress = Math.floor(
-                            parseFloat(progressMatch[1])
-                        );
-                        mainWindow.webContents.send('flash-progress', progress);
-                    }
-                });
+                const progressMatch = line.match(/(\d+(\.\d)?)%/);
+                if (progressMatch && progressMatch[1]) {
+                    const progress = Math.floor(parseFloat(progressMatch[1]));
+                    mainWindow.webContents.send('flash-progress', progress);
+                }
+            });
 
-                esptool.stderr.on('data', (data: Buffer) => {
-                    const line = data.toString();
-                    stderr += line;
-                    console.error(`[esptool stderr]: ${line.trim()}`);
-                });
+            esptool.stderr.on('data', (data: Buffer) => {
+                const line = data.toString();
+                stderr += line;
+                console.error(`[esptool stderr]: ${line.trim()}`);
+            });
 
-                esptool.on('close', (code) => {
-                    console.log(`[esptool] Exited with code: ${code}`);
-                    if (code === 0) {
-                        mainWindow?.webContents.send('flash-progress', 100);
-                        resolve('success');
-                    } else {
-                        reject(
-                            new Error(
-                                `Flash failed (code ${code}). Did you put the device in bootloader mode?\nError: ${stderr}`
-                            )
-                        );
-                    }
-                });
-
-                esptool.on('error', (err: any) => {
-                    console.error('[Electron] Failed to start esptool.', err);
+            esptool.on('close', (code) => {
+                console.log(`[esptool] Exited with code: ${code}`);
+                if (code === 0) {
+                    mainWindow?.webContents.send('flash-progress', 100);
+                    resolve('success');
+                } else {
                     reject(
                         new Error(
-                            `Failed to start esptool (${err.code}): ${err.message}`
+                            `Flash failed (code ${code}). Did you put the device in bootloader mode?\nError: ${stderr}`
                         )
                     );
-                });
+                }
             });
-        }
-    );
+
+            esptool.on('error', (err: any) => {
+                console.error('[Electron] Failed to start esptool.', err);
+                reject(new Error(`Failed to start esptool (${err.code}): ${err.message}`));
+            });
+        });
+    });
 
     // --- IPC handler: list-serial-ports ---
     ipcMain.handle('list-serial-ports', async () => {
         try {
             const ports = await SerialPort.list();
 
-            console.log(
-                '[Electron] All serial ports found:',
-                JSON.stringify(ports, null, 2)
-            );
+            console.log('[Electron] All serial ports found:', JSON.stringify(ports, null, 2));
 
             const filteredPorts = ports.filter(
                 (port) =>
@@ -463,10 +408,7 @@ app.on('ready', () => {
             );
 
             const processedPorts = filteredPorts.map((port) => {
-                if (
-                    process.platform === 'darwin' &&
-                    port.path.startsWith('/dev/tty.')
-                ) {
+                if (process.platform === 'darwin' && port.path.startsWith('/dev/tty.')) {
                     return {
                         ...port,
                         path: port.path.replace('/dev/tty.', '/dev/cu.'),

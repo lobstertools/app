@@ -1,12 +1,4 @@
-import {
-    Layout,
-    Typography,
-    Card,
-    Space,
-    Row,
-    Col,
-    theme as antdTheme,
-} from 'antd';
+import { Layout, Typography, Card, Space, Row, Col, theme as antdTheme } from 'antd';
 import { useSession } from '../../context/useSessionContext';
 import { StatusBadge } from '../device/StatusBadge';
 import { DeviceManagerModal } from '../device/DeviceManagerModal';
@@ -32,13 +24,7 @@ import { TestSessionModal } from '../session/TestSessionModal';
 /**
  * Inner component to hold the main layout and logic.
  */
-export const AppContent = ({
-    theme,
-    toggleTheme,
-}: {
-    theme: 'light' | 'dark';
-    toggleTheme: () => void;
-}) => {
+export const AppContent = ({ theme, toggleTheme }: { theme: 'light' | 'dark'; toggleTheme: () => void }) => {
     const { currentState } = useSession();
 
     const { token } = antdTheme.useToken();
@@ -81,29 +67,19 @@ export const AppContent = ({
                     <Space size={12} align="center">
                         <StatusBadge />
                         <DeviceMenu />
-                        <ApplicationSettingsMenu
-                            theme={theme}
-                            toggleTheme={toggleTheme}
-                        />
+                        <ApplicationSettingsMenu theme={theme} toggleTheme={toggleTheme} />
                     </Space>
                 </Header>
 
                 {/* Main Content Area */}
                 <Content style={{ padding: '24px', flex: 1 }}>
                     <div style={{ maxWidth: '1600px', margin: '0 auto' }}>
-                        <Space
-                            direction="vertical"
-                            size="large"
-                            style={{ width: '100%' }}
-                        >
+                        <Space direction="vertical" size="large" style={{ width: '100%' }}>
                             <Row gutter={[24, 24]}>
-                                {currentState === 'countdown' ? (
-                                    // Special layout for countdown: full width
+                                {currentState === 'armed' ? (
+                                    // Special layout for armed: full width
                                     <Col xs={24} lg={24}>
-                                        <Card
-                                            title="Session Configuration"
-                                            style={{ minHeight: '100%' }}
-                                        >
+                                        <Card title="Session Configuration" style={{ minHeight: '100%' }}>
                                             <SessionConfiguration />
                                         </Card>
                                     </Col>
@@ -111,18 +87,12 @@ export const AppContent = ({
                                     // Standard 50/50 layout
                                     <>
                                         <Col xs={24} lg={12}>
-                                            <Card
-                                                title="Session Configuration"
-                                                style={{ minHeight: '100%' }}
-                                            >
+                                            <Card title="Session Configuration" style={{ minHeight: '100%' }}>
                                                 <SessionConfiguration />
                                             </Card>
                                         </Col>
                                         <Col xs={24} lg={12}>
-                                            <Card
-                                                title="Reward Lock Code"
-                                                style={{ minHeight: '100%' }}
-                                            >
+                                            <Card title="Reward Lock Code" style={{ minHeight: '100%' }}>
                                                 <RewardDisplay />
                                             </Card>
                                         </Col>

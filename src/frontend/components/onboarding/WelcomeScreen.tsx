@@ -1,15 +1,4 @@
-import {
-    Button,
-    Divider,
-    Modal,
-    Space,
-    Typography,
-    theme as antdTheme,
-    Checkbox,
-    Steps,
-    Col,
-    Row,
-} from 'antd';
+import { Button, Divider, Modal, Space, Typography, theme as antdTheme, Checkbox, Steps, Col, Row } from 'antd';
 import {
     SafetyCertificateOutlined,
     RocketOutlined,
@@ -37,11 +26,7 @@ const WelcomeStep = () => {
             <Row gutter={24} align="middle">
                 {/* Left Column (Logo) */}
                 <Col flex="none">
-                    <img
-                        src={lobsterLogo}
-                        alt="Lobster Logo"
-                        style={{ width: 100, height: 'auto' }}
-                    />
+                    <img src={lobsterLogo} alt="Lobster Logo" style={{ width: 100, height: 'auto' }} />
                 </Col>
                 {/* Right Column (Text) */}
                 <Col flex="auto">
@@ -49,12 +34,8 @@ const WelcomeStep = () => {
                         <Title level={2} style={{ margin: 0 }}>
                             Welcome to Lobster
                         </Title>
-                        <Paragraph
-                            type="secondary"
-                            style={{ fontSize: 16, paddingTop: 4 }}
-                        >
-                            This app is the control center for a strict, DIY
-                            self-bondage system using a Wi-Fi-connected
+                        <Paragraph type="secondary" style={{ fontSize: 16, paddingTop: 4 }}>
+                            This app is the control center for a strict, DIY self-bondage system using a Wi-Fi-connected
                             <strong> MagLock</strong>.
                         </Paragraph>
                     </Space>
@@ -63,23 +44,19 @@ const WelcomeStep = () => {
             <Divider />
             <Title level={4}>Designed for Strictness</Title>
             <Paragraph>
-                This system is "strict" because it's designed to remove
-                loopholes. Cheating is not an option.
+                This system is "strict" because it's designed to remove loopholes. Cheating is not an option.
                 <ul>
                     <li>
-                        <strong>Reboot-as-Abort:</strong> If the device loses
-                        power (e.g., you unplug it) while a session is active,
-                        it's treated as an <strong>abort</strong>.
+                        <strong>Reboot-as-Abort:</strong> If the device loses power (e.g., you unplug it) while a
+                        session is active, it's treated as an <strong>abort</strong>.
                     </li>
                     <li>
-                        <strong>Strict Abort Logic:</strong> Aborting resets
-                        session streak, tracks the abort, and can apply a
-                        <strong> "time payback" penalty</strong> to your
+                        <strong>Strict Abort Logic:</strong> Aborting resets session streak, tracks the abort, and can
+                        apply a<strong> "time payback" penalty</strong> to your
                         <i> next</i> session.
                     </li>
                     <li>
-                        <strong>Persistent Stats:</strong> All stats are saved
-                        on the device itself.
+                        <strong>Persistent Stats:</strong> All stats are saved on the device itself.
                     </li>
                 </ul>
             </Paragraph>
@@ -109,8 +86,7 @@ const HardwareStep = () => {
                 <strong> hardware</strong>.
             </Paragraph>
             <Paragraph>
-                Get the complete parts list, build guides, and firmware at our
-                website:
+                Get the complete parts list, build guides, and firmware at our website:
                 <br />
                 <Button
                     type="link"
@@ -135,16 +111,12 @@ const HardwareStep = () => {
                 <Col span={8}>
                     <Space direction="vertical" style={blockStyle}>
                         <Title level={5} style={{ marginTop: 0 }}>
-                            <ToolOutlined
-                                style={{ color: token.colorPrimary }}
-                            />{' '}
-                            1. Build Hardware
+                            <ToolOutlined style={{ color: token.colorPrimary }} /> 1. Build Hardware
                         </Title>
                         <Paragraph type="secondary">
                             Follow the website guide to assemble your
                             <strong> MagLock</strong> and the
-                            <strong> ESP32 Controller</strong>. This requires
-                            basic soldering and wiring.
+                            <strong> ESP32 Controller</strong>. This requires basic soldering and wiring.
                         </Paragraph>
                     </Space>
                 </Col>
@@ -153,15 +125,11 @@ const HardwareStep = () => {
                 <Col span={8}>
                     <Space direction="vertical" style={blockStyle}>
                         <Title level={5} style={{ marginTop: 0 }}>
-                            <DownloadOutlined
-                                style={{ color: token.colorPrimary }}
-                            />{' '}
-                            2. Download Firmware
+                            <DownloadOutlined style={{ color: token.colorPrimary }} /> 2. Download Firmware
                         </Title>
                         <Paragraph type="secondary">
                             From the same website, download the latest
-                            <strong> firmware</strong> (a <code>.bin</code>{' '}
-                            file) to your computer.
+                            <strong> firmware</strong> (a <code>.bin</code> file) to your computer.
                         </Paragraph>
                     </Space>
                 </Col>
@@ -175,18 +143,13 @@ const HardwareStep = () => {
                         }}
                     >
                         <Title level={5} style={{ marginTop: 0 }}>
-                            <UsbOutlined
-                                style={{ color: token.colorPrimary }}
-                            />{' '}
-                            3. Flash (In This App)
+                            <UsbOutlined style={{ color: token.colorPrimary }} /> 3. Flash (In This App)
                         </Title>
                         <Paragraph type="secondary">
-                            Plug your built controller into this computer via
-                            USB.
+                            Plug your built controller into this computer via USB.
                             <br />
-                            Open the <strong>Device Manager</strong> (⚙️ icon)
-                            &gt; <strong>Device Flasher</strong> tab to upload
-                            the firmware.
+                            Open the <strong>Device Manager</strong> (⚙️ icon) &gt; <strong>Device Flasher</strong> tab
+                            to upload the firmware.
                         </Paragraph>
                     </Space>
                 </Col>
@@ -202,22 +165,17 @@ const RewardStep = () => {
         <Row gutter={[32, 16]} align="top" style={{ width: '100%' }}>
             {/* Left Column: Explanation */}
             <Col span={14}>
-                <Space
-                    direction="vertical"
-                    size="middle"
-                    style={{ width: '100%' }}
-                >
+                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                     <Title level={4} style={{ margin: 0 }}>
                         The Reward Lock
                     </Title>
                     <Paragraph>
-                        The Lobster system is built around a powerful incentive:
-                        the
+                        The Lobster system is built around a powerful incentive: the
                         <strong> Reward Lock</strong>.
                     </Paragraph>
                     <Paragraph>
-                        You lock away something you <strong>want</strong> (like
-                        keys or a treat) in a separate box using this specific
+                        You lock away something you <strong>want</strong> (like keys or a treat) in a separate box using
+                        this specific
                         <strong> Master Lock 1500iD Speed Dial™</strong>.
                     </Paragraph>
 
@@ -239,8 +197,7 @@ const RewardStep = () => {
                             </Text>
                         </Col>
                         <Col flex="auto">
-                            <Text strong>Generate Code:</Text> The{' '}
-                            <strong>controller</strong> generates a new, random
+                            <Text strong>Generate Code:</Text> The <strong>controller</strong> generates a new, random
                             directional code.
                         </Col>
                     </Row>
@@ -259,9 +216,8 @@ const RewardStep = () => {
                             </Text>
                         </Col>
                         <Col flex="auto">
-                            <Text strong>Program Lock:</Text> You manually{' '}
-                            <strong>program this code</strong> into your Master
-                            Lock and use it to lock away your reward.
+                            <Text strong>Program Lock:</Text> You manually <strong>program this code</strong> into your
+                            Master Lock and use it to lock away your reward.
                         </Col>
                     </Row>
 
@@ -279,8 +235,7 @@ const RewardStep = () => {
                             </Text>
                         </Col>
                         <Col flex="auto">
-                            <Text strong>Start Session:</Text> The app hides the
-                            code while the session is active.
+                            <Text strong>Start Session:</Text> The app hides the code while the session is active.
                         </Col>
                     </Row>
 
@@ -300,8 +255,7 @@ const RewardStep = () => {
                         <Col flex="auto">
                             <Text strong>On Success:</Text>
                             <Paragraph style={{ margin: 0 }} type="secondary">
-                                The combination is revealed{' '}
-                                <strong>immediately</strong>.
+                                The combination is revealed <strong>immediately</strong>.
                             </Paragraph>
                         </Col>
                     </Row>
@@ -320,8 +274,7 @@ const RewardStep = () => {
                         <Col flex="auto">
                             <Text strong>On Abort:</Text>
                             <Paragraph style={{ margin: 0 }} type="secondary">
-                                The combination is <strong>delayed</strong> by a
-                                penalty time (e.g., 2 hours).
+                                The combination is <strong>delayed</strong> by a penalty time (e.g., 2 hours).
                             </Paragraph>
                         </Col>
                     </Row>
@@ -355,26 +308,19 @@ const SafetyStep = () => {
         <Row gutter={[32, 16]} align="top" style={{ width: '100%' }}>
             {/* Left Column: Explanation */}
             <Col span={14}>
-                <Space
-                    direction="vertical"
-                    style={{ width: '100%' }}
-                    size="middle"
-                >
+                <Space direction="vertical" style={{ width: '100%' }} size="middle">
                     <Title level={4} style={{ margin: 0 }}>
                         Your Safety: The Abort Pedal
                     </Title>
                     <Paragraph>
-                        Despite its strictness, your safety is the #1 priority.
-                        The hardware instructions include building a physical
-                        <strong> "Abort Pedal"</strong> (a foot pedal or large
-                        button).
+                        Despite its strictness, your safety is the #1 priority. The hardware instructions include
+                        building a physical
+                        <strong> "Abort Pedal"</strong> (a foot pedal or large button).
                     </Paragraph>
                     <Paragraph>
-                        This pedal is your{' '}
-                        <strong>emergency safety release</strong>. It connects
-                        directly to the controller and will
-                        <strong> immediately</strong> cut power to the MagLock,
-                        even if your Wi-Fi or computer fails.
+                        This pedal is your <strong>emergency safety release</strong>. It connects directly to the
+                        controller and will
+                        <strong> immediately</strong> cut power to the MagLock, even if your Wi-Fi or computer fails.
                     </Paragraph>
 
                     <Divider style={{ margin: '12px 0' }} />
@@ -393,11 +339,9 @@ const SafetyStep = () => {
                         <Col flex="auto">
                             <Text strong>This is still an Abort</Text>
                             <Paragraph style={{ margin: 0 }} type="secondary">
-                                Using the pedal follows the same strict logic
-                                (your reward will be delayed), but it guarantees
-                                you can
-                                <strong> always</strong> get out in an
-                                emergency.
+                                Using the pedal follows the same strict logic (your reward will be delayed), but it
+                                guarantees you can
+                                <strong> always</strong> get out in an emergency.
                             </Paragraph>
                         </Col>
                     </Row>
@@ -464,12 +408,7 @@ const steps = [
  * A multi-step welcome modal that explains the app's purpose and features.
  */
 export const WelcomeScreen = () => {
-    const {
-        showWelcomeOnStartup,
-        setShowWelcomeOnStartup,
-        isWelcomeGuideOpen,
-        setWelcomeGuideOpen,
-    } = useAppRuntime();
+    const { showWelcomeOnStartup, setShowWelcomeOnStartup, isWelcomeGuideOpen, setWelcomeGuideOpen } = useAppRuntime();
     const { openDeviceModal } = useDeviceManager();
 
     const [dontShowAgain, setDontShowAgain] = useState(true);
@@ -498,41 +437,24 @@ export const WelcomeScreen = () => {
 
     // --- Multi-Step Footer ---
     const modalFooter = (
-        <Space
-            style={{ width: '100%', justifyContent: 'space-between' }}
-            align="center"
-        >
-            <Checkbox
-                checked={dontShowAgain}
-                onChange={(e) => setDontShowAgain(e.target.checked)}
-            >
+        <Space style={{ width: '100%', justifyContent: 'space-between' }} align="center">
+            <Checkbox checked={dontShowAgain} onChange={(e) => setDontShowAgain(e.target.checked)}>
                 Don't show this again
             </Checkbox>
 
             <Space>
                 {currentStep > 0 && (
-                    <Button
-                        size="large"
-                        onClick={() => setCurrentStep(currentStep - 1)}
-                    >
+                    <Button size="large" onClick={() => setCurrentStep(currentStep - 1)}>
                         Back
                     </Button>
                 )}
                 {currentStep < steps.length - 1 && (
-                    <Button
-                        type="primary"
-                        size="large"
-                        onClick={() => setCurrentStep(currentStep + 1)}
-                    >
+                    <Button type="primary" size="large" onClick={() => setCurrentStep(currentStep + 1)}>
                         Next
                     </Button>
                 )}
                 {currentStep === steps.length - 1 && (
-                    <Button
-                        type="primary"
-                        size="large"
-                        onClick={handleGetStarted}
-                    >
+                    <Button type="primary" size="large" onClick={handleGetStarted}>
                         Get Started
                     </Button>
                 )}
@@ -541,13 +463,7 @@ export const WelcomeScreen = () => {
     );
 
     return (
-        <Modal
-            open={isOpen}
-            closable={true}
-            onCancel={handleClose}
-            footer={modalFooter}
-            width="66%"
-        >
+        <Modal open={isOpen} closable={true} onCancel={handleClose} footer={modalFooter} width="66%">
             {/* --- Steps and Content Area --- */}
             <Steps
                 current={currentStep}

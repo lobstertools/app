@@ -48,16 +48,12 @@ function App() {
     // State for managing light/dark theme
     const [theme, setTheme] = useState<'light' | 'dark'>(() => {
         const savedTheme = localStorage.getItem('app-theme');
-        return savedTheme === 'dark' || savedTheme === 'light'
-            ? savedTheme
-            : 'dark';
+        return savedTheme === 'dark' || savedTheme === 'light' ? savedTheme : 'dark';
     });
 
     // Function to toggle theme
     const toggleTheme = () => {
-        setTheme((currentTheme) =>
-            currentTheme === 'light' ? 'dark' : 'light'
-        );
+        setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'));
     };
 
     // Save theme changes to localStorage
@@ -66,8 +62,7 @@ function App() {
     }, [theme]);
 
     // Select the correct Ant Design theme algorithm
-    const antdAlgorithm =
-        theme === 'dark' ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm;
+    const antdAlgorithm = theme === 'dark' ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm;
 
     return (
         <>
@@ -77,10 +72,7 @@ function App() {
                     <AppRuntimeProvider>
                         <DeviceManagerProvider>
                             <SessionProvider>
-                                <AppContent
-                                    theme={theme}
-                                    toggleTheme={toggleTheme}
-                                />
+                                <AppContent theme={theme} toggleTheme={toggleTheme} />
                             </SessionProvider>
                         </DeviceManagerProvider>
                     </AppRuntimeProvider>

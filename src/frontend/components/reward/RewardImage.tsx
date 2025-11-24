@@ -48,12 +48,7 @@ export const RewardImage = ({ code }: { code: string }) => {
 
         return (
             <g key={index} transform={`translate(${x}, ${y})`}>
-                <line
-                    {...shape.stem}
-                    stroke={arrowColor}
-                    strokeWidth={stemWidth}
-                    strokeLinecap="butt"
-                />
+                <line {...shape.stem} stroke={arrowColor} strokeWidth={stemWidth} strokeLinecap="butt" />
                 <polygon {...shape.head} fill={arrowColor} />
             </g>
         );

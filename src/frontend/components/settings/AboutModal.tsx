@@ -1,10 +1,4 @@
-import {
-    InfoCircleOutlined,
-    GlobalOutlined,
-    GithubOutlined,
-    BookOutlined,
-    RedditOutlined,
-} from '@ant-design/icons';
+import { InfoCircleOutlined, GlobalOutlined, GithubOutlined, BookOutlined, RedditOutlined } from '@ant-design/icons';
 import { Modal, Row, Col, Button, Space, Divider, Typography } from 'antd';
 import { useAppRuntime } from '../../context/useAppRuntime';
 
@@ -39,11 +33,7 @@ export const AboutAppModal = () => {
                 </Button>
             }
         >
-            <Space
-                direction="vertical"
-                align="center"
-                style={{ width: '100%', padding: '16px 0' }}
-            >
+            <Space direction="vertical" align="center" style={{ width: '100%', padding: '16px 0' }}>
                 {/* Logo and Title */}
                 <Row align="middle" gutter={16}>
                     <Col>
@@ -68,11 +58,7 @@ export const AboutAppModal = () => {
                 <Divider style={{ margin: '16px 0' }} />
 
                 {/* Links */}
-                <Space
-                    direction="vertical"
-                    style={{ width: '100%' }}
-                    size="middle"
-                >
+                <Space direction="vertical" style={{ width: '100%' }} size="middle">
                     <Button
                         href="https://lobstertools.github.io"
                         target="_blank"

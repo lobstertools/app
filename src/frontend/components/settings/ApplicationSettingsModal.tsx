@@ -1,12 +1,4 @@
-import {
-    Modal,
-    Card,
-    Typography,
-    Form,
-    Select,
-    theme as antdTheme,
-    Button,
-} from 'antd';
+import { Modal, Card, Typography, Form, Select, theme as antdTheme, Button } from 'antd';
 import { useAppRuntime } from '../../context/useAppRuntime';
 import { useEffect, useMemo } from 'react';
 
@@ -111,12 +103,7 @@ const getLocaleName = (code: string): string => {
  */
 export const ApplicationSettingsModal = () => {
     const { token } = antdTheme.useToken();
-    const {
-        isAppSettingsModalOpen,
-        setAppSettingsModalOpen,
-        locale,
-        setLocale,
-    } = useAppRuntime();
+    const { isAppSettingsModalOpen, setAppSettingsModalOpen, locale, setLocale } = useAppRuntime();
     const [form] = Form.useForm();
 
     // Generate the options list.
@@ -171,10 +158,7 @@ export const ApplicationSettingsModal = () => {
                 </Button>,
             ]}
         >
-            <Text type="secondary">
-                Manage application-wide preferences. Changes are saved
-                automatically.
-            </Text>
+            <Text type="secondary">Manage application-wide preferences. Changes are saved automatically.</Text>
             <Card
                 size="small"
                 style={{
@@ -199,9 +183,7 @@ export const ApplicationSettingsModal = () => {
                             showSearch
                             placeholder="Select a regional setting"
                             filterOption={(input, option) =>
-                                (option?.label ?? '')
-                                    .toLowerCase()
-                                    .includes(input.toLowerCase())
+                                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
                             }
                         />
                     </Form.Item>

@@ -38,13 +38,11 @@ export const AppRuntimeProvider = ({ children }: { children: ReactNode }) => {
     }
 
     // --- Persistent Welcome Screen State ---
-    const [showWelcomeOnStartup, setShowWelcomeOnStartupState] = useState(
-        () => {
-            const saved = localStorage.getItem(WELCOME_STORAGE_KEY); // Use constant
-            // Default to 'true' if it's not found
-            return saved === null ? true : JSON.parse(saved);
-        }
-    );
+    const [showWelcomeOnStartup, setShowWelcomeOnStartupState] = useState(() => {
+        const saved = localStorage.getItem(WELCOME_STORAGE_KEY); // Use constant
+        // Default to 'true' if it's not found
+        return saved === null ? true : JSON.parse(saved);
+    });
 
     // --- Temporary Modal State ---
     const [isWelcomeGuideOpen, setWelcomeGuideOpen] = useState(false);
@@ -81,9 +79,7 @@ export const AppRuntimeProvider = ({ children }: { children: ReactNode }) => {
         // Check for the Electron preload API on mount
         if (window.api) {
             setIsElectron(true);
-            console.log(
-                'Frontend (Electron): waiting for backend-ready signal...'
-            );
+            console.log('Frontend (Electron): waiting for backend-ready signal...');
 
             // Existing Backend Ready Listener
             removeBackendListener = window.api.onBackendReady(() => {
@@ -98,9 +94,7 @@ export const AppRuntimeProvider = ({ children }: { children: ReactNode }) => {
             });
         } else {
             // BROWSER MODE logic...
-            console.log(
-                'Frontend (Browser): Standalone mode. Assuming backend is ready.'
-            );
+            console.log('Frontend (Browser): Standalone mode. Assuming backend is ready.');
             setIsElectron(false);
             setIsBackendReady(true);
         }
@@ -133,9 +127,5 @@ export const AppRuntimeProvider = ({ children }: { children: ReactNode }) => {
         setAboutModalOpen,
     };
 
-    return (
-        <AppRuntimeContext.Provider value={value}>
-            {children}
-        </AppRuntimeContext.Provider>
-    );
+    return <AppRuntimeContext.Provider value={value}>{children}</AppRuntimeContext.Provider>;
 };

@@ -17,13 +17,9 @@ export const BuildWarningBanner: React.FC = () => {
 
     // 3. Check for non-production states
     // We assume 'release' is the only production state.
-    const isAppNonProd =
-        appBuild === 'beta' || appBuild === 'debug' || appBuild === 'mock';
+    const isAppNonProd = appBuild === 'beta' || appBuild === 'debug' || appBuild === 'mock';
 
-    const isFirmwareNonProd =
-        firmwareBuild === 'beta' ||
-        firmwareBuild === 'debug' ||
-        firmwareBuild === 'mock';
+    const isFirmwareNonProd = firmwareBuild === 'beta' || firmwareBuild === 'debug' || firmwareBuild === 'mock';
 
     const showBanner = isAppNonProd || isFirmwareNonProd;
 
@@ -62,21 +58,12 @@ export const BuildWarningBanner: React.FC = () => {
 
     const description = (
         <span>
-            You are using a <strong>{versionString}</strong>. This is unfinished
-            software currently in testing and not officially released. Please
-            use with caution.
+            You are using a <strong>{versionString}</strong>. This is unfinished software currently in testing and not
+            officially released. Please use with caution.
         </span>
     );
 
-    return (
-        <Alert
-            message={title}
-            description={description}
-            type="warning"
-            showIcon
-            banner
-        />
-    );
+    return <Alert message={title} description={description} type="warning" showIcon banner />;
 };
 
 /**

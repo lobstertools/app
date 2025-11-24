@@ -8,8 +8,7 @@ import { useDeviceManager } from '../../context/useDeviceManager';
 export const DeviceLogModal = () => {
     const { token } = antdTheme.useToken();
 
-    const { isLogModalOpen, logContent, closeLogModal, fetchDeviceLogs } =
-        useDeviceManager();
+    const { isLogModalOpen, logContent, closeLogModal, fetchDeviceLogs } = useDeviceManager();
 
     return (
         <Modal

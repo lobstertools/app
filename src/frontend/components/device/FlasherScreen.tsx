@@ -1,18 +1,6 @@
 import { useState } from 'react';
-import {
-    UploadOutlined,
-    WarningOutlined,
-    ArrowLeftOutlined,
-} from '@ant-design/icons';
-import {
-    Typography,
-    Button,
-    Card,
-    Space,
-    theme as antdTheme,
-    Progress,
-    Alert,
-} from 'antd';
+import { UploadOutlined, WarningOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { Typography, Button, Card, Space, theme as antdTheme, Progress, Alert } from 'antd';
 
 import { useDeviceManager } from '../../context/useDeviceManager';
 import { SerialPortInfo } from '../../types/electron';
@@ -32,19 +20,12 @@ interface FlasherScreenProps {
  * A self-contained form component for selecting firmware
  * and flashing a device on a specific port.
  */
-export const FlasherScreen = ({
-    port,
-    onSuccess,
-    onCancel,
-}: FlasherScreenProps) => {
+export const FlasherScreen = ({ port, onSuccess, onCancel }: FlasherScreenProps) => {
     const { token } = antdTheme.useToken();
-    const { isFlashing, flashProgress, selectFirmwareFile, flashDevice } =
-        useDeviceManager();
+    const { isFlashing, flashProgress, selectFirmwareFile, flashDevice } = useDeviceManager();
 
     const [firmwarePath, setFirmwarePath] = useState<string | null>(null);
-    const [flashScreenError, setFlashScreenError] = useState<string | null>(
-        null
-    );
+    const [flashScreenError, setFlashScreenError] = useState<string | null>(null);
 
     /**
      * Handles selection of the firmware file.
@@ -71,9 +52,7 @@ export const FlasherScreen = ({
             onSuccess(); // Report success to the parent modal
         } catch (err: any) {
             // Catch the error thrown from the context and display it
-            setFlashScreenError(
-                err.message || 'An unknown flash error occurred.'
-            );
+            setFlashScreenError(err.message || 'An unknown flash error occurred.');
         }
     };
 
@@ -94,9 +73,7 @@ export const FlasherScreen = ({
                 Back to Device List
             </Button>
 
-            <Text type="secondary">
-                Select a firmware .bin file to upload to the device.
-            </Text>
+            <Text type="secondary">Select a firmware .bin file to upload to the device.</Text>
 
             <Card
                 size="small"
@@ -108,11 +85,7 @@ export const FlasherScreen = ({
             >
                 <Space direction="vertical" style={{ width: '100%' }}>
                     <Space.Compact style={{ width: '100%' }}>
-                        <Button
-                            icon={<UploadOutlined />}
-                            onClick={handleSelectFirmware}
-                            disabled={isFlashing}
-                        >
+                        <Button icon={<UploadOutlined />} onClick={handleSelectFirmware} disabled={isFlashing}>
                             Select Firmware
                         </Button>
                         <Text
@@ -130,13 +103,7 @@ export const FlasherScreen = ({
                         </Text>
                     </Space.Compact>
 
-                    {isFlashing && (
-                        <Progress
-                            percent={flashProgress}
-                            status="active"
-                            strokeColor={token.colorInfo}
-                        />
-                    )}
+                    {isFlashing && <Progress percent={flashProgress} status="active" strokeColor={token.colorInfo} />}
 
                     {flashScreenError && (
                         <Alert
