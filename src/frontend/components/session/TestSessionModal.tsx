@@ -52,13 +52,7 @@ export const TestSessionModal = () => {
                     Press <Text code>b</Text> to emergency stop
                 </Text>
 
-                <Button
-                    danger
-                    size="large"
-                    type="primary"
-                    onClick={abortSession}
-                    block
-                >
+                <Button danger size="large" type="primary" onClick={abortSession} block>
                     Stop Test Now
                 </Button>
             </Space>

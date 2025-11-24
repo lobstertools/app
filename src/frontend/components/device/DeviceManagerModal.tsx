@@ -1,25 +1,18 @@
 import { useDeviceManager } from '../../context/useDeviceManager';
 import { useAppRuntime } from '../../context/useAppRuntime';
-import { green } from '@ant-design/colors';
+import { green, blue } from '@ant-design/colors';
 import {
     CheckCircleOutlined,
     SearchOutlined,
     SettingOutlined,
     UsbOutlined,
     ArrowLeftOutlined,
+    WifiOutlined,
+    EnvironmentOutlined,
+    ClockCircleOutlined,
+    TagOutlined,
 } from '@ant-design/icons';
-import {
-    Typography,
-    Button,
-    Card,
-    Space,
-    Modal,
-    List,
-    theme as antdTheme,
-    Tabs,
-    Empty,
-    message,
-} from 'antd';
+import { Typography, Button, Card, Space, Modal, List, theme as antdTheme, Tabs, Empty, message, Tag } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { DiscoveredDevice } from '../../../types';
 import { ProvisionDeviceForm } from './ProvisionDeviceForm';
@@ -51,17 +44,11 @@ export const DeviceManagerModal = () => {
     const [messageApi, contextHolder] = message.useMessage();
 
     // --- State for "List-Detail" flow ---
-    const [provisioningDevice, setProvisioningDevice] =
-        useState<DiscoveredDevice | null>(null);
-    const [flashingPort, setFlashingPort] = useState<SerialPortInfo | null>(
-        null
-    );
+    const [provisioningDevice, setProvisioningDevice] = useState<DiscoveredDevice | null>(null);
+    const [flashingPort, setFlashingPort] = useState<SerialPortInfo | null>(null);
 
     // Filter devices
-    const readyDevices = useMemo(
-        () => discoveredDevices.filter((d) => d.state === 'ready'),
-        [discoveredDevices]
-    );
+    const readyDevices = useMemo(() => discoveredDevices.filter((d) => d.state === 'ready'), [discoveredDevices]);
     const newDevices = useMemo(
         () => discoveredDevices.filter((d) => d.state === 'new_unprovisioned'),
         [discoveredDevices]
@@ -107,9 +94,7 @@ export const DeviceManagerModal = () => {
      * Callback for when the provisioning form is successfully submitted.
      */
     const handleProvisionSuccess = () => {
-        messageApi.success(
-            `Device "${provisioningDevice?.name}" provisioned successfully. It will now reboot.`
-        );
+        messageApi.success(`Device "${provisioningDevice?.name}" provisioned successfully. It will now reboot.`);
         setProvisioningDevice(null); // Back to list
     };
 
@@ -122,40 +107,81 @@ export const DeviceManagerModal = () => {
     };
 
     // --- renderDeviceList ---
-    const renderDeviceList = (
-        devices: DiscoveredDevice[],
-        isReadyList: boolean
-    ) => {
+    const renderDeviceList = (devices: DiscoveredDevice[], isReadyList: boolean) => {
         return (
             <List
                 loading={isScanning}
                 dataSource={devices}
                 locale={{
-                    emptyText: (
-                        <Empty description="No devices found. Click 'Scan' to search." />
-                    ),
+                    emptyText: <Empty description="No devices found. Click 'Scan' to search." />,
                 }}
                 renderItem={(device) => {
+                    // Detailed description block
                     const descriptionContent = (
-                        <Text type="secondary" code>
-                            {device.id}
-                        </Text>
+                        <Space direction="vertical" size={1} style={{ marginTop: 4 }}>
+                            {/* ID Row */}
+                            <Space size="small">
+                                <TagOutlined
+                                    style={{
+                                        fontSize: '12px',
+                                        color: token.colorTextSecondary,
+                                    }}
+                                />
+                                <Text type="secondary" style={{ fontSize: '12px' }}>
+                                    ID:{' '}
+                                    <Text code style={{ fontSize: '12px' }}>
+                                        {device.id}
+                                    </Text>
+                                </Text>
+                            </Space>
+
+                            {/* Address Row */}
+                            <Space size="small">
+                                {isReadyList ? (
+                                    <WifiOutlined
+                                        style={{
+                                            fontSize: '12px',
+                                            color: token.colorTextSecondary,
+                                        }}
+                                    />
+                                ) : (
+                                    <EnvironmentOutlined
+                                        style={{
+                                            fontSize: '12px',
+                                            color: token.colorTextSecondary,
+                                        }}
+                                    />
+                                )}
+                                <Text type="secondary" style={{ fontSize: '12px' }}>
+                                    {isReadyList ? 'IP: ' : 'BLE: '}
+                                    {device.address}
+                                    {isReadyList ? `:${device.port}` : ''}
+                                </Text>
+                            </Space>
+
+                            {/* Timestamp Row */}
+                            <Space size="small">
+                                <ClockCircleOutlined
+                                    style={{
+                                        fontSize: '12px',
+                                        color: token.colorTextSecondary,
+                                    }}
+                                />
+                                <Text type="secondary" style={{ fontSize: '12px' }}>
+                                    Last Seen: {new Date(device.lastSeenTimestamp).toLocaleTimeString()}
+                                </Text>
+                            </Space>
+                        </Space>
                     );
 
                     const actions = isReadyList
                         ? [
-                              <Button
-                                  type="primary"
-                                  onClick={() => selectDevice(device)}
-                              >
+                              <Button type="primary" onClick={() => selectDevice(device)}>
                                   Select
                               </Button>,
                           ]
                         : [
-                              <Button
-                                  type="primary"
-                                  onClick={() => setProvisioningDevice(device)}
-                              >
+                              <Button type="primary" onClick={() => setProvisioningDevice(device)}>
                                   Provision
                               </Button>,
                           ];
@@ -166,13 +192,31 @@ export const DeviceManagerModal = () => {
                                 avatar={
                                     isReadyList ? (
                                         <CheckCircleOutlined
-                                            style={{ color: green[5] }}
+                                            style={{
+                                                fontSize: '24px',
+                                                color: green[5],
+                                                marginTop: 8,
+                                            }}
                                         />
                                     ) : (
-                                        <UsbOutlined />
+                                        <SettingOutlined
+                                            style={{
+                                                fontSize: '24px',
+                                                color: blue[5],
+                                                marginTop: 8,
+                                            }}
+                                        />
                                     )
                                 }
-                                title={device.name}
+                                title={
+                                    <Space>
+                                        <Text strong style={{ fontSize: '16px' }}>
+                                            {device.name}
+                                        </Text>
+                                        {isReadyList && <Tag color="success">Ready</Tag>}
+                                        {!isReadyList && <Tag color="processing">Setup Mode</Tag>}
+                                    </Space>
+                                }
                                 description={descriptionContent}
                             />
                         </List.Item>
@@ -189,29 +233,29 @@ export const DeviceManagerModal = () => {
                 loading={isScanningPorts}
                 dataSource={serialPorts}
                 locale={{
-                    emptyText: (
-                        <Empty description="No serial ports found. Click 'Scan' to search." />
-                    ),
+                    emptyText: <Empty description="No serial ports found. Click 'Scan' to search." />,
                 }}
                 renderItem={(port) => (
                     <List.Item
                         actions={[
-                            <Button
-                                type="primary"
-                                onClick={() => setFlashingPort(port)}
-                            >
+                            <Button type="primary" onClick={() => setFlashingPort(port)}>
                                 Flash
                             </Button>,
                         ]}
                     >
                         <List.Item.Meta
-                            avatar={<UsbOutlined />}
-                            title={port.path}
+                            avatar={<UsbOutlined style={{ fontSize: '24px', marginTop: 8 }} />}
+                            title={<Text strong>{port.path}</Text>}
                             description={
-                                <Text type="secondary" code>
-                                    {port.manufacturer || 'N/A'} (Vendor:{' '}
-                                    {port.vendorId}, Product: {port.productId})
-                                </Text>
+                                <Space direction="vertical" size={0}>
+                                    <Text type="secondary">Manufacturer: {port.manufacturer || 'Unknown'}</Text>
+                                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                                        Vendor ID: <Text code>{port.vendorId || 'N/A'}</Text>
+                                    </Text>
+                                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                                        Product ID: <Text code>{port.productId || 'N/A'}</Text>
+                                    </Text>
+                                </Space>
                             }
                         />
                     </List.Item>
@@ -295,9 +339,7 @@ export const DeviceManagerModal = () => {
                 >
                     Back to Device List
                 </Button>
-                <Text type="secondary">
-                    Enter the Wi-Fi credentials and device settings.
-                </Text>
+                <Text type="secondary">Enter the Wi-Fi credentials and device settings.</Text>
                 <Card
                     size="small"
                     style={{
@@ -306,10 +348,7 @@ export const DeviceManagerModal = () => {
                         marginTop: 12,
                     }}
                 >
-                    <ProvisionDeviceForm
-                        device={provisioningDevice}
-                        onSuccess={handleProvisionSuccess}
-                    />
+                    <ProvisionDeviceForm device={provisioningDevice} onSuccess={handleProvisionSuccess} />
                 </Card>
             </div>
         );

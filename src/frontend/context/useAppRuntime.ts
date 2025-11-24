@@ -21,9 +21,7 @@ export interface AppRuntimeContextState {
     setLocale: (locale: string) => void;
 }
 
-export const AppRuntimeContext = createContext<
-    AppRuntimeContextState | undefined
->(undefined);
+export const AppRuntimeContext = createContext<AppRuntimeContextState | undefined>(undefined);
 
 /**
  * Provides context on the app's runtime (Electron vs. Browser)
@@ -31,9 +29,6 @@ export const AppRuntimeContext = createContext<
  */
 export const useAppRuntime = () => {
     const ctx = useContext(AppRuntimeContext);
-    if (!ctx)
-        throw new Error(
-            'useAppRuntime must be used within an AppRuntimeProvider'
-        );
+    if (!ctx) throw new Error('useAppRuntime must be used within an AppRuntimeProvider');
     return ctx;
 };

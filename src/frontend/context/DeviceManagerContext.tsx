@@ -2,22 +2,11 @@ import { ReactNode, useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { notification } from 'antd';
 
-import {
-    DiscoveredDevice,
-    ActiveDevice,
-    ConnectionHealth,
-    DeviceProvisioningData,
-} from '../../types';
+import { DiscoveredDevice, DeviceDetails, ConnectionHealth, DeviceProvisioningData } from '../../types';
 import { apiClient } from '../lib/apiClient';
 import { SerialPortInfo } from '../types/electron';
 import { useAppRuntime } from './useAppRuntime';
-import {
-    DeviceHealthResponse,
-    DeviceManagerContext,
-    DeviceManagerContextState,
-} from './useDeviceManager';
-
-type DeviceDetailsResponse = ActiveDevice;
+import { DeviceHealthResponse, DeviceManagerContext, DeviceManagerContextState } from './useDeviceManager';
 
 // Initial state for the new ConnectionHealth (2-link version)
 const INITIAL_HEALTH: ConnectionHealth = {
@@ -29,27 +18,18 @@ const INITIAL_HEALTH: ConnectionHealth = {
  * Main provider component. Wraps the application to provide global state
  * and logic for discovering, provisioning, and interacting with devices.
  */
-export const DeviceManagerProvider = ({
-    children,
-}: {
-    children: ReactNode;
-}) => {
+export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => {
     // This is the one place we consume AppRuntimeContext
     const { isBackendReady, isElectron } = useAppRuntime();
 
-    const [connectionHealth, setConnectionHealth] =
-        useState<ConnectionHealth>(INITIAL_HEALTH);
+    const [connectionHealth, setConnectionHealth] = useState<ConnectionHealth>(INITIAL_HEALTH);
 
-    const [activeDevice, setActiveDevice] = useState<ActiveDevice | null>(
-        () => {
-            const savedDevice = localStorage.getItem('lobster-active-device');
-            return savedDevice ? JSON.parse(savedDevice) : null;
-        }
-    );
+    const [activeDevice, setActiveDevice] = useState<DeviceDetails | null>(() => {
+        const savedDevice = localStorage.getItem('lobster-active-device');
+        return savedDevice ? JSON.parse(savedDevice) : null;
+    });
 
-    const [discoveredDevices, setDiscoveredDevices] = useState<
-        DiscoveredDevice[]
-    >([]);
+    const [discoveredDevices, setDiscoveredDevices] = useState<DiscoveredDevice[]>([]);
     const [isDeviceModalOpen, setIsDeviceModalOpen] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
     const [isProvisioning, setIsProvisioning] = useState(false);
@@ -58,8 +38,7 @@ export const DeviceManagerProvider = ({
     const [logContent, setLogContent] = useState('');
 
     // --- State for new Device Settings Modal ---
-    const [isDeviceSettingsModalOpen, setIsDeviceSettingsModalOpen] =
-        useState(false);
+    const [isDeviceSettingsModalOpen, setIsDeviceSettingsModalOpen] = useState(false);
     const [isUpdatingWifi, setIsUpdatingWifi] = useState(false);
 
     // --- State for Flashing ---
@@ -79,8 +58,7 @@ export const DeviceManagerProvider = ({
             setIsScanning(true);
         }
         try {
-            const response =
-                await apiClient.get<DiscoveredDevice[]>('/devices');
+            const response = await apiClient.get<DiscoveredDevice[]>('/devices');
             // Since the backend handles cache, this returns the current "Truth"
             setDiscoveredDevices(response.data);
         } catch (err) {
@@ -105,23 +83,16 @@ export const DeviceManagerProvider = ({
         async (deviceId: string, data: DeviceProvisioningData) => {
             setIsProvisioning(true);
             try {
-                const response = await apiClient.post(
-                    `/devices/${deviceId}/provision`,
-                    data
-                );
+                const response = await apiClient.post(`/devices/${deviceId}/provision`, data);
                 notification.success({
                     message: 'Provisioning Sent!',
-                    description:
-                        response.data?.message ||
-                        'Device should reboot and appear on the network.',
+                    description: response.data?.message || 'Device should reboot and appear on the network.',
                 });
                 scanForDevices(); // Refresh the list
                 setIsProvisioning(false);
                 return true;
             } catch (err: any) {
-                const msg =
-                    err.response?.data?.message ||
-                    'Failed to provision device.';
+                const msg = err.response?.data?.message || 'Failed to provision device.';
                 notification.error({
                     message: 'Provisioning Failed',
                     description: msg,
@@ -140,31 +111,26 @@ export const DeviceManagerProvider = ({
      * @param pass The new Wi-Fi password.
      * @returns True on success, false on failure.
      */
-    const updateWifi = useCallback(
-        async (deviceId: string, ssid: string, pass: string) => {
-            setIsUpdatingWifi(true);
-            try {
-                await apiClient.post(`/devices/${deviceId}/update-wifi`, {
-                    ssid,
-                    pass,
-                });
-                // Notification is handled by the modal on success
-                return true;
-            } catch (err: any) {
-                const msg =
-                    err.response?.data?.message ||
-                    'Failed to send Wi-Fi update command.';
-                notification.error({
-                    message: 'Update Failed',
-                    description: msg,
-                });
-                return false;
-            } finally {
-                setIsUpdatingWifi(false);
-            }
-        },
-        []
-    );
+    const updateWifi = useCallback(async (deviceId: string, ssid: string, pass: string) => {
+        setIsUpdatingWifi(true);
+        try {
+            await apiClient.post(`/devices/${deviceId}/update-wifi`, {
+                ssid,
+                pass,
+            });
+            // Notification is handled by the modal on success
+            return true;
+        } catch (err: any) {
+            const msg = err.response?.data?.message || 'Failed to send Wi-Fi update command.';
+            notification.error({
+                message: 'Update Failed',
+                description: msg,
+            });
+            return false;
+        } finally {
+            setIsUpdatingWifi(false);
+        }
+    }, []);
 
     /**
      * Deselects the currently active device, clears it from localStorage,
@@ -185,9 +151,7 @@ export const DeviceManagerProvider = ({
      * Used by selectDevice and by the startup effect.
      */
     const refreshDeviceDetails = useCallback(async (deviceId: string) => {
-        const response = await apiClient.get<DeviceDetailsResponse>(
-            `/devices/${deviceId}/details`
-        );
+        const response = await apiClient.get<DeviceDetails>(`/devices/${deviceId}/details`);
         const fullDevice = response.data;
         fullDevice.id = deviceId; // Ensure the ID is set
 
@@ -208,10 +172,7 @@ export const DeviceManagerProvider = ({
         }
 
         setActiveDevice(fullDevice);
-        localStorage.setItem(
-            'lobster-active-device',
-            JSON.stringify(fullDevice)
-        );
+        localStorage.setItem('lobster-active-device', JSON.stringify(fullDevice));
         return fullDevice;
     }, []);
 
@@ -239,8 +200,7 @@ export const DeviceManagerProvider = ({
                 console.error('Failed to fetch device details:', err);
                 notification.error({
                     message: 'Failed to select device',
-                    description:
-                        'Could not fetch device details. Please try again.',
+                    description: 'Could not fetch device details. Please try again.',
                 });
                 clearDevice(); // Go back to 'no device' state
             }
@@ -259,14 +219,11 @@ export const DeviceManagerProvider = ({
                 await apiClient.post(`/devices/${deviceId}/factory-reset`);
                 notification.success({
                     message: 'Factory Reset Complete',
-                    description:
-                        'The device is rebooting into provisioning mode.',
+                    description: 'The device is rebooting into provisioning mode.',
                 });
                 clearDevice(); // Device is no longer 'active'
             } catch (err: any) {
-                const msg =
-                    err.response?.data?.message ||
-                    'Failed to send reset command.';
+                const msg = err.response?.data?.message || 'Failed to send reset command.';
                 notification.error({
                     message: 'Reset Failed',
                     description: msg,
@@ -305,15 +262,10 @@ export const DeviceManagerProvider = ({
         setLogContent('Loading logs from device...');
         setIsLogModalOpen(true);
         try {
-            const response = await apiClient.get(
-                `/devices/${activeDevice.id}/log`,
-                { responseType: 'text' }
-            );
+            const response = await apiClient.get(`/devices/${activeDevice.id}/log`, { responseType: 'text' });
             setLogContent(response.data);
         } catch (err: any) {
-            const msg = axios.isAxiosError(err)
-                ? err.response?.data
-                : 'Failed to fetch logs.';
+            const msg = axios.isAxiosError(err) ? err.response?.data : 'Failed to fetch logs.';
             setLogContent(`Error:\n${msg}`);
         }
     }, [activeDevice]);
@@ -415,9 +367,7 @@ export const DeviceManagerProvider = ({
 
         try {
             // Check Link 2 (Backend -> Device)
-            const response = await apiClient.get<DeviceHealthResponse>(
-                `/devices/${activeDevice.id}/health`
-            );
+            const response = await apiClient.get<DeviceHealthResponse>(`/devices/${activeDevice.id}/health`);
 
             // SUCCESS: Link 1 (UI -> Server) is OK. Link 2 is from response.
             setConnectionHealth({
@@ -433,8 +383,7 @@ export const DeviceManagerProvider = ({
                     // SERVER IS REACHABLE, but returned an error (404, 503)
                     // This means Link 1 (UI -> Server) is 'ok'.
                     // Link 2 (Backend -> Device) is 'error'.
-                    const deviceMsg =
-                        err.response.data?.message || 'Device is unreachable.';
+                    const deviceMsg = err.response.data?.message || 'Device is unreachable.';
                     setConnectionHealth({
                         server: { status: 'ok', message: 'Server connected.' },
                         device: { status: 'error', message: deviceMsg },
@@ -490,9 +439,7 @@ export const DeviceManagerProvider = ({
                 // it means the device ID in localStorage is invalid or expired.
                 // We MUST clear it to stop the UI from polling a dead ID.
                 if (axios.isAxiosError(err) && err.response?.status === 404) {
-                    console.warn(
-                        '[DeviceManager] Stale device ID detected (404). Clearing...'
-                    );
+                    console.warn('[DeviceManager] Stale device ID detected (404). Clearing...');
                     clearDevice();
                 }
             });
@@ -508,9 +455,7 @@ export const DeviceManagerProvider = ({
     }, [fetchHealth]);
 
     useEffect(() => {
-        const isFullyConnected =
-            connectionHealth.server.status === 'ok' &&
-            connectionHealth.device.status === 'ok';
+        const isFullyConnected = connectionHealth.server.status === 'ok' && connectionHealth.device.status === 'ok';
 
         if (!activeDevice || !isFullyConnected) return;
 
@@ -572,11 +517,7 @@ export const DeviceManagerProvider = ({
         updateWifi,
     };
 
-    return (
-        <DeviceManagerContext.Provider value={value}>
-            {children}
-        </DeviceManagerContext.Provider>
-    );
+    return <DeviceManagerContext.Provider value={value}>{children}</DeviceManagerContext.Provider>;
 };
 
 export default DeviceManagerContext;

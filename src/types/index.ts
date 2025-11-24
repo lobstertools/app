@@ -1,34 +1,48 @@
-// --- Core Status Types ---
-
 import { Peripheral } from '@abandonware/noble';
 
-/** Describes the setup state of a device (e.g., in BLE provisioning or on the network). */
-export type DeviceProvisioningState = 'ready' | 'new_unprovisioned';
-
-/** Describes the internal logic state of the device (what it's actively doing). */
-export type DeviceState =
-    | 'ready'
-    | 'countdown'
-    | 'locked'
-    | 'aborted'
-    | 'completed'
-    | 'testing';
-
-/** Represents the health of a single communication link (e..g, UI -> Server). */
-export type LinkStatus = 'ok' | 'error' | 'pending';
+// ============================================================================
+// 1. Core Domain Types (Vocabulary)
+// ============================================================================
 
 /**
- * The final, derived state for the UI.
- * Calculated in SessionContext by combining ConnectionHealth and DeviceSessionState.
+ * Hardcoded firmware feature flags.
+ * UI uses these to infer interaction logic (e.g. "Hold for 3s").
  */
-export type ComputedAppStatus =
-    | DeviceState // 'ready', 'locked', 'testing', etc.
-    | 'no_device_selected'
-    | 'device_unreachable'
-    | 'server_unreachable'
-    | 'connecting'; // Covers 'backend_not_ready' and 'server_pending'
+export const DEVICE_FEATURES = [
+    'abortLongPress', // Requires long press to abort in 'locked' state
+    'startLongPress', // Requires long press (3s) to trigger 'armed' -> 'locked'
+    'startCountdown', // Supports auto-sequence
+    'statusLed', // Supports a status LED
+] as const;
 
-// --- Primary Interfaces ---
+export type DeviceFeature = (typeof DEVICE_FEATURES)[number];
+
+/**
+ * Describes the internal logic state of the device.
+ */
+export type DeviceState =
+    | 'ready' // Idle, waiting for command
+    | 'armed' // Safety off, waiting for Trigger (Auto or Button)
+    | 'locked' // Point of no return, session active
+    | 'aborted' // Session cancelled
+    | 'completed' // Session finished successfully
+    | 'testing'; // Hardware test mode
+
+/**
+ * Defines how the device behaves while in the 'armed' state.
+ */
+export type TriggerStrategy =
+    | 'autoCountdown' // Device is actively ticking down channel delays
+    | 'buttonTrigger'; // Device is waiting for physical button input
+
+export type BuildType = 'beta' | 'debug' | 'mock' | 'release';
+
+// ============================================================================
+// 2. Connectivity & Discovery
+// ============================================================================
+
+/** Represents the health of a single communication link (e.g., UI -> Server). */
+export type LinkStatus = 'ok' | 'error' | 'pending';
 
 /** Holds the status and message for one link in the communication chain. */
 export interface LinkHealth {
@@ -44,31 +58,47 @@ export interface ConnectionHealth {
     device: LinkHealth;
 }
 
+/**
+ * The final, derived state for the UI.
+ * Calculated in SessionContext by combining ConnectionHealth and DeviceSessionState.
+ */
+export type ComputedAppStatus =
+    | DeviceState // 'ready', 'locked', 'testing', etc.
+    | 'no_device_selected'
+    | 'device_unreachable'
+    | 'server_unreachable'
+    | 'connecting'; // Covers 'backend_not_ready' and 'server_pending'
+
+/** Describes the setup state of a device (e.g., in BLE provisioning or on the network). */
+export type DeviceProvisioningState = 'ready' | 'new_unprovisioned';
+
 /** Represents a device found during a scan (BLE or mDNS). Minimal info only. */
 export interface DiscoveredDevice {
     id: string; // mDNS fqdn or BLE peripheral UUID
     name: string; // 'lobster-lock' (mDNS) or 'Lobster Lock-XYZ' (BLE)
-    state: 'ready' | 'new_unprovisioned';
+    state: DeviceProvisioningState;
     address: string; // IP address (mDNS) or peripheral.id (BLE)
     port: number;
-    lastSeen: number; // Date.now()
+    lastSeenTimestamp: number; // Date.now()
     peripheral?: Peripheral; // Store the noble object for BLE devices
     failedAttempts: number;
 }
 
-export type BuildType = 'beta' | 'debug' | 'mock' | 'release';
+// ============================================================================
+// 3. Static Device Configuration
+// ============================================================================
 
 /**
  * Represents the fully loaded, selected device and its static properties.
- * This is created when a DiscoveredDevice is selected.
+ * This is created when a DiscoveredDevice is selected and details are fetched.
  */
-export interface ActiveDevice {
+export interface DeviceDetails {
     id: string;
     name: string;
     address: string;
     version: string;
     buildType: BuildType;
-    features: string[];
+    features: DeviceFeature[];
 
     channels: {
         ch1: boolean;
@@ -78,10 +108,52 @@ export interface ActiveDevice {
     };
 
     // Deterrent Configuration
-    config: {
+    deterrents: {
         enableStreaks: boolean;
         enablePaybackTime: boolean;
         paybackTimeMinutes: number;
+    };
+}
+
+// ============================================================================
+// 4. Dynamic Session Management
+// ============================================================================
+
+/**
+ * The unified payload to Arm/Start a session.
+ * Merges the execution logic (strategy) with the session parameters.
+ */
+export interface SessionArmRequest {
+    /**
+     * Determines how the device transitions from 'armed' to 'locked'.
+     */
+    triggerStrategy: TriggerStrategy;
+
+    /**
+     * The total duration of the locked phase (in seconds).
+     */
+    duration: number;
+
+    /**
+     * If true, the device display remains dark/obscured during the session.
+     */
+    hideTimer: boolean;
+
+    /**
+     * Time added to duration if a violation occurs (in seconds).
+     */
+    penaltyDuration: number;
+
+    /**
+     * The start delays for each channel (in seconds).
+     * - If strategy is 'autoCountdown': These are the countdown timers.
+     * - If strategy is 'buttonTrigger': These are applied AFTER the button press.
+     */
+    delays: {
+        ch1: number;
+        ch2: number;
+        ch3: number;
+        ch4: number;
     };
 }
 
@@ -89,7 +161,7 @@ export interface ActiveDevice {
  * The live status response from an *active* device's API.
  * This contains all dynamic data, both live timers and accumulated stats.
  */
-export interface SessionStatusResponse {
+export interface SessionStatus {
     status: DeviceState;
     message?: string;
 
@@ -97,6 +169,20 @@ export interface SessionStatusResponse {
     penaltySecondsRemaining: number;
     testSecondsRemaining: number;
 
+    /**
+     * Context for the 'armed' state.
+     * Populated when status is 'armed' or 'locked'.
+     */
+    triggerStrategy?: TriggerStrategy;
+
+    /** Timeout waiting for the long press session start */
+    triggerTimeoutRemaining?: number;
+
+    /**
+     * Live countdowns.
+     * In 'autoCountdown', these tick down.
+     * In 'buttonTrigger', these are static until locked.
+     */
     delays: {
         ch1?: number;
         ch2?: number;
@@ -106,7 +192,6 @@ export interface SessionStatusResponse {
 
     hideTimer?: boolean;
 
-    // Accumulated session numbers
     stats: {
         streaks: number;
         aborted: number;
@@ -116,26 +201,16 @@ export interface SessionStatusResponse {
     };
 }
 
-/** The request payload to start a new session on the device. */
-export interface SessionStartRequest {
-    duration: number;
-    hideTimer: boolean;
-    penaltyDuration: number;
-
-    delays: {
-        ch1: number;
-        ch2: number;
-        ch3: number;
-        ch4: number;
-    };
-}
-
 export interface Reward {
     code: string;
     checksum: string;
 }
 
-/** Provisioning data */
+// ============================================================================
+// 5. Provisioning
+// ============================================================================
+
+/** Input data required to provision a new device. */
 export interface DeviceProvisioningData {
     ssid: string;
     pass: string;

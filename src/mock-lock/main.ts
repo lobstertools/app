@@ -9,7 +9,7 @@
  * Mock (fake) ESP lock server for development. This Node.js
  * app simulates the exact API of the physical device's
  * firmware, including the state machine, timers, and endpoints
- * (e.g., `/status`, `/start`), allowing for frontend
+ * (e.g., `/status`, `/arm`), allowing for frontend
  * development without hardware.
  * =================================================================
  */
@@ -19,7 +19,7 @@ import cors from 'cors';
 import readline from 'readline';
 import bonjour from 'bonjour';
 
-import { ActiveDevice, Reward, SessionStatusResponse } from '../types/';
+import { Reward, SessionStatus, TriggerStrategy } from '../types/';
 
 const app = express();
 const PORT = 3003;
@@ -30,8 +30,11 @@ app.use(express.json());
 const DEVICE_ID = 'Mock-LobsterLock';
 const DEVICE_VERSION = 'v1.4-mock';
 const NUMBER_OF_CHANNELS = 4;
-const FEATURES = ['LED_Indicator', 'Abort_Pedal'];
+
+const FEATURES = ['abortLongPress', 'startLongPress', 'startCountdown', 'statusLed'];
+
 const TEST_DURATION_SECONDS = 60; // 60 second test
+const ARMED_TIMEOUT_SECONDS = 600; // 10 minutes to press button
 
 // These settings mimic what would be saved in flash from provisioning
 const ENABLE_STREAKS = true;
@@ -44,10 +47,17 @@ let completed = 0;
 let aborted = 0;
 let pendingPaybackSeconds = 0;
 
-let currentState = 'ready';
+// State Machine
+// 'armed' replaces the old 'countdown' state logic
+let currentState: 'ready' | 'armed' | 'locked' | 'aborted' | 'completed' | 'testing' = 'ready';
+let currentStrategy: TriggerStrategy = 'autoCountdown';
+
+// Timers
 let lockSecondsRemaining = 0;
 let penaltySecondsRemaining = 0;
 let testSecondsRemaining = 0;
+let triggerTimeoutRemaining = 0;
+
 let currentDelays = { ch1: 0, ch2: 0, ch3: 0, ch4: 0 };
 let hideTimer = false;
 
@@ -61,7 +71,7 @@ let lastKeepAliveTime = 0; // 0 = disarmed
 
 let lockInterval: NodeJS.Timeout | null = null;
 let penaltyInterval: NodeJS.Timeout | null = null;
-let countdownInterval: NodeJS.Timeout | null = null;
+let armedInterval: NodeJS.Timeout | null = null;
 let testInterval: NodeJS.Timeout | null = null;
 const logBuffer: string[] = [];
 
@@ -172,11 +182,11 @@ const generateUniqueReward = (): Reward => {
 const stopAllTimers = () => {
     if (lockInterval) clearInterval(lockInterval);
     if (penaltyInterval) clearInterval(penaltyInterval);
-    if (countdownInterval) clearInterval(countdownInterval);
+    if (armedInterval) clearInterval(armedInterval);
     if (testInterval) clearInterval(testInterval);
     lockInterval = null;
     penaltyInterval = null;
-    countdownInterval = null;
+    armedInterval = null;
     testInterval = null;
 };
 
@@ -188,9 +198,7 @@ const initializeState = () => {
     log(`   -> Device: ${DEVICE_ID} ${DEVICE_VERSION}`);
     log(`   -> Channels: ${NUMBER_OF_CHANNELS}`);
     log(`   -> Features: ${FEATURES.join(', ')}`);
-    log(
-        `   -> Config: Payback ${PAYBACK_TIME_MINUTES} min, Streaks ${ENABLE_STREAKS}`
-    );
+    log(`   -> Config: Payback ${PAYBACK_TIME_MINUTES} min, Streaks ${ENABLE_STREAKS}`);
 
     stopAllTimers();
 
@@ -208,9 +216,7 @@ const initializeState = () => {
     // Generate the one "current" code
     const newReward = generateUniqueReward();
     rewardHistory.unshift(newReward);
-    log(
-        `Generated new reward code for this session: ${newReward.code.substring(0, 8)}... (${newReward.checksum})`
-    );
+    log(`Generated new reward code for this session: ${newReward.code.substring(0, 8)}... (${newReward.checksum})`);
 
     streaks = 5;
     totalLockedTimeSeconds = 50000;
@@ -219,9 +225,12 @@ const initializeState = () => {
     pendingPaybackSeconds = 600;
 
     currentState = 'ready';
+    currentStrategy = 'autoCountdown';
+
     lockSecondsRemaining = 0;
     penaltySecondsRemaining = 0;
     testSecondsRemaining = 0;
+    triggerTimeoutRemaining = 0;
     lastKeepAliveTime = 0; // Disarm watchdog
 
     currentDelays = { ch1: 0, ch2: 0, ch3: 0, ch4: 0 };
@@ -232,17 +241,25 @@ const initializeState = () => {
 
 /**
  * Triggers the full abort logic, moving from 'locked' to 'aborted'.
+ * Or safely resets if in 'armed'.
  * @param source The reason for the abort (e.g., 'API', 'Watchdog')
  * @returns true if the abort was successful
  */
 const triggerAbort = (source: string): boolean => {
+    // Safe Abort (Safety is ON)
+    if (currentState === 'armed') {
+        log(`🔓 Arming sequence canceled by ${source}. Returning to READY (No penalty).`);
+        stopAllTimers();
+        currentState = 'ready';
+        return true;
+    }
+
     if (currentState !== 'locked') {
-        log(
-            `triggerAbort called from ${source} but state is ${currentState}. Ignoring.`
-        );
+        log(`triggerAbort called from ${source} but state is ${currentState}. Ignoring.`);
         return false;
     }
 
+    // Hard Abort (Point of No Return passed)
     log(`🔓 Session aborted by ${source}! Penalty timer started.`);
     if (lockInterval) clearInterval(lockInterval);
     lockInterval = null;
@@ -254,9 +271,7 @@ const triggerAbort = (source: string): boolean => {
     if (ENABLE_PAYBACK_TIME) {
         const paybackToAdd = PAYBACK_TIME_MINUTES * 60;
         pendingPaybackSeconds += paybackToAdd;
-        log(
-            `   -> Added ${paybackToAdd}s to payback bank. Total: ${pendingPaybackSeconds}s`
-        );
+        log(`   -> Added ${paybackToAdd}s to payback bank. Total: ${pendingPaybackSeconds}s`);
     }
     if (ENABLE_STREAKS) {
         log(`   -> Streak reset to 0.`);
@@ -283,15 +298,13 @@ const startLockInterval = () => {
     log(`Starting main lock timer for ${lockSecondsConfig} seconds.`);
     stopAllTimers();
 
+    currentState = 'locked';
     lockSecondsRemaining = lockSecondsConfig;
     lastKeepAliveTime = Date.now(); // <-- ARM WATCHDOG
 
     lockInterval = setInterval(() => {
         // --- Watchdog Check (LOCKED state only) ---
-        if (
-            lastKeepAliveTime > 0 &&
-            Date.now() - lastKeepAliveTime > KEEP_ALIVE_TIMEOUT_MS
-        ) {
+        if (lastKeepAliveTime > 0 && Date.now() - lastKeepAliveTime > KEEP_ALIVE_TIMEOUT_MS) {
             log('Keep-alive watchdog timeout. Aborting session.');
             triggerAbort('Watchdog');
             return; // Stop processing
@@ -307,35 +320,49 @@ const startLockInterval = () => {
 };
 
 /**
- * Starts the 1-second countdown interval for channel delays.
+ * Starts the 1-second "Armed" interval.
+ * Handles both Auto-Countdown and Button Wait logic.
  */
-const startCountdownInterval = () => {
-    log(`Starting countdown timer...`);
+const startArmedInterval = () => {
+    log(`Device ARMED. Strategy: ${currentStrategy}`);
     stopAllTimers();
 
-    countdownInterval = setInterval(() => {
-        let allZero = true;
+    armedInterval = setInterval(() => {
+        if (currentStrategy === 'autoCountdown') {
+            // --- AUTO MODE ---
+            // Tick down channels immediately
+            let allZero = true;
 
-        // Iterate delays object
-        // Typecast keys for simple iteration in mock
-        (['ch1', 'ch2', 'ch3', 'ch4'] as const).forEach((key) => {
-            if (currentDelays[key] > 0) {
-                allZero = false;
-                currentDelays[key]--;
-                if (currentDelays[key] === 0) {
-                    log(`Channel ${key} closed (delay finished).`);
+            // Iterate delays object
+            // Typecast keys for simple iteration in mock
+            (['ch1', 'ch2', 'ch3', 'ch4'] as const).forEach((key) => {
+                if (currentDelays[key] > 0) {
+                    allZero = false;
+                    currentDelays[key]--;
+                    if (currentDelays[key] === 0) {
+                        log(`Channel ${key} closed (delay finished).`);
+                    }
                 }
-            }
-        });
+            });
 
-        // When all delays hit 0, transition to LOCKED
-        if (allZero) {
-            log('Countdown complete. Starting main lock.');
-            if (countdownInterval) clearInterval(countdownInterval);
-            countdownInterval = null;
-            currentState = 'locked';
-            // Arming is handled inside startLockInterval()
-            startLockInterval();
+            // When all delays hit 0, transition to LOCKED
+            if (allZero) {
+                log('Auto-Countdown complete. Locking session.');
+                if (armedInterval) clearInterval(armedInterval);
+                armedInterval = null;
+                // Arming is handled inside startLockInterval()
+                startLockInterval();
+            }
+        } else {
+            // --- BUTTON MODE ---
+            // Waiting for user input (Simulated via 'L' key or /debug/button-press)
+            // Decrement the timeout
+            if (triggerTimeoutRemaining > 0) {
+                triggerTimeoutRemaining--;
+            } else {
+                log('Button Trigger Timeout! Cancelling arming.');
+                triggerAbort('Timeout');
+            }
         }
     }, 1000);
 };
@@ -381,6 +408,7 @@ const completeSession = () => {
     lockSecondsRemaining = 0;
     penaltySecondsRemaining = 0;
     testSecondsRemaining = 0;
+    triggerTimeoutRemaining = 0;
     currentDelays = { ch1: 0, ch2: 0, ch3: 0, ch4: 0 };
 
     completed++; // Increment stat
@@ -399,9 +427,7 @@ const completeSession = () => {
         rewardHistory.pop();
     }
 
-    log(
-        `Generated new reward code for next session: ${newReward.code.substring(0, 8)}... (${newReward.checksum})`
-    );
+    log(`Generated new reward code for next session: ${newReward.code.substring(0, 8)}... (${newReward.checksum})`);
 };
 
 /**
@@ -444,37 +470,52 @@ process.stdin.on('keypress', (str, key) => {
     // CTRL+C to exit
     if (key.ctrl && key.name === 'c') process.exit();
 
+    // 'L' for Long Press (Simulate Button)
+    if (key.name === 'l') {
+        log('⌨️  KEYPRESS: Simulated Long Press (Button).');
+        handlePhysicalButtonLongPress();
+    }
+
     // Up/Down arrows to adjust timers
     if (key.name === 'up' || key.name === 'down') {
-        const adjustment =
-            key.name === 'up'
-                ? TIME_ADJUSTMENT_SECONDS
-                : -TIME_ADJUSTMENT_SECONDS;
+        const adjustment = key.name === 'up' ? TIME_ADJUSTMENT_SECONDS : -TIME_ADJUSTMENT_SECONDS;
         const action = key.name === 'up' ? 'Increased' : 'Decreased';
 
         if (currentState === 'locked') {
-            lockSecondsRemaining = Math.max(
-                0,
-                lockSecondsRemaining + adjustment
-            );
-            log(
-                `🔼🔽 ${action} lock time. New remaining: ${formatTime(lockSecondsRemaining)}`
-            );
+            lockSecondsRemaining = Math.max(0, lockSecondsRemaining + adjustment);
+            log(`🔼🔽 ${action} lock time. New remaining: ${formatTime(lockSecondsRemaining)}`);
         } else if (currentState === 'aborted') {
-            penaltySecondsRemaining = Math.max(
-                0,
-                penaltySecondsRemaining + adjustment
-            );
-            log(
-                `🔼🔽 ${action} penalty time. New remaining: ${formatTime(penaltySecondsRemaining)}`
-            );
-        } else if (currentState === 'countdown') {
-            log(`🔼🔽 Timer adjustment disabled during countdown.`);
+            penaltySecondsRemaining = Math.max(0, penaltySecondsRemaining + adjustment);
+            log(`🔼🔽 ${action} penalty time. New remaining: ${formatTime(penaltySecondsRemaining)}`);
+        } else if (currentState === 'armed') {
+            log(`🔼🔽 Timer adjustment disabled during arming.`);
         } else if (currentState === 'testing') {
             log(`🔼🔽 Timer adjustment disabled during test mode.`);
         }
     }
 });
+
+/**
+ * Simulates the logic within the C++ handleLongPress function.
+ */
+const handlePhysicalButtonLongPress = () => {
+    if (currentState === 'armed') {
+        // In ARMED state, long press triggers lock if strategy is buttonTrigger
+        if (currentStrategy === 'buttonTrigger') {
+            log('Button Trigger Received! Locking session.');
+            startLockInterval();
+        } else {
+            log('Button Press ignored (Auto mode active).');
+        }
+    } else if (currentState === 'locked') {
+        // In LOCKED state, long press triggers abort
+        log('Button Abort Triggered (Emergency Stop).');
+        triggerAbort('Physical Button');
+    } else {
+        log(`Button Press ignored in state: ${currentState}`);
+    }
+};
+
 // -----------------------------
 
 // =================================================================
@@ -486,12 +527,11 @@ process.stdin.on('keypress', (str, key) => {
  * Simple info endpoint.
  */
 app.get('/', (req, res) => {
-    res.type('text/plain')
-        .send(`Mock Lobster-Lock API ${DEVICE_VERSION} (Reboot to Reset)
+    res.type('text/plain').send(`Mock Lobster-Lock API ${DEVICE_VERSION} (Reboot to Reset)
 Endpoints:
 - GET /status
 - GET /details
-- POST /start
+- POST /arm
 - POST /abort
 - POST /start-test
 - POST /keepalive
@@ -545,14 +585,11 @@ app.post('/update-wifi', (req, res) => {
         });
     }
 
-    log(
-        `📶 /update-wifi received. Mock NVS "saved" new credentials: SSID=${ssid}`
-    );
+    log(`📶 /update-wifi received. Mock NVS "saved" new credentials: SSID=${ssid}`);
 
     res.json({
         status: 'success',
-        message:
-            'Wi-Fi credentials updated. Please reboot the device to apply.',
+        message: 'Wi-Fi credentials updated. Please reboot the device to apply.',
     });
 });
 
@@ -577,13 +614,13 @@ app.get('/details', (req, res) => {
             ch3: true,
             ch4: true,
         },
-        enabledChannelsMask: 0x0f, // 1111
-        config: {
+        // New deterrents structure
+        deterrents: {
             enableStreaks: ENABLE_STREAKS,
             enablePaybackTime: ENABLE_PAYBACK_TIME,
             paybackTimeMinutes: PAYBACK_TIME_MINUTES,
         },
-    } as ActiveDevice);
+    } as any);
 });
 
 /**
@@ -591,11 +628,7 @@ app.get('/details', (req, res) => {
  * Retrieve code history. Only allowed if not in an active session.
  */
 app.get('/reward', (req, res) => {
-    if (
-        currentState === 'locked' ||
-        currentState === 'aborted' ||
-        currentState === 'countdown'
-    ) {
+    if (currentState === 'locked' || currentState === 'aborted' || currentState === 'armed') {
         log('API: /reward FAILED (session active)');
         return res.status(403).json({
             status: 'forbidden',
@@ -607,20 +640,21 @@ app.get('/reward', (req, res) => {
 });
 
 /**
- * POST /start
- * Start a new lock session.
+ * POST /arm (Replaces /start)
+ * Arm the device for a session.
  */
-app.post('/start', (req, res) => {
+app.post('/arm', (req, res) => {
     if (currentState !== 'ready') {
-        log('API: /start FAILED (not ready)');
+        log('API: /arm FAILED (not ready)');
         return res.status(409).json({
             status: 'error',
-            message: 'Device is not ready. Cannot start a new lock.',
+            message: 'Device is not ready. Cannot arm.',
         });
     }
 
     // Read from JSON payload (req.body)
     const {
+        triggerStrategy, // 'autoCountdown' | 'buttonTrigger'
         duration, // in minutes
         penaltyDuration, // in minutes
         hideTimer: shouldHideTimer,
@@ -631,7 +665,7 @@ app.post('/start', (req, res) => {
     const penaltyMins = Number(penaltyDuration);
 
     if (isNaN(durationMins) || durationMins < 1) {
-        log(`API: /start FAILED (invalid duration: ${durationMins})`);
+        log(`API: /arm FAILED (invalid duration: ${durationMins})`);
         return res.status(400).json({
             status: 'error',
             message: 'Invalid duration.',
@@ -639,7 +673,7 @@ app.post('/start', (req, res) => {
     }
 
     if (isNaN(penaltyMins) || penaltyMins < 1) {
-        log(`API: /start FAILED (invalid penalty duration: ${penaltyMins})`);
+        log(`API: /arm FAILED (invalid penalty duration: ${penaltyMins})`);
         return res.status(400).json({
             status: 'error',
             message: 'Invalid penalty duration.',
@@ -647,7 +681,7 @@ app.post('/start', (req, res) => {
     }
 
     if (!delays || typeof delays !== 'object') {
-        log(`API: /start FAILED (invalid delays object)`);
+        log(`API: /arm FAILED (invalid delays object)`);
         return res.status(400).json({
             status: 'error',
             message: `Invalid 'delays' object.`,
@@ -658,10 +692,12 @@ app.post('/start', (req, res) => {
     stopAllTimers();
 
     // Store config for this session
-    // Add any pending payback time to the lock duration
     lockSecondsConfig = durationMins * 60 + pendingPaybackSeconds;
     penaltySecondsConfig = penaltyMins * 60;
-    hideTimer = shouldHideTimer || false; // Default to false
+    hideTimer = shouldHideTimer || false;
+
+    // Determine Strategy
+    currentStrategy = triggerStrategy === 'buttonTrigger' ? 'buttonTrigger' : 'autoCountdown';
 
     // Parse channel delays from object
     currentDelays.ch1 = Number(delays.ch1 || 0);
@@ -669,39 +705,27 @@ app.post('/start', (req, res) => {
     currentDelays.ch3 = Number(delays.ch3 || 0);
     currentDelays.ch4 = Number(delays.ch4 || 0);
 
-    const maxDelay = Math.max(
-        currentDelays.ch1,
-        currentDelays.ch2,
-        currentDelays.ch3,
-        currentDelays.ch4
-    );
+    log(`🔒 /arm request. Strategy: ${currentStrategy}. Duration: ${durationMins}m.`);
 
-    log(
-        `🔒 /start request. Base Duration: ${durationMins} min. Payback: ${pendingPaybackSeconds}s. Total: ${lockSecondsConfig}s. Hide: ${hideTimer}.`
-    );
-    log(
-        `   -> Channel Delays: Ch1:${currentDelays.ch1}s, Ch2:${currentDelays.ch2}s... Max Delay: ${maxDelay}s.`
-    );
+    // Transition to ARMED
+    currentState = 'armed';
 
-    if (maxDelay === 0) {
-        // No delays, lock immediately
-        log('   -> No delays. Locking immediately.');
-        currentState = 'locked';
-        startLockInterval(); // This will arm the watchdog
-        res.json({ status: 'locked', durationSeconds: lockSecondsRemaining });
+    if (currentStrategy === 'buttonTrigger') {
+        // Manual Mode: Set timeout and wait
+        triggerTimeoutRemaining = ARMED_TIMEOUT_SECONDS;
+        log('   -> Waiting for Button Trigger...');
     } else {
-        // Start countdown
-        log('   -> Starting countdown...');
-        currentState = 'countdown';
-        lockSecondsRemaining = 0; // Main timer not running yet
-        // Watchdog is NOT armed here
-        startCountdownInterval();
-        res.json({
-            status: 'countdown',
-            // Note: Mock returns flattened delays in logs, API doesn't need to return them in /start response per se,
-            // but the frontend polls /status immediately anyway.
-        });
+        // Auto Mode: Logs
+        log('   -> Auto Sequence Started...');
     }
+
+    // Start the Arming Loop (Handles both countdowns and button timeout)
+    startArmedInterval();
+
+    res.json({
+        status: 'armed',
+        triggerStrategy: currentStrategy,
+    });
 });
 
 /**
@@ -717,9 +741,7 @@ app.post('/start-test', (req, res) => {
         });
     }
 
-    log(
-        `🔬 /start-test request. Engaging relays for ${TEST_DURATION_SECONDS}s.`
-    );
+    log(`🔬 /start-test request. Engaging relays for ${TEST_DURATION_SECONDS}s.`);
     currentState = 'testing';
     startTestInterval(); // Watchdog is NOT armed
 
@@ -731,31 +753,12 @@ app.post('/start-test', (req, res) => {
 
 /**
  * POST /abort
- * Aborts an active session (countdown, locked, or testing).
+ * Aborts an active session.
  */
 app.post('/abort', (req, res) => {
-    if (currentState === 'countdown') {
-        log('🔓 Countdown aborted by user. No penalty.');
-        if (countdownInterval) clearInterval(countdownInterval);
-        countdownInterval = null;
-        currentDelays = { ch1: 0, ch2: 0, ch3: 0, ch4: 0 };
-        currentState = 'ready';
-        // lastKeepAliveTime = 0; // Already 0
-        res.json({ status: 'ready', message: 'Countdown canceled.' });
-    } else if (currentState === 'locked') {
-        if (triggerAbort('API')) {
-            res.json({
-                status: 'aborted',
-                penaltySeconds: penaltySecondsRemaining,
-            });
-        } else {
-            // This shouldn't happen
-            res.status(500).json({ status: 'error', message: 'Abort failed.' });
-        }
-    } else if (currentState === 'testing') {
-        log('🔓 Test mode aborted by user.');
-        stopTestMode(); // This will disarm
-        res.json({ status: 'ready', message: 'Test mode stopped.' });
+    if (triggerAbort('API')) {
+        // If triggerAbort returned true, it handled the state change
+        res.json({ status: currentState === 'ready' ? 'ready' : 'aborted' });
     } else {
         log('API: /abort FAILED (not abortable)');
         return res.status(409).json({
@@ -763,6 +766,16 @@ app.post('/abort', (req, res) => {
             message: 'Device is not in a state that can be aborted.',
         });
     }
+});
+
+/**
+ * POST /debug/button-press
+ * Simulates a physical button press via HTTP (for testing without keyboard).
+ */
+app.post('/debug/button-press', (req, res) => {
+    log('API: /debug/button-press received.');
+    handlePhysicalButtonLongPress();
+    res.json({ message: 'Button press simulated' });
 });
 
 /**
@@ -774,8 +787,7 @@ app.post('/factory-reset', (req, res) => {
         log('API: /factory-reset FAILED (session active)');
         return res.status(409).json({
             status: 'error',
-            message:
-                'Device is in an active session. Cannot reset while locked, in countdown, or in penalty.',
+            message: 'Device is in an active session. Cannot reset while locked, in countdown, or in penalty.',
         });
     }
 
@@ -796,6 +808,11 @@ app.post('/factory-reset', (req, res) => {
 app.get('/status', (req, res) => {
     res.json({
         status: currentState,
+        // Send strategy context only if ARMED
+        triggerStrategy: currentState === 'armed' ? currentStrategy : undefined,
+        triggerTimeoutRemaining:
+            currentState === 'armed' && currentStrategy === 'buttonTrigger' ? triggerTimeoutRemaining : undefined,
+
         lockSecondsRemaining,
         penaltySecondsRemaining,
         testSecondsRemaining,
@@ -817,7 +834,7 @@ app.get('/status', (req, res) => {
             totalLockedTimeSeconds,
             pendingPaybackSeconds,
         },
-    } as SessionStatusResponse);
+    } as SessionStatus);
 });
 
 // --- Server Start ---
@@ -826,8 +843,7 @@ app.listen(PORT, '0.0.0.0', () => {
     log(`Mock ESP server running at http://localhost:${PORT}`);
     initializeState();
     startMDNS();
-    log(
-        `⌨️  KEYBINDINGS ENABLED: Use UP/DOWN arrow keys in this terminal to adjust the timer.`
-    );
+    log(`⌨️  KEYBINDINGS ENABLED: Use UP/DOWN arrow keys in this terminal to adjust the timer.`);
+    log(`   Use 'L' key to simulate LONG PRESS (Start/Abort).`);
     log(`   Use CTRL+C to exit.`);
 });

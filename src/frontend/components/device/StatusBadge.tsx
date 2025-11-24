@@ -38,9 +38,9 @@ export const StatusBadge = () => {
                 color = '#52c41a';
                 text = 'READY';
                 break;
-            case 'countdown':
+            case 'armed':
                 color = blue[5];
-                text = 'STARTING...';
+                text = 'ARMED...';
                 break;
             case 'testing':
                 color = blue[5];
@@ -86,11 +86,7 @@ export const StatusBadge = () => {
                 <Text style={{ color: '#fff', margin: 0 }} strong>
                     {text}
                 </Text>
-                {showTimer && (
-                    <Text style={{ color: '#fff', fontFamily: 'monospace' }}>
-                        ({timerValue})
-                    </Text>
-                )}
+                {showTimer && <Text style={{ color: '#fff', fontFamily: 'monospace' }}>({timerValue})</Text>}
             </Space>
         );
 

@@ -11,18 +11,7 @@ import {
     ExperimentOutlined,
     IdcardOutlined,
 } from '@ant-design/icons';
-import {
-    Typography,
-    Button,
-    Card,
-    Space,
-    Spin,
-    Row,
-    Col,
-    Statistic,
-    List,
-    theme as antdTheme,
-} from 'antd';
+import { Typography, Button, Card, Space, Spin, Row, Col, Statistic, List, theme as antdTheme } from 'antd';
 import { useState, useEffect } from 'react';
 import { RewardImage } from './RewardImage';
 
@@ -96,9 +85,7 @@ export const RewardDisplay = () => {
                         }}
                     />
                     <Text type="secondary">No device selected.</Text>
-                    <Text type="secondary">
-                        Please connect a Lobster Controller to view rewards.
-                    </Text>
+                    <Text type="secondary">Please connect a Lobster Controller to view rewards.</Text>
                 </Space>
             </div>
         );
@@ -126,57 +113,36 @@ export const RewardDisplay = () => {
         );
     }
 
-    if (
-        currentState === 'device_unreachable' ||
-        currentState === 'server_unreachable'
-    ) {
+    if (currentState === 'device_unreachable' || currentState === 'server_unreachable') {
         return (
             <div style={placeholderStyles}>
                 <Space direction="vertical" align="center" size="middle">
-                    <DisconnectOutlined
-                        style={{ fontSize: '32px', color: token.colorError }}
-                    />
+                    <DisconnectOutlined style={{ fontSize: '32px', color: token.colorError }} />
                     <Text type="danger" strong>
                         Connection Lost
                     </Text>
-                    <Text type="secondary">
-                        Unable to communicate with the device.
-                    </Text>
+                    <Text type="secondary">Unable to communicate with the device.</Text>
                 </Space>
             </div>
         );
     }
 
     // --- 2. Handle Active Session (Hidden Rewards) ---
-    // While locked, aborted, or counting down, the reward is hidden.
+    // While locked, aborted, or armed (countdown/trigger), the reward is hidden.
 
-    if (
-        currentState === 'locked' ||
-        currentState === 'aborted' ||
-        currentState === 'countdown'
-    ) {
+    if (currentState === 'locked' || currentState === 'aborted' || currentState === 'armed') {
         let message = 'The reward code is hidden.';
-        let icon = (
-            <LockOutlined
-                style={{ fontSize: '32px', color: token.colorTextDisabled }}
-            />
-        );
+        let icon = <LockOutlined style={{ fontSize: '32px', color: token.colorTextDisabled }} />;
 
         if (currentState === 'locked') {
-            message =
-                'The reward code is hidden and will be revealed once the timer ends.';
+            message = 'The reward code is hidden and will be revealed once the timer ends.';
         } else if (currentState === 'aborted') {
-            message =
-                'Session Aborted. The reward code will be revealed after the penalty cooldown ends.';
+            message = 'Session Aborted. The reward code will be revealed after the penalty cooldown ends.';
             icon = <FireOutlined style={{ fontSize: '32px', color: red[5] }} />;
-        } else if (currentState === 'countdown') {
-            message =
-                'The reward code will be generated after the session starts.';
-            icon = (
-                <LoadingOutlined
-                    style={{ fontSize: '32px', color: token.colorTextDisabled }}
-                />
-            );
+        } else if (currentState === 'armed') {
+            // Handles both 'autoCountdown' and 'buttonTrigger'
+            message = 'The reward code will be generated after the session starts.';
+            icon = <LoadingOutlined style={{ fontSize: '32px', color: token.colorTextDisabled }} />;
         }
 
         return (
@@ -197,10 +163,7 @@ export const RewardDisplay = () => {
         return (
             <Space direction="vertical" style={{ width: '100%' }} size="large">
                 <RewardImage code={currentReward.code} />
-                <Card
-                    size="small"
-                    style={{ backgroundColor: token.colorFillAlter }}
-                >
+                <Card size="small" style={{ backgroundColor: token.colorFillAlter }}>
                     <Row justify="space-between" align="middle">
                         <Col>
                             <Statistic
@@ -225,23 +188,15 @@ export const RewardDisplay = () => {
                                 <Space>
                                     <Button
                                         icon={<LeftOutlined />}
-                                        onClick={() =>
-                                            setSelectedIndex((s) => s + 1)
-                                        }
-                                        disabled={
-                                            selectedIndex >=
-                                            rewardHistory.length - 1
-                                        }
+                                        onClick={() => setSelectedIndex((s) => s + 1)}
+                                        disabled={selectedIndex >= rewardHistory.length - 1}
                                     />
                                     <Text>
-                                        {selectedIndex + 1} /{' '}
-                                        {rewardHistory.length}
+                                        {selectedIndex + 1} / {rewardHistory.length}
                                     </Text>
                                     <Button
                                         icon={<RightOutlined />}
-                                        onClick={() =>
-                                            setSelectedIndex((s) => s - 1)
-                                        }
+                                        onClick={() => setSelectedIndex((s) => s - 1)}
                                         disabled={selectedIndex <= 0}
                                     />
                                 </Space>

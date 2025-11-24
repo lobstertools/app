@@ -2,16 +2,7 @@ import { useSession } from '../../context/useSessionContext';
 import { useDeviceManager } from '../../context/useDeviceManager';
 
 import { red, green, yellow } from '@ant-design/colors';
-import {
-    Typography,
-    Button,
-    Space,
-    Divider,
-    Tooltip,
-    theme as antdTheme,
-    Dropdown,
-    MenuProps,
-} from 'antd';
+import { Typography, Button, Space, Tooltip, theme as antdTheme, Dropdown, MenuProps } from 'antd';
 import {
     StopOutlined,
     ApiOutlined,
@@ -28,8 +19,12 @@ import {
     UsbOutlined,
     FieldTimeOutlined,
     SlidersOutlined,
+    ThunderboltOutlined,
+    ClockCircleOutlined,
+    BulbOutlined,
 } from '@ant-design/icons';
 import { useMemo } from 'react';
+import { DeviceFeature } from '../../../types';
 
 const { Text } = Typography;
 
@@ -44,18 +39,13 @@ export const DeviceMenu = () => {
     const { currentState, abortSession, startTestSession } = useSession();
 
     // Get all needed state/functions from useDeviceManager
-    const {
-        connectionHealth,
-        fetchDeviceLogs,
-        activeDevice,
-        openDeviceSettingsModal,
-    } = useDeviceManager();
+    const { connectionHealth, fetchDeviceLogs, activeDevice, openDeviceSettingsModal } = useDeviceManager();
 
     // Pulling static config from activeDevice
     const deviceName = activeDevice?.name;
     const displayDeviceAddress = activeDevice?.address || 'N/A';
-    const paybackTimeEnabled = activeDevice?.config?.enablePaybackTime || false;
-    const paybackTimeMinutes = activeDevice?.config?.paybackTimeMinutes || 0;
+    const paybackTimeEnabled = activeDevice?.deterrents?.enablePaybackTime || false;
+    const paybackTimeMinutes = activeDevice?.deterrents?.paybackTimeMinutes || 0;
     const appVersion = activeDevice?.version || 'N/A';
     const appBuildType = activeDevice?.buildType || 'N/A';
 
@@ -73,16 +63,6 @@ export const DeviceMenu = () => {
         if (list.length === 4) return 'All (4)';
         return list.join(', ');
     }, [activeDevice]);
-
-    // Pulling features from activeDevice
-    const hasLedFeature = useMemo(
-        () => activeDevice?.features?.includes('LED_Indicator') || false,
-        [activeDevice]
-    );
-    const hasPedalFeature = useMemo(
-        () => activeDevice?.features?.includes('Abort_Pedal') || false,
-        [activeDevice]
-    );
 
     // --- Health Logic ---
     const { title, icon, description, displayDeviceId } = useMemo(() => {
@@ -102,20 +82,15 @@ export const DeviceMenu = () => {
             color = red[5];
             title = 'Server Unreachable';
             icon = <CloudOutlined style={{ color: color }} />;
-            description =
-                'The UI cannot reach the server. Check your connection.';
+            description = 'The UI cannot reach the server. Check your connection.';
             displayDeviceId = 'N/A';
         } else if (connectionHealth.device.status === 'error') {
             color = yellow[5];
             title = 'Device Unreachable';
             icon = <DisconnectOutlined style={{ color: color }} />;
-            description =
-                'The server is running, but it cannot reach the device.';
+            description = 'The server is running, but it cannot reach the device.';
             displayDeviceId = deviceName || 'Unknown Device';
-        } else if (
-            connectionHealth.server.status === 'pending' ||
-            connectionHealth.device.status === 'pending'
-        ) {
+        } else if (connectionHealth.server.status === 'pending' || connectionHealth.device.status === 'pending') {
             color = token.colorTextDisabled;
             title = 'Connecting...';
             icon = <LoadingOutlined style={{ color: color }} />;
@@ -139,82 +114,104 @@ export const DeviceMenu = () => {
     }, [connectionHealth, activeDevice, deviceName, token]);
     // --- END HEALTH LOGIC ---
 
-    // Tooltip content
-    const ledTooltipContent = (
-        <div style={{ maxWidth: 250 }}>
-            <Text>An on-device LED indicator for quick status reference.</Text>
-            <Divider style={{ margin: '8px 0' }} />
-            <Space direction="vertical" size={0}>
-                <Text>
-                    <Text strong>Slow Pulse:</Text> Ready
-                </Text>
-                <Text>
-                    <Text strong>Medium Blink:</Text> Starting / Testing
-                </Text>
-                <Text>
-                    <Text strong>Solid On:</Text> Locked
-                </Text>
-                <Text>
-                    <Text strong>Fast Blink:</Text> Penalty Active
-                </Text>
-                <Text>
-                    <Text strong>Off:</Text> Completed / Off
-                </Text>
-            </Space>
-        </div>
-    );
-    const pedalTooltipContent = (
-        <div style={{ maxWidth: 250 }}>
-            <Text>
-                Acts as an on-device emergency break, immediately aborting the
-                session.
+    // --- Feature Mapping Logic ---
+
+    // LED Tooltip content
+    const ledTooltip = (
+        <div>
+            <Text strong style={{ color: 'white' }}>
+                LED Patterns:
             </Text>
+            <ul
+                style={{
+                    paddingLeft: '16px',
+                    margin: '4px 0 0 0',
+                    fontSize: '12px',
+                    color: 'white',
+                }}
+            >
+                <li>
+                    <span style={{ color: '#ccc' }}>Ready:</span> Slow Pulse
+                </li>
+                <li>
+                    <span style={{ color: '#ccc' }}>Armed:</span> Fast Blink
+                </li>
+                <li>
+                    <span style={{ color: '#ccc' }}>Locked:</span> Solid On
+                </li>
+                <li>
+                    <span style={{ color: '#ccc' }}>Aborted:</span> Standard Blink
+                </li>
+                <li>
+                    <span style={{ color: '#ccc' }}>Done:</span> Double Blink
+                </li>
+                <li>
+                    <span style={{ color: '#ccc' }}>Test:</span> Medium Pulse
+                </li>
+            </ul>
         </div>
     );
 
-    // Feature list
+    const getFeatureDetails = (feature: DeviceFeature) => {
+        switch (feature) {
+            case 'abortLongPress':
+                return {
+                    label: 'Abort Pedal Support',
+                    icon: <UsbOutlined style={{ color: green[5] }} />,
+                    description: 'Physical button long-press aborts the session immediately.',
+                };
+            case 'startLongPress':
+                return {
+                    label: 'Manual Start Trigger',
+                    icon: <ThunderboltOutlined style={{ color: green[5] }} />,
+                    description: 'Allows starting the session by holding the physical button.',
+                };
+            case 'startCountdown':
+                return {
+                    label: 'Auto Countdown',
+                    icon: <ClockCircleOutlined style={{ color: green[5] }} />,
+                    description: 'Supports automatic start after a configurable delay.',
+                };
+            case 'statusLed' as any: // Cast for robust handling if types lag behind backend
+                return {
+                    label: 'Status LED',
+                    icon: <BulbOutlined style={{ color: green[5] }} />,
+                    description: ledTooltip,
+                };
+            default:
+                return {
+                    label: feature,
+                    icon: <CheckCircleOutlined style={{ color: green[5] }} />,
+                    description: 'Enabled firmware feature.',
+                };
+        }
+    };
+
+    // Feature list generation
     const featureItems: MenuProps['items'] = [];
+
     if (activeDevice && connectionHealth.device.status === 'ok') {
-        if (hasLedFeature) {
+        activeDevice.features.forEach((feature) => {
+            const details = getFeatureDetails(feature);
             featureItems.push({
-                key: 'feat-led',
+                key: `feat-${feature}`,
                 label: (
-                    <Space>
-                        <span>LED Status Indicator</span>
-                        <Tooltip title={ledTooltipContent} placement="right">
+                    <Tooltip title={details.description} placement="right" overlayStyle={{ maxWidth: 300 }}>
+                        <Space style={{ pointerEvents: 'auto' }}>
+                            <span>{details.label}</span>
                             <InfoCircleOutlined
                                 style={{
                                     color: token.colorTextDisabled,
                                     cursor: 'help',
                                 }}
                             />
-                        </Tooltip>
-                    </Space>
+                        </Space>
+                    </Tooltip>
                 ),
-                icon: <CheckCircleOutlined style={{ color: green[5] }} />,
+                icon: details.icon,
                 disabled: true,
             });
-        }
-        if (hasPedalFeature) {
-            featureItems.push({
-                key: 'feat-abort-pedal',
-                label: (
-                    <Space>
-                        <span>Abort Pedal Support</span>
-                        <Tooltip title={pedalTooltipContent} placement="right">
-                            <InfoCircleOutlined
-                                style={{
-                                    color: token.colorTextDisabled,
-                                    cursor: 'help',
-                                }}
-                            />
-                        </Tooltip>
-                    </Space>
-                ),
-                icon: <UsbOutlined style={{ color: green[5] }} />,
-                disabled: true,
-            });
-        }
+        });
     }
 
     let mainActionItem: NonNullable<MenuProps['items']>[number];
@@ -332,9 +329,7 @@ export const DeviceMenu = () => {
                     label: 'View Device Logs',
                     icon: <FileTextOutlined />,
                     onClick: fetchDeviceLogs,
-                    disabled:
-                        !activeDevice ||
-                        connectionHealth.device.status !== 'ok',
+                    disabled: !activeDevice || connectionHealth.device.status !== 'ok',
                 },
                 mainActionItem,
                 {
@@ -342,10 +337,7 @@ export const DeviceMenu = () => {
                     label: 'Device Settings',
                     icon: <SlidersOutlined />,
                     onClick: openDeviceSettingsModal,
-                    disabled:
-                        !activeDevice ||
-                        (currentState !== 'ready' &&
-                            currentState !== 'completed'),
+                    disabled: !activeDevice || (currentState !== 'ready' && currentState !== 'completed'),
                 },
             ],
         },
@@ -380,20 +372,14 @@ export const DeviceMenu = () => {
                         {displayDeviceId}
                     </Text>
                 </Space>
-                <DownOutlined
-                    style={{ fontSize: '10px', color: token.colorTextDisabled }}
-                />
+                <DownOutlined style={{ fontSize: '10px', color: token.colorTextDisabled }} />
             </Space>
         </Button>
     );
 
     return (
         <>
-            <Dropdown
-                menu={{ items: menuItems }}
-                trigger={['click']}
-                disabled={!activeDevice && title !== 'No Device'}
-            >
+            <Dropdown menu={{ items: menuItems }} trigger={['click']} disabled={!activeDevice && title !== 'No Device'}>
                 {triggerComponent}
             </Dropdown>
         </>

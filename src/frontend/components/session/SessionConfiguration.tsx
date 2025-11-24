@@ -29,6 +29,8 @@ import {
     DisconnectOutlined,
     HddOutlined,
     FieldTimeOutlined,
+    ThunderboltOutlined,
+    FieldTimeOutlined as TimerIcon, // Alias for distinction
 } from '@ant-design/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { formatSeconds } from '../../utils/time';
@@ -43,27 +45,33 @@ const { Title, Text } = Typography;
  * This is the main control panel for the 'ready' state.
  */
 export const SessionConfiguration = () => {
-    const { currentState, startSession, isLocking, sessionTimeRemaining } =
-        useSession();
+    // Destructure status here so it's available for the render function
+    const { currentState, startSession, isLocking, sessionTimeRemaining, status } = useSession();
     const { activeDevice, openDeviceModal } = useDeviceManager();
 
     const [form] = Form.useForm<SessionFormData>();
     const [setupStep, setSetupStep] = useState(0);
     const [useMultiDelay, setUseMultiDelay] = useState(false);
+
+    // Watch the strategy to update UI text dynamically
+    const selectedStrategy = Form.useWatch('triggerStrategy', form);
+    const isManualTrigger = selectedStrategy === 'buttonTrigger';
+
     const { token } = antdTheme.useToken();
+
+    // Check hardware capabilities
+    const supportsManualTrigger = useMemo(() => {
+        return activeDevice?.features?.includes('startLongPress') ?? false;
+    }, [activeDevice]);
 
     // Calculate enabled channels for the UI based on the new API structure
     const enabledChannels = useMemo(() => {
         if (!activeDevice) return [];
         const list = [];
-        if (activeDevice.channels.ch1)
-            list.push({ key: 'delayCh1', label: 'MagLock 1' });
-        if (activeDevice.channels.ch2)
-            list.push({ key: 'delayCh2', label: 'MagLock 2' });
-        if (activeDevice.channels.ch3)
-            list.push({ key: 'delayCh3', label: 'MagLock 3' });
-        if (activeDevice.channels.ch4)
-            list.push({ key: 'delayCh4', label: 'MagLock 4' });
+        if (activeDevice.channels.ch1) list.push({ key: 'delayCh1', label: 'MagLock 1' });
+        if (activeDevice.channels.ch2) list.push({ key: 'delayCh2', label: 'MagLock 2' });
+        if (activeDevice.channels.ch3) list.push({ key: 'delayCh3', label: 'MagLock 3' });
+        if (activeDevice.channels.ch4) list.push({ key: 'delayCh4', label: 'MagLock 4' });
         return list;
     }, [activeDevice]);
 
@@ -74,6 +82,7 @@ export const SessionConfiguration = () => {
         if (currentState === 'ready') {
             setSetupStep(0);
             setUseMultiDelay(false);
+            form.resetFields();
         }
     }, [currentState, form]);
 
@@ -87,9 +96,9 @@ export const SessionConfiguration = () => {
         )
             return 0;
 
-        if (currentState === 'ready' || currentState === 'testing')
-            return setupStep;
-        if (currentState === 'countdown') return 2;
+        if (currentState === 'ready' || currentState === 'testing') return setupStep;
+        // ARMED maps to "Countdown" step (index 2) visually, regardless of strategy
+        if (currentState === 'armed') return 2;
         if (currentState === 'locked' || currentState === 'aborted') return 3;
         if (currentState === 'completed') return 4;
         return 0;
@@ -98,7 +107,7 @@ export const SessionConfiguration = () => {
     const stepItems = [
         { title: 'Prepare' },
         { title: 'Configure' },
-        { title: 'Countdown' },
+        { title: 'Arming' },
         { title: 'Lock' },
         { title: 'Reward' },
     ];
@@ -146,19 +155,18 @@ export const SessionConfiguration = () => {
 
     const continueButtonProps = getContinueButtonProps();
 
-    // --- Sub-components for each step ---
+    // --- Sub-render functions ---
 
     /**
      * Content for Step 0: Preparation instructions.
      */
-    const PreparationInstructions = (
+    const renderPreparationInstructions = () => (
         <div style={{ width: '100%' }}>
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 <div>
                     <Title level={5}>Prepare Your Reward Lock</Title>
                     <Text type="secondary">
-                        Before continuing, program your physical lock using the
-                        combination pattern shown on the right.
+                        Before continuing, program your physical lock using the combination pattern shown on the right.
                     </Text>
                     <List
                         size="small"
@@ -210,14 +218,10 @@ export const SessionConfiguration = () => {
     /**
      * Content for Step 1: The main configuration form.
      */
-    const ConfigurationForm = () => {
-        const { status } = useSession();
-        const { activeDevice } = useDeviceManager();
+    const renderConfigurationForm = () => {
         const pendingPaybackSeconds = status?.stats?.pendingPaybackSeconds || 0;
-        const paybackTimeEnabled =
-            activeDevice?.config?.enablePaybackTime || false;
-        const paybackTimeMinutes =
-            activeDevice?.config?.paybackTimeMinutes || 0;
+        const paybackTimeEnabled = activeDevice?.deterrents?.enablePaybackTime || false;
+        const paybackTimeMinutes = activeDevice?.deterrents?.paybackTimeMinutes || 0;
 
         return (
             <Form
@@ -225,6 +229,7 @@ export const SessionConfiguration = () => {
                 onFinish={startSession}
                 layout="vertical"
                 initialValues={{
+                    triggerStrategy: 'autoCountdown', // Default to auto
                     type: 'time-range',
                     timeRangeSelection: 'short',
                     duration: 30,
@@ -233,27 +238,22 @@ export const SessionConfiguration = () => {
                     penaltyDuration: 120,
                     hideTimer: false,
                     useMultiChannelDelay: false,
-                    delayCh1: 30,
-                    delayCh2: 30,
-                    delayCh3: 30,
-                    delayCh4: 30,
+                    delayCh1: 10,
+                    delayCh2: 10,
+                    delayCh3: 10,
+                    delayCh4: 10,
                 }}
             >
+                {/* --- 1. SESSION DURATION --- */}
                 <Space direction="vertical" style={{ width: '100%' }}>
                     <Title level={5}>1. Session Duration</Title>
                     <Text type="secondary" style={{ marginTop: -8 }}>
-                        Choose how the session duration will be set.
+                        Choose how long the device stays locked.
                     </Text>
 
-                    <Form.Item
-                        name="type"
-                        label="Duration Type"
-                        style={{ marginBottom: 8 }}
-                    >
+                    <Form.Item name="type" label="Duration Mode" style={{ marginBottom: 8 }}>
                         <Radio.Group buttonStyle="solid">
-                            <Radio.Button value="time-range">
-                                Time Range
-                            </Radio.Button>
+                            <Radio.Button value="time-range">Time Range</Radio.Button>
                             <Radio.Button value="fixed">Fixed</Radio.Button>
                             <Radio.Button value="random">Random</Radio.Button>
                         </Radio.Group>
@@ -266,20 +266,11 @@ export const SessionConfiguration = () => {
 
                             if (type === 'time-range') {
                                 return (
-                                    <Form.Item
-                                        name="timeRangeSelection"
-                                        label="Select a Range"
-                                    >
+                                    <Form.Item name="timeRangeSelection" label="Select a Range">
                                         <Radio.Group buttonStyle="solid">
-                                            <Radio.Button value="short">
-                                                Short: 20-45 min
-                                            </Radio.Button>
-                                            <Radio.Button value="medium">
-                                                Medium: 60-90 min
-                                            </Radio.Button>
-                                            <Radio.Button value="long">
-                                                Long: 2-3 hours
-                                            </Radio.Button>
+                                            <Radio.Button value="short">Short: 20-45 min</Radio.Button>
+                                            <Radio.Button value="medium">Medium: 60-90 min</Radio.Button>
+                                            <Radio.Button value="long">Long: 2-3 hours</Radio.Button>
                                         </Radio.Group>
                                     </Form.Item>
                                 );
@@ -287,16 +278,8 @@ export const SessionConfiguration = () => {
 
                             if (type === 'fixed') {
                                 return (
-                                    <Form.Item
-                                        name="duration"
-                                        label="Fixed Duration (15-180 min)"
-                                    >
-                                        <InputNumber
-                                            min={15}
-                                            max={180}
-                                            addonAfter="min"
-                                            style={{ width: 200 }}
-                                        />
+                                    <Form.Item name="duration" label="Fixed Duration (15-180 min)">
+                                        <InputNumber min={15} max={180} addonAfter="min" style={{ width: 200 }} />
                                     </Form.Item>
                                 );
                             }
@@ -304,25 +287,11 @@ export const SessionConfiguration = () => {
                             if (type === 'random') {
                                 return (
                                     <Space align="start">
-                                        <Form.Item
-                                            name="rangeMin"
-                                            label="Minimum (min)"
-                                        >
-                                            <InputNumber
-                                                min={15}
-                                                max={180}
-                                                addonAfter="min"
-                                            />
+                                        <Form.Item name="rangeMin" label="Minimum (min)">
+                                            <InputNumber min={15} max={180} addonAfter="min" />
                                         </Form.Item>
-                                        <Form.Item
-                                            name="rangeMax"
-                                            label="Maximum (min)"
-                                        >
-                                            <InputNumber
-                                                min={15}
-                                                max={180}
-                                                addonAfter="min"
-                                            />
+                                        <Form.Item name="rangeMax" label="Maximum (min)">
+                                            <InputNumber min={15} max={180} addonAfter="min" />
                                         </Form.Item>
                                     </Space>
                                 );
@@ -333,136 +302,145 @@ export const SessionConfiguration = () => {
                     </Form.Item>
 
                     {paybackTimeEnabled && pendingPaybackSeconds > 0 && (
-                        <Text type="secondary" style={{ display: 'block' }}>
+                        <Text type="success" style={{ display: 'block' }}>
                             <FieldTimeOutlined style={{ marginRight: 8 }} />
                             You have{' '}
-                            <Text strong>
+                            <Text type="success" strong>
                                 {formatSeconds(pendingPaybackSeconds)}
                             </Text>{' '}
-                            of pending payback, which will be added to this
-                            session.
+                            of pending payback, which will be added to this session.
                         </Text>
                     )}
                 </Space>
 
-                <Divider style={{ marginTop: 6 }} />
+                <Divider />
 
+                {/* --- 2. START CONFIGURATION (Combined Strategy & Delay) --- */}
                 <Space direction="vertical" style={{ width: '100%' }}>
-                    <Title level={5}>2. Start Delay</Title>
+                    <Title level={5}>2. Start Configuration</Title>
                     <Text type="secondary" style={{ marginTop: -8 }}>
-                        Set a countdown period before the MagLock engages.
+                        {isManualTrigger
+                            ? 'The session will start after you long-press the device button.'
+                            : 'Configure the countdown before the session starts automatically.'}
                     </Text>
 
-                    {/* Show toggle only if device has multiple enabled channels */}
-                    {canUseMultiChannel && (
-                        <Form.Item
-                            name="useMultiChannelDelay"
-                            label="Delay Mode"
-                            valuePropName="checked"
-                            style={{ marginBottom: 8 }}
-                        >
-                            <Switch
-                                checkedChildren="Per-MagLock"
-                                unCheckedChildren="Single Delay"
-                                onChange={(checked) => {
-                                    setUseMultiDelay(checked);
-                                }}
-                            />
+                    {/* Start Method Strategy Selector */}
+                    {supportsManualTrigger && (
+                        <Form.Item name="triggerStrategy" style={{ marginBottom: 12, marginTop: 8 }}>
+                            <Radio.Group buttonStyle="solid" block>
+                                <Radio.Button
+                                    value="autoCountdown"
+                                    style={{
+                                        width: '50%',
+                                        textAlign: 'center',
+                                    }}
+                                >
+                                    <TimerIcon /> Automatic Timer
+                                </Radio.Button>
+                                <Radio.Button
+                                    value="buttonTrigger"
+                                    style={{
+                                        width: '50%',
+                                        textAlign: 'center',
+                                    }}
+                                >
+                                    <ThunderboltOutlined /> Device Button
+                                </Radio.Button>
+                            </Radio.Group>
                         </Form.Item>
                     )}
 
-                    {/* Single delay inputs (binds to delayCh1) */}
-                    {!useMultiDelay && (
-                        <>
-                            <Form.Item
-                                name="delayCh1"
-                                label="Start Delay (0-120 seconds)"
-                            >
-                                <InputNumber
-                                    min={0}
-                                    max={120}
-                                    addonAfter="sec"
-                                    style={{ width: 200 }}
-                                />
-                            </Form.Item>
-                            <Text
-                                type="secondary"
-                                style={{ marginTop: -16, display: 'block' }}
-                            >
-                                {canUseMultiChannel
-                                    ? 'All enabled MagLocks will activate after this delay.'
-                                    : 'Wait before the lock session begins.'}
-                            </Text>
-                        </>
-                    )}
+                    {/* Delay inputs (HIDDEN if Manual Trigger is selected) */}
+                    {!isManualTrigger && (
+                        <div style={{ paddingLeft: 12, borderLeft: `2px solid ${token.colorBorderSecondary}` }}>
+                            {/* Show toggle only if device has multiple enabled channels */}
+                            {canUseMultiChannel && (
+                                <Form.Item
+                                    name="useMultiChannelDelay"
+                                    label="Countdown Mode"
+                                    valuePropName="checked"
+                                    style={{ marginBottom: 8 }}
+                                >
+                                    <Switch
+                                        checkedChildren="Per-MagLock"
+                                        unCheckedChildren="Unified"
+                                        onChange={(checked) => {
+                                            setUseMultiDelay(checked);
+                                        }}
+                                    />
+                                </Form.Item>
+                            )}
 
-                    {/* Multi-channel delay inputs */}
-                    {useMultiDelay && (
-                        <>
-                            <Row gutter={[16, 16]}>
-                                {enabledChannels.map((ch) => (
-                                    <Col xs={24} sm={12} key={ch.key}>
-                                        <Form.Item
-                                            name={ch.key} // Binds to delayCh1, delayCh2...
-                                            label={`${ch.label} Delay (sec)`}
-                                            style={{ marginBottom: 0 }}
-                                        >
-                                            <InputNumber
-                                                min={0}
-                                                max={120}
-                                                addonAfter="sec"
-                                                style={{ width: '100%' }}
-                                            />
-                                        </Form.Item>
-                                    </Col>
-                                ))}
-                            </Row>
-                            <Text
-                                type="secondary"
-                                style={{ marginTop: 8, display: 'block' }}
-                            >
-                                Set an independent delay for each MagLock. The
-                                session timer begins after all the MagLocks have
-                                been activated.
-                            </Text>
-                        </>
+                            {/* Single delay inputs (binds to delayCh1) */}
+                            {!useMultiDelay && (
+                                <>
+                                    <Form.Item
+                                        name="delayCh1"
+                                        label="Countdown Duration (sec)"
+                                        style={{ marginBottom: 4 }}
+                                    >
+                                        <InputNumber min={0} max={120} addonAfter="sec" style={{ width: 200 }} />
+                                    </Form.Item>
+                                    <Text type="secondary" style={{ fontSize: '0.85em' }}>
+                                        {canUseMultiChannel
+                                            ? 'All enabled MagLocks will activate after this time.'
+                                            : 'Time before the lock engages.'}
+                                    </Text>
+                                </>
+                            )}
+
+                            {/* Multi-channel delay inputs */}
+                            {useMultiDelay && (
+                                <>
+                                    <Row gutter={[16, 0]}>
+                                        {enabledChannels.map((ch) => (
+                                            <Col xs={24} sm={12} key={ch.key}>
+                                                <Form.Item
+                                                    name={ch.key} // Binds to delayCh1, delayCh2...
+                                                    label={`${ch.label} Timer (sec)`}
+                                                    style={{ marginBottom: 12 }}
+                                                >
+                                                    <InputNumber
+                                                        min={0}
+                                                        max={120}
+                                                        addonAfter="sec"
+                                                        style={{ width: '100%' }}
+                                                    />
+                                                </Form.Item>
+                                            </Col>
+                                        ))}
+                                    </Row>
+                                    <Text type="secondary" style={{ fontSize: '0.85em' }}>
+                                        Set independent times for each MagLock.
+                                    </Text>
+                                </>
+                            )}
+                        </div>
                     )}
                 </Space>
 
                 <Divider />
-                {/* Penalty configuration */}
+
+                {/* --- 3. PENALTY --- */}
                 <Space direction="vertical" style={{ width: '100%' }}>
                     <Title level={5}>3. Abort Penalty</Title>
                     <Text type="secondary" style={{ marginTop: -8 }}>
-                        Set the cooldown duration if the session is aborted
-                        early.
+                        Set the cooldown duration if the session is aborted early.
                     </Text>
 
-                    <Form.Item
-                        name="penaltyDuration"
-                        label="Abort Penalty (15-180 min)"
-                        style={{ marginTop: 8 }}
-                    >
-                        <InputNumber
-                            min={15}
-                            max={180}
-                            addonAfter="min"
-                            style={{ width: 200 }}
-                        />
+                    <Form.Item name="penaltyDuration" label="Abort Penalty (15-180 min)" style={{ marginTop: 8 }}>
+                        <InputNumber min={15} max={180} addonAfter="min" style={{ width: 200 }} />
                     </Form.Item>
-                    <Text
-                        type="secondary"
-                        style={{ marginTop: -16, display: 'block' }}
-                    >
-                        When aborted, the reward code will remain hidden for
-                        this duration.
+                    <Text type="secondary" style={{ marginTop: -16, display: 'block' }}>
+                        When aborted, the reward code will remain hidden for this duration.
                     </Text>
                 </Space>
 
                 <Divider />
-                {/* Tension mode (hide timer) */}
+
+                {/* --- 4. TENSION --- */}
                 <Space direction="vertical" style={{ width: '100%' }}>
-                    <Title level={5}>3. Tension Mode</Title>
+                    <Title level={5}>4. Tension Mode</Title>
                     <Text type="secondary" style={{ marginTop: -8 }}>
                         Hides the session timer for an extra challenge.
                     </Text>
@@ -489,8 +467,7 @@ export const SessionConfiguration = () => {
                             <FieldTimeOutlined style={{ marginRight: 8 }} />
                             Time Payback is enabled: Aborting will add{' '}
                             <Text strong>
-                                {paybackTimeMinutes}{' '}
-                                {paybackTimeMinutes > 1 ? 'minutes' : 'minute'}
+                                {paybackTimeMinutes} {paybackTimeMinutes > 1 ? 'minutes' : 'minute'}
                             </Text>{' '}
                             to your next session.
                         </Text>
@@ -500,7 +477,7 @@ export const SessionConfiguration = () => {
                 {/* Submit button */}
                 <Button
                     type="primary"
-                    icon={<LockOutlined />}
+                    icon={isManualTrigger ? <ThunderboltOutlined /> : <LockOutlined />}
                     htmlType="submit"
                     size="large"
                     loading={isLocking || currentState === 'testing'}
@@ -508,9 +485,11 @@ export const SessionConfiguration = () => {
                     style={{ width: '100%' }}
                 >
                     {isLocking
-                        ? 'Starting...'
+                        ? 'Arming Device...'
                         : currentState === 'ready'
-                          ? 'Start Lock Session'
+                          ? isManualTrigger
+                              ? 'Arm Device (Wait for Button)'
+                              : 'Start Countdown'
                           : currentState === 'testing'
                             ? 'Testing Hardware...'
                             : 'Device Not Ready'}
@@ -522,13 +501,7 @@ export const SessionConfiguration = () => {
     /**
      * Content for Step 3: Locked or Aborted state.
      */
-    const SessionActiveContent = ({
-        currentState,
-        sessionTimeRemaining,
-    }: {
-        currentState: 'locked' | 'aborted';
-        sessionTimeRemaining: number;
-    }) => {
+    const renderSessionActiveContent = () => {
         const isLocked = currentState === 'locked';
 
         return (
@@ -564,24 +537,24 @@ export const SessionConfiguration = () => {
     /**
      * Content for Step 4: Session completed.
      */
-    const SessionCompletedContent = (
-        <div style={{ textAlign: 'center', padding: '24px 0' }}>
-            <UnlockOutlined style={{ fontSize: 48, color: '#52c41a' }} />
-            <Title level={3} style={{ marginTop: 16 }}>
-                Session Complete!
-            </Title>
-            <Text type="secondary">
-                The code for your reward lock is now visible.
-            </Text>
-            <Alert
-                message="Reboot Required for Next Session"
-                description="To start a new session, you must power the lock controller off and then on again. It will automatically generate a new reward code."
-                type="info"
-                showIcon
-                icon={<PoweroffOutlined />}
-                style={{ marginTop: 24, textAlign: 'left' }}
-            />
-        </div>
+    const renderSessionCompletedContent = () => (
+        <Card bordered={false}>
+            <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                <UnlockOutlined style={{ fontSize: 48, color: '#52c41a' }} />
+                <Title level={3} style={{ marginTop: 16 }}>
+                    Session Complete!
+                </Title>
+                <Text type="secondary">The code for your reward lock is now visible.</Text>
+                <Alert
+                    message="Reboot Required for Next Session"
+                    description="To start a new session, you must power the lock controller off and then on again. It will automatically generate a new reward code."
+                    type="info"
+                    showIcon
+                    icon={<PoweroffOutlined />}
+                    style={{ marginTop: 24, textAlign: 'left' }}
+                />
+            </div>
+        </Card>
     );
 
     /**
@@ -596,7 +569,7 @@ export const SessionConfiguration = () => {
                     currentState === 'device_unreachable' ||
                     currentState === 'server_unreachable'))
         ) {
-            return PreparationInstructions;
+            return renderPreparationInstructions();
         }
 
         if (currentState === 'connecting') {
@@ -619,21 +592,17 @@ export const SessionConfiguration = () => {
 
         switch (currentStep) {
             case 0:
-                return PreparationInstructions;
+                return renderPreparationInstructions();
             case 1:
-                return <ConfigurationForm />;
+                return renderConfigurationForm(); // Called as function, not <Component />
             case 2:
+                // ARMED State (Countdown or Wait for Button)
                 return <CountdownDisplay />;
             case 3:
                 // This state can only be 'locked' or 'aborted'
-                return (
-                    <SessionActiveContent
-                        currentState={currentState as 'locked' | 'aborted'}
-                        sessionTimeRemaining={sessionTimeRemaining}
-                    />
-                );
+                return renderSessionActiveContent();
             case 4:
-                return <Card bordered={false}>{SessionCompletedContent}</Card>;
+                return renderSessionCompletedContent();
             default:
                 return null;
         }

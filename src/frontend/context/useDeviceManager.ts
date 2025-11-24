@@ -1,10 +1,5 @@
 import { createContext, useContext } from 'react';
-import {
-    ActiveDevice,
-    ConnectionHealth,
-    DeviceProvisioningData,
-    DiscoveredDevice,
-} from '../../types';
+import { DeviceDetails, ConnectionHealth, DeviceProvisioningData, DiscoveredDevice } from '../../types';
 import { SerialPortInfo } from '../types/electron';
 
 export interface DeviceHealthResponse {
@@ -14,7 +9,7 @@ export interface DeviceHealthResponse {
 
 export interface DeviceManagerContextState {
     connectionHealth: ConnectionHealth;
-    activeDevice: ActiveDevice | null;
+    activeDevice: DeviceDetails | null;
     discoveredDevices: DiscoveredDevice[];
     isDeviceModalOpen: boolean;
     isScanning: boolean;
@@ -22,10 +17,7 @@ export interface DeviceManagerContextState {
     isLogModalOpen: boolean;
     logContent: string;
     scanForDevices: (silent?: boolean) => void;
-    provisionDevice: (
-        deviceId: string,
-        data: DeviceProvisioningData
-    ) => Promise<boolean>;
+    provisionDevice: (deviceId: string, data: DeviceProvisioningData) => Promise<boolean>;
     selectDevice: (device: DiscoveredDevice) => void;
     clearDevice: () => void;
     openDeviceModal: () => void;
@@ -48,16 +40,10 @@ export interface DeviceManagerContextState {
     openDeviceSettingsModal: () => void;
     closeDeviceSettingsModal: () => void;
     isUpdatingWifi: boolean;
-    updateWifi: (
-        deviceId: string,
-        ssid: string,
-        pass: string
-    ) => Promise<boolean>;
+    updateWifi: (deviceId: string, ssid: string, pass: string) => Promise<boolean>;
 }
 
-export const DeviceManagerContext = createContext<
-    DeviceManagerContextState | undefined
->(undefined);
+export const DeviceManagerContext = createContext<DeviceManagerContextState | undefined>(undefined);
 
 /**
  * Custom hook to consume the DeviceManagerContext.
@@ -65,9 +51,6 @@ export const DeviceManagerContext = createContext<
  */
 export const useDeviceManager = () => {
     const ctx = useContext(DeviceManagerContext);
-    if (!ctx)
-        throw new Error(
-            'useDeviceManager must be used within a DeviceManagerProvider'
-        );
+    if (!ctx) throw new Error('useDeviceManager must be used within a DeviceManagerProvider');
     return ctx;
 };

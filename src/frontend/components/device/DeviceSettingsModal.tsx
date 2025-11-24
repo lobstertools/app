@@ -27,11 +27,14 @@ import {
     FireOutlined,
     ClockCircleOutlined,
     CloseCircleOutlined,
+    ThunderboltOutlined,
+    BulbOutlined,
 } from '@ant-design/icons';
 import { useDeviceManager } from '../../context/useDeviceManager';
 import { useState, useMemo } from 'react';
 import { useSession } from '../../context/useSessionContext';
 import { formatSeconds } from '../../utils/time';
+import { DeviceFeature } from '../../../types';
 
 const { Text } = Typography;
 const { useModal } = Modal;
@@ -65,20 +68,12 @@ export const DeviceSettingsModal = () => {
         if (!activeDevice) return;
 
         setError(null);
-        const success = await updateWifi(
-            activeDevice.id,
-            values.ssid,
-            values.pass
-        );
+        const success = await updateWifi(activeDevice.id, values.ssid, values.pass);
         if (success) {
-            message.success(
-                'Wi-Fi updated. Please reboot the device to apply.'
-            );
+            message.success('Wi-Fi updated. Please reboot the device to apply.');
             form.resetFields();
         } else {
-            setError(
-                'Failed to update Wi-Fi. The device may not be in the READY state.'
-            );
+            setError('Failed to update Wi-Fi. The device may not be in the READY state.');
         }
     };
 
@@ -128,28 +123,23 @@ export const DeviceSettingsModal = () => {
         {
             key: 'streaks',
             label: 'Streaks Enabled',
-            children: activeDevice?.config?.enableStreaks ? 'Yes' : 'No',
+            children: activeDevice?.deterrents?.enableStreaks ? 'Yes' : 'No',
         },
         {
             key: 'payback',
             label: 'Payback Time Enabled',
-            children: activeDevice?.config?.enablePaybackTime ? 'Yes' : 'No',
+            children: activeDevice?.deterrents?.enablePaybackTime ? 'Yes' : 'No',
         },
         {
             key: 'paybackMins',
             label: 'Payback Time',
-            children: `${activeDevice?.config?.paybackTimeMinutes || 'N/A'} min`,
+            children: `${activeDevice?.deterrents?.paybackTimeMinutes || 'N/A'} min`,
             span: 2,
         },
     ];
 
     // --- Session Stat Items  ---
-    const {
-        streaks = 0,
-        totalLockedTimeSeconds = 0,
-        completed = 0,
-        aborted = 0,
-    } = status?.stats || {};
+    const { streaks = 0, totalLockedTimeSeconds = 0, completed = 0, aborted = 0 } = status?.stats || {};
 
     const sessionStatItems = [
         {
@@ -202,8 +192,28 @@ export const DeviceSettingsModal = () => {
         },
     ];
 
-    const hasLedFeature = activeDevice?.features?.includes('LED_Indicator');
-    const hasPedalFeature = activeDevice?.features?.includes('Abort_Pedal');
+    // --- Feature Tags Generation ---
+    const getFeatureTagInfo = (feature: DeviceFeature) => {
+        switch (feature) {
+            case 'abortLongPress':
+                return { label: 'Abort Pedal', icon: <UsbOutlined /> };
+            case 'startLongPress':
+                return {
+                    label: 'Manual Trigger',
+                    icon: <ThunderboltOutlined />,
+                };
+            case 'startCountdown':
+                return {
+                    label: 'Auto Countdown',
+                    icon: <ClockCircleOutlined />,
+                };
+            case 'statusLed':
+                return { label: 'Status LED', icon: <BulbOutlined /> };
+            default:
+                // Fallback for unknown/future features
+                return { label: feature, icon: <CheckCircleOutlined /> };
+        }
+    };
 
     const tabItems = [
         {
@@ -216,11 +226,7 @@ export const DeviceSettingsModal = () => {
             ),
             children: (
                 <Spin spinning={isUpdatingWifi}>
-                    <Form
-                        form={form}
-                        layout="vertical"
-                        onFinish={handleWifiUpdate}
-                    >
+                    <Form form={form} layout="vertical" onFinish={handleWifiUpdate}>
                         <Alert
                             message="A device reboot is required to apply new Wi-Fi settings."
                             type="info"
@@ -241,9 +247,7 @@ export const DeviceSettingsModal = () => {
                         <Form.Item
                             name="ssid"
                             label="New Wi-Fi Name (SSID)"
-                            rules={[
-                                { required: true, message: 'SSID is required' },
-                            ]}
+                            rules={[{ required: true, message: 'SSID is required' }]}
                         >
                             <Input placeholder="Your 2.4GHz Wi-Fi Network Name" />
                         </Form.Item>
@@ -284,30 +288,25 @@ export const DeviceSettingsModal = () => {
             children: (
                 <Space direction="vertical" style={{ width: '100%' }}>
                     <Divider orientation="left">Session Statistics</Divider>
-                    <Descriptions
-                        bordered
-                        items={sessionStatItems}
-                        size="small"
-                        column={2}
-                    />
+                    <Descriptions bordered items={sessionStatItems} size="small" column={2} />
 
                     <Divider orientation="left">Device Configuration</Divider>
                     <Descriptions bordered items={configItems} size="small" />
 
                     <Divider orientation="left">Detected Features</Divider>
-                    <Space>
-                        <Tag
-                            icon={<CheckCircleOutlined />}
-                            color={hasLedFeature ? 'success' : 'default'}
-                        >
-                            LED Indicator
-                        </Tag>
-                        <Tag
-                            icon={<UsbOutlined />}
-                            color={hasPedalFeature ? 'success' : 'default'}
-                        >
-                            Abort Pedal
-                        </Tag>
+                    <Space wrap>
+                        {activeDevice?.features && activeDevice.features.length > 0 ? (
+                            activeDevice.features.map((feature) => {
+                                const { label, icon } = getFeatureTagInfo(feature);
+                                return (
+                                    <Tag icon={icon} color="success" key={feature}>
+                                        {label}
+                                    </Tag>
+                                );
+                            })
+                        ) : (
+                            <Text type="secondary">No features detected</Text>
+                        )}
                     </Space>
 
                     <Divider orientation="left" style={{ marginTop: 24 }}>
@@ -320,10 +319,8 @@ export const DeviceSettingsModal = () => {
                                 <Space direction="vertical" size={0}>
                                     <Text strong>Factory Reset Device</Text>
                                     <Text type="secondary">
-                                        Erase all settings (including Wi-Fi) and
-                                        all session data (streaks, debt) from
-                                        the device and put it back into
-                                        provisioning mode.
+                                        Erase all settings (including Wi-Fi) and all session data (streaks, debt) from
+                                        the device and put it back into provisioning mode.
                                     </Text>
                                 </Space>
                             </Col>

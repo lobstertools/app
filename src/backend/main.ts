@@ -33,8 +33,7 @@ app.use(express.urlencoded({ extended: true }));
 /**
  * Logs a message to the console with a timestamp.
  */
-const log = (message: string) =>
-    console.log(`[${new Date().toISOString()}] Server: ${message}`);
+const log = (message: string) => console.log(`[${new Date().toISOString()}] Server: ${message}`);
 
 // --- Device Discovery & State ---
 
@@ -44,7 +43,6 @@ const PROV_SERVICE_UUID = '5a160000-8334-469b-a316-c340cf29188f';
 const PROV_SSID_CHAR_UUID = '5a160001-8334-469b-a316-c340cf29188f';
 const PROV_PASS_CHAR_UUID = '5a160002-8334-469b-a316-c340cf29188f';
 const PROV_ENABLE_STREAKS_CHAR_UUID = '5a160004-8334-469b-a316-c340cf29188f';
-// eslint-disable-next-line prettier/prettier
 const PROV_ENABLE_PAYBACK_TIME_CHAR_UUID = '5a160005-8334-469b-a316-c340cf29188f';
 const PROV_PAYBACK_TIME_CHAR_UUID = '5a160006-8334-469b-a316-c340cf29188f';
 const PROV_CH1_ENABLE_UUID = '5a16000A-8334-469b-a316-c340cf29188f';
@@ -88,7 +86,7 @@ function buildTargetUrl(ip: string, port: number, path: string): string {
 function refreshDeviceTimestamp(deviceId: string) {
     const device = deviceCache.get(deviceId);
     if (device) {
-        device.lastSeen = Date.now();
+        device.lastSeenTimestamp = Date.now();
     }
 }
 
@@ -127,9 +125,7 @@ function cycleMDNSBrowser() {
     // Called when a device appears on the network
     bonjourBrowser.on('up', (service) => {
         // Select the first valid IPv4 address if available, otherwise fallback to IPv6
-        let ip =
-            service.addresses.find((addr) => !addr.includes(':')) ||
-            service.addresses[0];
+        let ip = service.addresses.find((addr) => !addr.includes(':')) || service.addresses[0];
         const port = service.port;
 
         // --- HACK FOR MOCK DEVICE ON MANAGED MACHINES ---
@@ -137,9 +133,7 @@ function cycleMDNSBrowser() {
         // the backend (server) can't talk to the mock's network IP
         // (e.g., 192.168.x.x), but it CAN talk to 127.0.0.1.
         if (service.name === 'Mock-LobsterLock') {
-            log(
-                `[mDNS] Discovered Mock-LobsterLock. Forcing IP to 127.0.0.1 for local dev on managed device.`
-            );
+            log(`[mDNS] Discovered Mock-LobsterLock. Forcing IP to 127.0.0.1 for local dev on managed device.`);
             ip = '127.0.0.1';
             // We still use the discovered port (e.g., 3003)
 
@@ -147,16 +141,14 @@ function cycleMDNSBrowser() {
             // When we find the 'ready' mock, also create a fake 'new' one
             // for testing the provisioning UI flow.
             if (!deviceCache.has(FAKE_BLE_DEVICE_ID)) {
-                log(
-                    `[Mock] Adding fake 'new_unprovisioned' device for UI testing.`
-                );
+                log(`[Mock] Adding fake 'new_unprovisioned' device for UI testing.`);
                 deviceCache.set(FAKE_BLE_DEVICE_ID, {
                     id: FAKE_BLE_DEVICE_ID,
                     name: 'Lobster Lock (Mock BLE)',
                     state: 'new_unprovisioned',
                     address: FAKE_BLE_DEVICE_ID,
                     port: 0,
-                    lastSeen: Date.now(),
+                    lastSeenTimestamp: Date.now(),
                     peripheral: undefined,
                     failedAttempts: 0,
                 });
@@ -170,13 +162,11 @@ function cycleMDNSBrowser() {
         if (existingDevice) {
             // Always update IP/Port in case DHCP changed it
             if (existingDevice.address !== ip || existingDevice.port !== port) {
-                log(
-                    `[mDNS] Device updated IP: ${existingDevice.name} -> ${ip}:${port}`
-                );
+                log(`[mDNS] Device updated IP: ${existingDevice.name} -> ${ip}:${port}`);
                 existingDevice.address = ip;
                 existingDevice.port = port;
             }
-            existingDevice.lastSeen = Date.now();
+            existingDevice.lastSeenTimestamp = Date.now();
             // log(`[mDNS] Refreshed 'ready' device: ${existingDevice.name}`);
         } else {
             const device: DiscoveredDevice = {
@@ -185,13 +175,11 @@ function cycleMDNSBrowser() {
                 state: 'ready',
                 address: ip,
                 port: port,
-                lastSeen: Date.now(),
+                lastSeenTimestamp: Date.now(),
                 failedAttempts: 0,
             };
             deviceCache.set(device.id, device);
-            log(
-                `[mDNS] Found new 'ready' device: ${device.name} (ID: ${device.id}) at ${ip}:${port}`
-            );
+            log(`[mDNS] Found new 'ready' device: ${device.name} (ID: ${device.id}) at ${ip}:${port}`);
         }
     });
 
@@ -211,31 +199,23 @@ async function performHealthChecks() {
         // Don't check the mock
         if (device.id === FAKE_BLE_DEVICE_ID) return;
 
-        const targetUrl = buildTargetUrl(
-            device.address,
-            device.port,
-            '/status'
-        );
+        const targetUrl = buildTargetUrl(device.address, device.port, '/status');
         try {
             // Short timeout to just ping existence
             await axios.get(targetUrl, { timeout: 1500 });
 
             // Success: Reset counters and update timestamp
-            device.lastSeen = Date.now();
+            device.lastSeenTimestamp = Date.now();
             device.failedAttempts = 0;
         } catch (e) {
             // Failure: Increment strike counter
             device.failedAttempts = (device.failedAttempts || 0) + 1;
 
-            log(
-                `[Health] Device ${device.name} failed check (${device.failedAttempts}/3)`
-            );
+            log(`[Health] Device ${device.name} failed check (${device.failedAttempts}/3)`);
 
             // STRIKE 3: REMOVE IMMEDIATELY
             if (device.failedAttempts >= 3) {
-                log(
-                    `[Health] Device ${device.name} unreachable for 3 attempts. Removing from cache.`
-                );
+                log(`[Health] Device ${device.name} unreachable for 3 attempts. Removing from cache.`);
                 deviceCache.delete(device.id);
             }
         }
@@ -275,7 +255,7 @@ function startDiscoveryService() {
     noble.on('discover', (peripheral) => {
         const existingDevice = deviceCache.get(peripheral.uuid);
         if (existingDevice) {
-            existingDevice.lastSeen = Date.now();
+            existingDevice.lastSeenTimestamp = Date.now();
             existingDevice.peripheral = peripheral;
         } else {
             const device: DiscoveredDevice = {
@@ -284,7 +264,7 @@ function startDiscoveryService() {
                 state: 'new_unprovisioned',
                 address: peripheral.id,
                 port: 0,
-                lastSeen: Date.now(),
+                lastSeenTimestamp: Date.now(),
                 peripheral: peripheral,
                 failedAttempts: 0,
             };
@@ -314,10 +294,8 @@ function startDiscoveryService() {
         const STALE_THRESHOLD = 120000; // 2 minutes
 
         for (const [id, device] of deviceCache.entries()) {
-            if (device.lastSeen < now - STALE_THRESHOLD) {
-                log(
-                    `[Cache] Pruning stale ${device.state} device: ${device.name} (ID: ${id})`
-                );
+            if (device.lastSeenTimestamp < now - STALE_THRESHOLD) {
+                log(`[Cache] Pruning stale ${device.state} device: ${device.name} (ID: ${id})`);
                 deviceCache.delete(id);
             }
         }
@@ -332,13 +310,17 @@ function startDiscoveryService() {
  * Lists all currently discoverable devices from the cache.
  */
 app.get('/api/devices', (_: Request, res: Response) => {
-    const deviceList = Array.from(deviceCache.values()).map((d) => ({
-        id: d.id,
-        name: d.name,
-        state: d.state,
-        address: d.address,
-        lastSeen: d.lastSeen,
-    }));
+    const deviceList = Array.from(deviceCache.values()).map(
+        (d) =>
+            ({
+                id: d.id,
+                name: d.name,
+                state: d.state,
+                address: d.address,
+                port: d.port,
+                lastSeenTimestamp: d.lastSeenTimestamp,
+            }) as DiscoveredDevice
+    );
     res.json(deviceList);
 });
 
@@ -369,9 +351,7 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         { key: 'enablePaybackTime', val: enablePaybackTime },
         { key: 'paybackTimeMinutes', val: paybackTimeMinutes },
     ]
-        .filter(
-            (field: { key: string; val: unknown }) => field.val === undefined
-        )
+        .filter((field: { key: string; val: unknown }) => field.val === undefined)
         .map((field) => field.key);
 
     if (missingFields.length > 0) {
@@ -387,8 +367,7 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         deviceCache.delete(id);
         res.json({
             status: 'success',
-            message:
-                'Mock credentials "sent". Device will "appear" on the network shortly.',
+            message: 'Mock credentials "sent". Device will "appear" on the network shortly.',
         });
         return;
     }
@@ -412,37 +391,21 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         log(`[Provision] Connected. Discovering services...`);
 
         // Discover services and characteristics
-        const { characteristics } =
-            await peripheral.discoverSomeServicesAndCharacteristicsAsync(
-                [PROV_SERVICE_UUID],
-                [
-                    PROV_SSID_CHAR_UUID,
-                    PROV_PASS_CHAR_UUID,
-                    PROV_ENABLE_STREAKS_CHAR_UUID,
-                    PROV_ENABLE_PAYBACK_TIME_CHAR_UUID,
-                    PROV_PAYBACK_TIME_CHAR_UUID,
-                    PROV_CH1_ENABLE_UUID,
-                    PROV_CH2_ENABLE_UUID,
-                    PROV_CH3_ENABLE_UUID,
-                    PROV_CH4_ENABLE_UUID,
-                ]
-            );
+        const { characteristics } = await peripheral.discoverSomeServicesAndCharacteristicsAsync(
+            [PROV_SERVICE_UUID],
+            []
+        );
 
-        const normalize = (uuid: string) =>
-            uuid.toLowerCase().replace(/-/g, '');
+        const normalize = (uuid: string) => uuid.toLowerCase().replace(/-/g, '');
 
         // Helper to find char
         const findChar = (targetUuid: string) =>
-            characteristics.find(
-                (c) => normalize(c.uuid) === normalize(targetUuid)
-            );
+            characteristics.find((c) => normalize(c.uuid) === normalize(targetUuid));
 
         const ssidChar = findChar(PROV_SSID_CHAR_UUID);
         const passChar = findChar(PROV_PASS_CHAR_UUID);
         const enableStreaksChar = findChar(PROV_ENABLE_STREAKS_CHAR_UUID);
-        const enablePaybackTimeChar = findChar(
-            PROV_ENABLE_PAYBACK_TIME_CHAR_UUID
-        );
+        const enablePaybackTimeChar = findChar(PROV_ENABLE_PAYBACK_TIME_CHAR_UUID);
         const paybackTimeChar = findChar(PROV_PAYBACK_TIME_CHAR_UUID);
 
         // Channel Config Characteristics
@@ -452,23 +415,26 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         const ch4Char = findChar(PROV_CH4_ENABLE_UUID);
 
         // Validate required characteristics
-        if (
-            !ssidChar ||
-            !passChar ||
-            !enableStreaksChar ||
-            !enablePaybackTimeChar ||
-            !paybackTimeChar ||
-            !ch1Char ||
-            !ch2Char ||
-            !ch3Char ||
-            !ch4Char
-        ) {
-            log(`[Provision] Missing characteristics.`);
-            throw new Error(
-                'Could not find all required provisioning characteristics.'
-            );
-        }
+        const requiredChars = [
+            { name: 'SSID', value: ssidChar },
+            { name: 'Password', value: passChar },
+            { name: 'EnableStreaks', value: enableStreaksChar },
+            { name: 'EnablePayback', value: enablePaybackTimeChar },
+            { name: 'PaybackTime', value: paybackTimeChar },
+            { name: 'Ch1', value: ch1Char },
+            { name: 'Ch2', value: ch2Char },
+            { name: 'Ch3', value: ch3Char },
+            { name: 'Ch4', value: ch4Char },
+        ];
 
+        const missing = requiredChars.filter((item) => !item.value).map((item) => item.name);
+
+        if (missing.length > 0) {
+            const missingList = missing.join(', ');
+            log(`[Provision] Missing characteristics: ${missingList}`);
+            log(`[Provision] Found characteristics: ${characteristics.join(',')}`);
+            throw new Error(`Could not find all required provisioning characteristics. Missing: ${missingList}`);
+        }
         log(`[Provision] Writing credentials and settings...`);
 
         // --- DATA CONVERSION ---
@@ -493,24 +459,23 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         };
         // --- END DATA CONVERSION ---
 
-        await ssidChar.writeAsync(Buffer.from(ssid), false);
-        await passChar.writeAsync(Buffer.from(pass || ''), false);
-        await enableStreaksChar.writeAsync(enableStreaksBuf, false);
-        await enablePaybackTimeChar.writeAsync(enablePaybackTimeBuf, false);
-        await paybackTimeChar.writeAsync(paybackTimeBuf, false);
+        await ssidChar!.writeAsync(Buffer.from(ssid), false);
+        await passChar!.writeAsync(Buffer.from(pass || ''), false);
+        await enableStreaksChar!.writeAsync(enableStreaksBuf, false);
+        await enablePaybackTimeChar!.writeAsync(enablePaybackTimeBuf, false);
+        await paybackTimeChar!.writeAsync(paybackTimeBuf, false);
 
-        await ch1Char.writeAsync(getBoolBuf(ch1Enabled || false), false);
-        await ch2Char.writeAsync(getBoolBuf(ch2Enabled || false), false);
-        await ch3Char.writeAsync(getBoolBuf(ch3Enabled || false), false);
-        await ch4Char.writeAsync(getBoolBuf(ch4Enabled || false), false);
+        await ch1Char!.writeAsync(getBoolBuf(ch1Enabled || false), false);
+        await ch2Char!.writeAsync(getBoolBuf(ch2Enabled || false), false);
+        await ch3Char!.writeAsync(getBoolBuf(ch3Enabled || false), false);
+        await ch4Char!.writeAsync(getBoolBuf(ch4Enabled || false), false);
 
         log(`[Provision] Credentials and settings sent! Disconnecting...`);
         await peripheral.disconnectAsync();
         deviceCache.delete(id);
         res.json({
             status: 'success',
-            message:
-                'Credentials sent. Device is rebooting and should appear on the network shortly.',
+            message: 'Credentials sent. Device is rebooting and should appear on the network shortly.',
         });
     } catch (error: unknown) {
         let message = 'An unknown provisioning error occurred';
@@ -533,41 +498,69 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
 /**
  * Updates the Wi-Fi credentials on a "ready" device.
  */
-app.post(
-    '/api/devices/:id/update-wifi',
-    async (req: Request, res: Response) => {
-        const { id } = req.params;
-        const device = deviceCache.get(id);
-        if (!device || device.state !== 'ready') {
-            return res.status(404).json({
-                status: 'error',
-                message: 'Device not found or not ready.',
-            });
-        }
+app.post('/api/devices/:id/update-wifi', async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const device = deviceCache.get(id);
+    if (!device || device.state !== 'ready') {
+        return res.status(404).json({
+            status: 'error',
+            message: 'Device not found or not ready.',
+        });
+    }
 
-        const { ssid, pass } = req.body;
-        if (!ssid || pass === undefined) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'Missing required fields: ssid, pass.',
-            });
-        }
+    const { ssid, pass } = req.body;
+    if (!ssid || pass === undefined) {
+        return res.status(400).json({
+            status: 'error',
+            message: 'Missing required fields: ssid, pass.',
+        });
+    }
 
-        const targetUrl = buildTargetUrl(
-            device.address,
-            device.port,
-            '/update-wifi'
-        );
-        try {
-            log(`Forwarding /update-wifi to ${targetUrl}`);
-            const lockResponse = await axios.post(
-                targetUrl,
-                { ssid, pass },
-                { timeout: 5000 }
-            );
-            refreshDeviceTimestamp(id);
-            res.status(lockResponse.status).json(lockResponse.data);
-        } catch (error: unknown) {
+    const targetUrl = buildTargetUrl(device.address, device.port, '/update-wifi');
+    try {
+        log(`Forwarding /update-wifi to ${targetUrl}`);
+        const lockResponse = await axios.post(targetUrl, { ssid, pass }, { timeout: 5000 });
+        refreshDeviceTimestamp(id);
+        res.status(lockResponse.status).json(lockResponse.data);
+    } catch (error: unknown) {
+        let status = 500;
+        let message = 'Failed to communicate with the lock device.';
+
+        if (isAxiosError(error)) {
+            status = error.response?.status || 500;
+            message = error.response?.data?.message || error.message;
+        } else if (error instanceof Error) {
+            message = error.message;
+        }
+        log(`Failed to update Wi-Fi: ${message}`);
+        res.status(status).json({ status: 'error', message });
+    }
+});
+
+/**
+ * Forgets a "ready" device.
+ */
+app.post('/api/devices/:id/factory-reset', async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const device = deviceCache.get(id);
+    if (!device || device.state !== 'ready') {
+        return res.status(404).json({
+            status: 'error',
+            message: 'Device not found or not ready.',
+        });
+    }
+
+    const targetUrl = buildTargetUrl(device.address, device.port, '/factory-reset');
+    try {
+        log(`Forwarding /factory-reset request to ${targetUrl}`);
+        // Expect a timeout because the device reboots
+        await axios.post(targetUrl, {}, { timeout: 2000 });
+        log(`Device ${id} responded to factory-reset. Removing from cache.`);
+    } catch (error: unknown) {
+        // Expected timeout handling...
+        if (isAxiosError(error) && (error.code === 'ECONNABORTED' || error.response?.status === 504)) {
+            log(`Device ${id} did not respond (timeout), expected during reset.`);
+        } else {
             let status = 500;
             let message = 'Failed to communicate with the lock device.';
 
@@ -581,60 +574,16 @@ app.post(
             res.status(status).json({ status: 'error', message });
         }
     }
-);
 
-/**
- * Forgets a "ready" device.
- */
-app.post(
-    '/api/devices/:id/factory-reset',
-    async (req: Request, res: Response) => {
-        const { id } = req.params;
-        const device = deviceCache.get(id);
-        if (!device || device.state !== 'ready') {
-            return res.status(404).json({
-                status: 'error',
-                message: 'Device not found or not ready.',
-            });
-        }
+    deviceCache.delete(id);
+    log(`Device ${id} reset and removed from cache.`);
+    resetMDNSDiscovery();
 
-        const targetUrl = buildTargetUrl(
-            device.address,
-            device.port,
-            '/factory-reset'
-        );
-        try {
-            log(`Forwarding /factory-reset request to ${targetUrl}`);
-            // Expect a timeout because the device reboots
-            await axios.post(targetUrl, {}, { timeout: 2000 });
-            log(
-                `Device ${id} responded to factory-reset. Removing from cache.`
-            );
-        } catch (error: unknown) {
-            // Expected timeout handling...
-            if (
-                isAxiosError(error) &&
-                (error.code === 'ECONNABORTED' ||
-                    error.response?.status === 504)
-            ) {
-                log(
-                    `Device ${id} did not respond (timeout), expected during reset.`
-                );
-            } else {
-                // ... (simplified for brevity but logic remains)
-            }
-        }
-
-        deviceCache.delete(id);
-        log(`Device ${id} reset and removed from cache.`);
-        resetMDNSDiscovery();
-
-        res.status(200).json({
-            status: 'success',
-            message: 'Reset command sent. Device is rebooting.',
-        });
-    }
-);
+    res.status(200).json({
+        status: 'success',
+        message: 'Reset command sent. Device is rebooting.',
+    });
+});
 
 /**
  * Gets the raw device logs.
@@ -719,9 +668,7 @@ app.get('/api/devices/:id/health', async (req: Request, res: Response) => {
 
     if (!device || device.state !== 'ready') {
         log(`[Health] Failed: Device ${id} not found in cache.`);
-        return res
-            .status(404)
-            .json({ status: 'error', message: 'Device not found.' });
+        return res.status(404).json({ status: 'error', message: 'Device not found.' });
     }
 
     const targetUrl = buildTargetUrl(device.address, device.port, '/status');
@@ -733,9 +680,7 @@ app.get('/api/devices/:id/health', async (req: Request, res: Response) => {
         let message = 'Device is unreachable.';
         if (isAxiosError(error)) message = error.message;
         else if (error instanceof Error) message = error.message;
-        log(
-            `[Health] Failed: Device ${id} at ${targetUrl} is unreachable: ${message}`
-        );
+        log(`[Health] Failed: Device ${id} at ${targetUrl} is unreachable: ${message}`);
         res.status(503).json({
             status: 'error',
             message: 'Device is unreachable.',
@@ -760,11 +705,7 @@ app.post('/api/devices/:id/keepalive', async (req: Request, res: Response) => {
     refreshDeviceTimestamp(id);
 
     if (device.state === 'ready') {
-        const targetUrl = buildTargetUrl(
-            device.address,
-            device.port,
-            '/keepalive'
-        );
+        const targetUrl = buildTargetUrl(device.address, device.port, '/keepalive');
         try {
             await axios.post(targetUrl, {}, { timeout: 2000 });
             return res.status(200).json({ status: 'ok' });
@@ -772,9 +713,7 @@ app.post('/api/devices/:id/keepalive', async (req: Request, res: Response) => {
             let message = 'Device is unreachable.';
             if (isAxiosError(error)) message = error.message;
             else if (error instanceof Error) message = error.message;
-            log(
-                `[KeepAlive] Failed to forward keep-alive to ${device.name}: ${message}`
-            );
+            log(`[KeepAlive] Failed to forward keep-alive to ${device.name}: ${message}`);
             return res.status(503).json({
                 status: 'error',
                 message: 'Device is unreachable.',
@@ -788,226 +727,189 @@ app.post('/api/devices/:id/keepalive', async (req: Request, res: Response) => {
 /**
  * Gets the current device status.
  */
-app.get(
-    '/api/devices/:id/session/status',
-    async (req: Request, res: Response) => {
-        const { id } = req.params;
-        const device = deviceCache.get(id);
+app.get('/api/devices/:id/session/status', async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const device = deviceCache.get(id);
 
-        const errorResponse = {
-            status: 'ready',
-            message: 'Device not found or not ready.',
-            lockSecondsRemaining: 0,
-            penaltySecondsRemaining: 0,
-            testSecondsRemaining: 0,
-            hideTimer: false,
-            delays: {
-                ch1: 0,
-                ch2: 0,
-                ch3: 0,
-                ch4: 0,
-            },
-            stats: {
-                streaks: 0,
-                aborted: 0,
-                completed: 0,
-                totalLockedTimeSeconds: 0,
-                pendingPaybackSeconds: 0,
-            },
-        };
+    const errorResponse = {
+        status: 'ready',
+        message: 'Device not found or not ready.',
+        triggerStrategy: 'autoCountdown', // New
+        triggerTimeoutRemaining: 0, // New
+        lockSecondsRemaining: 0,
+        penaltySecondsRemaining: 0,
+        testSecondsRemaining: 0,
+        hideTimer: false,
+        delays: {
+            ch1: 0,
+            ch2: 0,
+            ch3: 0,
+            ch4: 0,
+        },
+        stats: {
+            streaks: 0,
+            aborted: 0,
+            completed: 0,
+            totalLockedTimeSeconds: 0,
+            pendingPaybackSeconds: 0,
+        },
+    };
 
-        if (!device || device.state !== 'ready') {
-            log(`Failed to get status: Device ${id} not found or not ready.`);
-            return res.status(200).json(errorResponse);
-        }
-
-        const targetUrl = buildTargetUrl(
-            device.address,
-            device.port,
-            '/status'
-        );
-        try {
-            const lockResponse = await axios.get(targetUrl, { timeout: 2000 });
-            refreshDeviceTimestamp(id);
-            res.status(lockResponse.status).json(lockResponse.data);
-        } catch (error: unknown) {
-            let message = 'Failed to communicate with the lock device.';
-            if (isAxiosError(error)) message = error.message;
-            else if (error instanceof Error) message = error.message;
-
-            log(`Failed to get lock status from ${targetUrl}: ${message}`);
-            errorResponse.message =
-                'Failed to communicate with the lock device.';
-            res.status(200).json(errorResponse);
-        }
+    if (!device || device.state !== 'ready') {
+        log(`Failed to get status: Device ${id} not found or not ready.`);
+        return res.status(200).json(errorResponse);
     }
-);
+
+    const targetUrl = buildTargetUrl(device.address, device.port, '/status');
+    try {
+        const lockResponse = await axios.get(targetUrl, { timeout: 2000 });
+        refreshDeviceTimestamp(id);
+        res.status(lockResponse.status).json(lockResponse.data);
+    } catch (error: unknown) {
+        let message = 'Failed to communicate with the lock device.';
+        if (isAxiosError(error)) message = error.message;
+        else if (error instanceof Error) message = error.message;
+
+        log(`Failed to get lock status from ${targetUrl}: ${message}`);
+        errorResponse.message = 'Failed to communicate with the lock device.';
+        res.status(200).json(errorResponse);
+    }
+});
 
 /**
- * Starts a new session.
+ * Arms a new session (formerly /start).
  */
-app.post(
-    '/api/devices/:id/session/start',
-    async (req: Request, res: Response) => {
-        const { id } = req.params;
-        const device = deviceCache.get(id);
-        if (!device || device.state !== 'ready') {
-            return res.status(404).json({
-                status: 'error',
-                message: 'Device not found or not ready.',
-            });
-        }
-
-        const targetUrl = buildTargetUrl(device.address, device.port, '/start');
-        try {
-            const jsonPayload = req.body;
-            log(
-                `Forwarding /start to ${targetUrl} with JSON payload: ${JSON.stringify(jsonPayload)}`
-            );
-            const lockResponse = await axios.post(targetUrl, jsonPayload, {
-                timeout: 5000,
-            });
-            refreshDeviceTimestamp(id);
-            res.status(lockResponse.status).json(lockResponse.data);
-        } catch (error: unknown) {
-            let status = 500;
-            let message = 'Failed to communicate with the lock device.';
-            if (isAxiosError(error)) {
-                status = error.response?.status || 500;
-                message = error.response?.data?.message || error.message;
-            } else if (error instanceof Error) {
-                message = error.message;
-            }
-            log(`Failed to start session: ${message}`);
-            res.status(status).json({ status: 'error', message });
-        }
+app.post('/api/devices/:id/session/arm', async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const device = deviceCache.get(id);
+    if (!device || device.state !== 'ready') {
+        return res.status(404).json({
+            status: 'error',
+            message: 'Device not found or not ready.',
+        });
     }
-);
+
+    // Updated Target: /arm
+    const targetUrl = buildTargetUrl(device.address, device.port, '/arm');
+    try {
+        const jsonPayload = req.body;
+        log(`Forwarding /arm to ${targetUrl} with JSON payload: ${JSON.stringify(jsonPayload)}`);
+        const lockResponse = await axios.post(targetUrl, jsonPayload, {
+            timeout: 5000,
+        });
+        refreshDeviceTimestamp(id);
+        res.status(lockResponse.status).json(lockResponse.data);
+    } catch (error: unknown) {
+        let status = 500;
+        let message = 'Failed to communicate with the lock device.';
+        if (isAxiosError(error)) {
+            status = error.response?.status || 500;
+            message = error.response?.data?.message || error.message;
+        } else if (error instanceof Error) {
+            message = error.message;
+        }
+        log(`Failed to arm session: ${message}`);
+        res.status(status).json({ status: 'error', message });
+    }
+});
 
 /**
  * Starts a test session.
  */
-app.post(
-    '/api/devices/:id/session/test',
-    async (req: Request, res: Response) => {
-        const { id } = req.params;
-        const device = deviceCache.get(id);
-        if (!device || device.state !== 'ready') {
-            return res.status(404).json({
-                status: 'error',
-                message: 'Device not found or not ready.',
-            });
-        }
-
-        const targetUrl = buildTargetUrl(
-            device.address,
-            device.port,
-            '/start-test'
-        );
-        try {
-            log(`Forwarding /start-test request to ${targetUrl}`);
-            const lockResponse = await axios.post(
-                targetUrl,
-                {},
-                { timeout: 3000 }
-            );
-            refreshDeviceTimestamp(id);
-            res.status(lockResponse.status).json(lockResponse.data);
-        } catch (error: unknown) {
-            let status = 500;
-            let message = 'Failed to start test mode.';
-            if (isAxiosError(error)) {
-                status = error.response?.status || 500;
-                message = error.response?.data?.message || error.message;
-            } else if (error instanceof Error) {
-                message = error.message;
-            }
-            log(`Failed to start test: ${message}`);
-            res.status(status).json({ status: 'error', message });
-        }
+app.post('/api/devices/:id/session/test', async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const device = deviceCache.get(id);
+    if (!device || device.state !== 'ready') {
+        return res.status(404).json({
+            status: 'error',
+            message: 'Device not found or not ready.',
+        });
     }
-);
+
+    const targetUrl = buildTargetUrl(device.address, device.port, '/start-test');
+    try {
+        log(`Forwarding /start-test request to ${targetUrl}`);
+        const lockResponse = await axios.post(targetUrl, {}, { timeout: 3000 });
+        refreshDeviceTimestamp(id);
+        res.status(lockResponse.status).json(lockResponse.data);
+    } catch (error: unknown) {
+        let status = 500;
+        let message = 'Failed to start test mode.';
+        if (isAxiosError(error)) {
+            status = error.response?.status || 500;
+            message = error.response?.data?.message || error.message;
+        } else if (error instanceof Error) {
+            message = error.message;
+        }
+        log(`Failed to start test: ${message}`);
+        res.status(status).json({ status: 'error', message });
+    }
+});
 
 /**
  * Aborts the current session.
  */
-app.post(
-    '/api/devices/:id/session/abort',
-    async (req: Request, res: Response) => {
-        const { id } = req.params;
-        const device = deviceCache.get(id);
-        if (!device || device.state !== 'ready') {
-            return res.status(404).json({
-                status: 'error',
-                message: 'Device not found or not ready.',
-            });
-        }
-
-        const targetUrl = buildTargetUrl(device.address, device.port, '/abort');
-        try {
-            const lockResponse = await axios.post(
-                targetUrl,
-                {},
-                { timeout: 3000 }
-            );
-            refreshDeviceTimestamp(id);
-            log(
-                `Forwarded /abort to ${targetUrl}. Lock responded with status: ${lockResponse.data?.status}`
-            );
-            res.status(lockResponse.status).json(lockResponse.data);
-        } catch (error: unknown) {
-            let status = 500;
-            let message = 'Failed to communicate with the lock device.';
-            if (isAxiosError(error)) {
-                status = error.response?.status || 500;
-                message = error.response?.data?.message || error.message;
-            } else if (error instanceof Error) {
-                message = error.message;
-            }
-            log(`Failed to abort session: ${message}`);
-            res.status(status).json({ status: 'error', message });
-        }
+app.post('/api/devices/:id/session/abort', async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const device = deviceCache.get(id);
+    if (!device || device.state !== 'ready') {
+        return res.status(404).json({
+            status: 'error',
+            message: 'Device not found or not ready.',
+        });
     }
-);
+
+    const targetUrl = buildTargetUrl(device.address, device.port, '/abort');
+    try {
+        const lockResponse = await axios.post(targetUrl, {}, { timeout: 3000 });
+        refreshDeviceTimestamp(id);
+        log(`Forwarded /abort to ${targetUrl}. Lock responded with status: ${lockResponse.data?.status}`);
+        res.status(lockResponse.status).json(lockResponse.data);
+    } catch (error: unknown) {
+        let status = 500;
+        let message = 'Failed to communicate with the lock device.';
+        if (isAxiosError(error)) {
+            status = error.response?.status || 500;
+            message = error.response?.data?.message || error.message;
+        } else if (error instanceof Error) {
+            message = error.message;
+        }
+        log(`Failed to abort session: ${message}`);
+        res.status(status).json({ status: 'error', message });
+    }
+});
 
 /**
  * Gets the reward code history.
  */
-app.get(
-    '/api/devices/:id/session/reward',
-    async (req: Request, res: Response) => {
-        const { id } = req.params;
-        const device = deviceCache.get(id);
-        if (!device || device.state !== 'ready') {
-            return res.status(404).json({
-                status: 'error',
-                message: 'Device not found or not ready.',
-            });
-        }
-
-        const targetUrl = buildTargetUrl(
-            device.address,
-            device.port,
-            '/reward'
-        );
-        try {
-            const lockResponse = await axios.get(targetUrl, { timeout: 2000 });
-            refreshDeviceTimestamp(id);
-            res.status(lockResponse.status).json(lockResponse.data);
-        } catch (error: unknown) {
-            let status = 500;
-            let message = 'Failed to fetch reward history.';
-            if (isAxiosError(error)) {
-                status = error.response?.status || 500;
-                message = error.response?.data?.message || error.message;
-            } else if (error instanceof Error) {
-                message = error.message;
-            }
-            log(`Failed to fetch reward history: ${message}`);
-            res.status(status).json({ status: 'error', message });
-        }
+app.get('/api/devices/:id/session/reward', async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const device = deviceCache.get(id);
+    if (!device || device.state !== 'ready') {
+        return res.status(404).json({
+            status: 'error',
+            message: 'Device not found or not ready.',
+        });
     }
-);
+
+    const targetUrl = buildTargetUrl(device.address, device.port, '/reward');
+    try {
+        const lockResponse = await axios.get(targetUrl, { timeout: 2000 });
+        refreshDeviceTimestamp(id);
+        res.status(lockResponse.status).json(lockResponse.data);
+    } catch (error: unknown) {
+        let status = 500;
+        let message = 'Failed to fetch reward history.';
+        if (isAxiosError(error)) {
+            status = error.response?.status || 500;
+            message = error.response?.data?.message || error.message;
+        } else if (error instanceof Error) {
+            message = error.message;
+        }
+        log(`Failed to fetch reward history: ${message}`);
+        res.status(status).json({ status: 'error', message });
+    }
+});
 
 // --- Server Initialization ---
 app.listen(PORT, () => {

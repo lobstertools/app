@@ -55,39 +55,23 @@ export const SessionStats = () => {
                 </Tag>
             </Tooltip>
             <Tooltip title="Total Time Locked">
-                <Tag
-                    icon={<ClockCircleOutlined />}
-                    color="blue"
-                    style={{ margin: 0 }}
-                >
+                <Tag icon={<ClockCircleOutlined />} color="blue" style={{ margin: 0 }}>
                     {formatSeconds(totalLockedTimeSeconds)}
                 </Tag>
             </Tooltip>
             <Tooltip title="Total Sessions Completed">
-                <Tag
-                    icon={<CheckCircleOutlined />}
-                    color="green"
-                    style={{ margin: 0 }}
-                >
+                <Tag icon={<CheckCircleOutlined />} color="green" style={{ margin: 0 }}>
                     {completed}
                 </Tag>
             </Tooltip>
             <Tooltip title="Total Sessions Aborted">
-                <Tag
-                    icon={<CloseCircleOutlined />}
-                    color="red"
-                    style={{ margin: 0 }}
-                >
+                <Tag icon={<CloseCircleOutlined />} color="red" style={{ margin: 0 }}>
                     {aborted}
                 </Tag>
             </Tooltip>
             {pendingPaybackSeconds > 0 && (
                 <Tooltip title="Accumulated Payback Debt">
-                    <Tag
-                        icon={<WarningOutlined />}
-                        color="volcano"
-                        style={{ margin: 0 }}
-                    >
+                    <Tag icon={<WarningOutlined />} color="volcano" style={{ margin: 0 }}>
                         {formatSeconds(pendingPaybackSeconds)}
                     </Tag>
                 </Tooltip>

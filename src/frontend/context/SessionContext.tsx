@@ -1,69 +1,50 @@
 import { useMemo, ReactNode, useCallback, useEffect, useState } from 'react';
 import { notification, Alert } from 'antd';
+import axios from 'axios';
 
-import {
-    Reward,
-    SessionStatusResponse,
-    ComputedAppStatus,
-    SessionStartRequest,
-} from '../../types';
+import { Reward, SessionStatus, ComputedAppStatus, SessionArmRequest } from '../../types';
 
 import { apiClient } from '../lib/apiClient';
-import axios from 'axios';
 import { useDeviceManager } from './useDeviceManager';
-import {
-    SessionContext,
-    SessionContextState,
-    SessionFormData,
-} from './useSessionContext';
+import { SessionContext, SessionContextState, SessionFormData } from './useSessionContext';
 
 /**
  * Main state provider component.
  */
 export const SessionProvider = ({ children }: { children: ReactNode }) => {
-    const [status, setStatus] = useState<SessionStatusResponse | null>(null);
+    const [status, setStatus] = useState<SessionStatus | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isLocking, setIsLocking] = useState(false);
     const [rewardHistory, setRewardHistory] = useState<Reward[]>([]);
 
     const { activeDevice, connectionHealth } = useDeviceManager();
 
+    // 1. Compute the high-level application state
     const currentState = useMemo<ComputedAppStatus>(() => {
         if (!activeDevice) {
             return 'no_device_selected';
         }
 
-        // 1. Check connection health first
-        if (connectionHealth.server.status === 'error') {
-            return 'server_unreachable';
-        }
-        if (connectionHealth.device.status === 'error') {
-            return 'device_unreachable';
-        }
-        if (
-            connectionHealth.server.status === 'pending' ||
-            connectionHealth.device.status === 'pending'
-        ) {
+        // Connection health check
+        if (connectionHealth.server.status === 'error') return 'server_unreachable';
+        if (connectionHealth.device.status === 'error') return 'device_unreachable';
+        if (connectionHealth.server.status === 'pending' || connectionHealth.device.status === 'pending') {
             return 'connecting';
         }
 
-        // 2. If all links are 'ok', trust the device's own status
+        // Trust device status (ready, armed, locked, aborted, etc.)
         return status?.status || 'connecting';
     }, [activeDevice, connectionHealth, status]);
 
-    // --- Session Functions ---
+    // --- API Interactions ---
 
     /**
      * Fetches the main /session/status JSON from the active device.
      */
     const fetchSessionStatus = useCallback(async () => {
-        if (!activeDevice) {
-            return;
-        }
+        if (!activeDevice) return;
         try {
-            const response = await apiClient.get<SessionStatusResponse>(
-                `/devices/${activeDevice.id}/session/status`
-            );
+            const response = await apiClient.get<SessionStatus>(`/devices/${activeDevice.id}/session/status`);
             setStatus(response.data);
         } catch (err: unknown) {
             console.warn('Failed to fetch session status:', err);
@@ -76,44 +57,43 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     const fetchRewardHistory = useCallback(async () => {
         if (!activeDevice) return;
         try {
-            const response = await apiClient.get<Reward[]>(
-                `/devices/${activeDevice.id}/session/reward`
-            );
+            const response = await apiClient.get<Reward[]>(`/devices/${activeDevice.id}/session/reward`);
             setRewardHistory(response.data);
         } catch (err: unknown) {
             console.error('Failed to fetch reward history', err);
-            notification.error({ message: 'Could not fetch reward codes.' });
             setRewardHistory([]);
         }
     }, [activeDevice]);
 
     /**
-     * Sends the final /start command to the device with session payload.
+     * Sends the /arm command (formerly /start) to the device.
      */
-    const sendLockCommand = useCallback(
-        async (payload: SessionStartRequest) => {
+    const sendArmCommand = useCallback(
+        async (payload: SessionArmRequest) => {
             if (!activeDevice) return;
             if (currentState !== 'ready') {
                 notification.error({
-                    message: 'Error',
-                    description: 'Device is not ready to start a new session.',
+                    message: 'Device Busy',
+                    description: 'Device must be READY to arm a new session.',
                 });
                 return fetchSessionStatus();
             }
 
             setIsLocking(true);
             try {
-                await apiClient.post(
-                    `/devices/${activeDevice.id}/session/start`,
-                    payload
-                );
+                // Endpoint changed from /start to /arm
+                await apiClient.post(`/devices/${activeDevice.id}/session/arm`, payload);
+
+                const modeMsg =
+                    payload.triggerStrategy === 'buttonTrigger' ? 'Waiting for Button Press...' : 'Countdown Started';
+
                 notification.success({
-                    message: 'Session Starting',
-                    description: `Device is now in countdown mode.`,
+                    message: 'Device Armed',
+                    description: modeMsg,
                 });
-                await fetchSessionStatus(); // Re-sync immediately
+                await fetchSessionStatus();
             } catch (err: unknown) {
-                let msg = 'Failed to start the lock session.';
+                let msg = 'Failed to arm the device.';
                 if (axios.isAxiosError(err)) {
                     msg = err.response?.data?.message || err.message;
                 } else if (err instanceof Error) {
@@ -121,10 +101,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
                 }
 
                 setError(msg);
-                notification.error({
-                    message: 'Lock Failed',
-                    description: msg,
-                });
+                notification.error({ message: 'Arm Failed', description: msg });
                 await fetchSessionStatus();
             } finally {
                 setIsLocking(false);
@@ -134,7 +111,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     );
 
     /**
-     * Processes the form data and calls sendLockCommand.
+     * Processes Form Data -> SessionArmRequest
      */
     const startSession = (values: SessionFormData) => {
         if (!activeDevice) return;
@@ -152,49 +129,38 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
             delayCh2,
             delayCh3,
             delayCh4,
+            triggerStrategy, // NEW
         } = values;
 
-        // --- Calculate final duration ---
+        // --- Duration Calculation ---
         let finalDurationMinutes: number;
-        const getRandom = (min: number, max: number) =>
-            Math.floor(Math.random() * (max - min + 1)) + min;
+        const getRandom = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 
         switch (type) {
             case 'time-range':
-                if (timeRangeSelection === 'short')
-                    finalDurationMinutes = getRandom(20, 45);
-                else if (timeRangeSelection === 'medium')
-                    finalDurationMinutes = getRandom(60, 90);
-                else /* long */ finalDurationMinutes = getRandom(120, 180);
+                if (timeRangeSelection === 'short') finalDurationMinutes = getRandom(20, 45);
+                else if (timeRangeSelection === 'medium') finalDurationMinutes = getRandom(60, 90);
+                else finalDurationMinutes = getRandom(120, 180);
                 break;
             case 'random':
                 if (!rangeMin || !rangeMax || rangeMin > rangeMax) {
                     notification.error({
                         message: 'Invalid Range',
-                        description:
-                            'Minimum duration cannot be greater than the maximum.',
+                        description: 'Min > Max.',
                     });
                     return;
                 }
                 finalDurationMinutes = getRandom(rangeMin, rangeMax);
                 break;
             case 'fixed':
+            default:
                 finalDurationMinutes = duration || 30;
                 break;
-            default:
-                notification.error({
-                    message: 'Invalid session type specified.',
-                });
-                return;
         }
 
-        // --- Calculate final delays per physical channel ---
-        const delaysObject = {
-            ch1: 0,
-            ch2: 0,
-            ch3: 0,
-            ch4: 0,
-        };
+        // --- Delay Object Construction ---
+        const delaysObject = { ch1: 0, ch2: 0, ch3: 0, ch4: 0 };
+        const commonDelay = delayCh1 || 0;
 
         if (useMultiChannelDelay) {
             if (activeDevice.channels.ch1) delaysObject.ch1 = delayCh1 || 0;
@@ -202,22 +168,22 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
             if (activeDevice.channels.ch3) delaysObject.ch3 = delayCh3 || 0;
             if (activeDevice.channels.ch4) delaysObject.ch4 = delayCh4 || 0;
         } else {
-            const commonDelay = delayCh1 || 0;
             if (activeDevice.channels.ch1) delaysObject.ch1 = commonDelay;
             if (activeDevice.channels.ch2) delaysObject.ch2 = commonDelay;
             if (activeDevice.channels.ch3) delaysObject.ch3 = commonDelay;
             if (activeDevice.channels.ch4) delaysObject.ch4 = commonDelay;
         }
 
-        // --- Build payload and send ---
-        const payload: SessionStartRequest = {
+        // --- Build Payload ---
+        const payload: SessionArmRequest = {
+            triggerStrategy, // Pass strategy (autoCountdown vs buttonTrigger)
             duration: finalDurationMinutes,
             hideTimer,
             delays: delaysObject,
             penaltyDuration,
         };
 
-        sendLockCommand(payload as unknown as SessionStartRequest);
+        sendArmCommand(payload);
     };
 
     /**
@@ -229,32 +195,29 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         try {
             await apiClient.post(`/devices/${activeDevice.id}/session/abort`);
 
-            if (stateBeforeAbort === 'countdown')
+            if (stateBeforeAbort === 'armed') {
                 notification.info({
-                    message: 'Start Canceled',
-                    description:
-                        'The session start was successfully canceled. No penalty.',
+                    message: 'Arming Cancelled',
+                    description: 'The session start was cancelled. No penalty.',
                 });
-            else if (stateBeforeAbort === 'locked')
+            } else if (stateBeforeAbort === 'locked') {
                 notification.warning({
                     message: 'Session Aborted',
                     description: 'Penalty timer has started.',
                 });
-            else if (stateBeforeAbort === 'testing')
+            } else if (stateBeforeAbort === 'testing') {
                 notification.info({
                     message: 'Test Stopped',
-                    description: 'Hardware test has been stopped.',
+                    description: 'Hardware test stopped.',
                 });
+            }
 
-            await fetchSessionStatus(); // Re-sync immediately
+            await fetchSessionStatus();
         } catch (err: unknown) {
             let msg = 'Failed to abort session.';
             if (axios.isAxiosError(err)) {
                 msg = err.response?.data?.message || err.message;
-            } else if (err instanceof Error) {
-                msg = err.message;
             }
-
             setError(msg);
             notification.error({ message: 'Abort Failed', description: msg });
         }
@@ -271,13 +234,9 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         }
         try {
             await apiClient.post(`/devices/${activeDevice.id}/session/test`);
-            notification.success({
-                message: 'Test Mode Started',
-                description: 'Relays engaged.',
-            });
-            await fetchSessionStatus(); // Re-sync immediately
+            notification.success({ message: 'Test Mode Started' });
+            await fetchSessionStatus();
         } catch (err: unknown) {
-            console.error('Failed to start test session:', err);
             notification.error({
                 message: 'Test Failed',
                 description: 'Could not start test mode.',
@@ -285,29 +244,19 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         }
     }, [activeDevice, currentState, fetchSessionStatus]);
 
-    // --- Main State Effects ---
+    // --- Polling Effects ---
 
-    /**
-     * This is the "brain" for polling session status.
-     */
     useEffect(() => {
-        if (!activeDevice) {
-            return; // No device, nothing to poll
+        if (!activeDevice || currentState === 'server_unreachable' || currentState === 'no_device_selected') {
+            return;
         }
 
-        if (
-            currentState === 'server_unreachable' ||
-            currentState === 'no_device_selected'
-        ) {
-            return; // Stop polling if we know we can't reach the server
-        }
-
-        fetchSessionStatus(); // Run once immediately
+        fetchSessionStatus();
 
         let pollInterval: number;
         switch (currentState) {
             case 'locked':
-            case 'countdown':
+            case 'armed': // Poll fast during arming to see countdowns or button press
             case 'aborted':
             case 'testing':
                 pollInterval = 500;
@@ -316,32 +265,21 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
             case 'completed':
                 pollInterval = 5000;
                 break;
-            case 'device_unreachable':
-            case 'connecting':
             default:
                 pollInterval = 2500;
                 break;
         }
-        const sessionPollTimer = setInterval(fetchSessionStatus, pollInterval);
-        return () => {
-            clearInterval(sessionPollTimer);
-        };
+        const timer = setInterval(fetchSessionStatus, pollInterval);
+        return () => clearInterval(timer);
     }, [activeDevice, currentState, fetchSessionStatus, connectionHealth]);
 
     /**
      * Effect to fetch reward history when the device is in a valid state.
      */
     useEffect(() => {
-        const canFetchHistory =
-            currentState === 'ready' ||
-            currentState === 'completed' ||
-            currentState === 'testing';
-
-        if (canFetchHistory) {
-            fetchRewardHistory();
-        } else {
-            setRewardHistory([]);
-        }
+        const canFetchHistory = ['ready', 'completed', 'testing'].includes(currentState);
+        if (canFetchHistory) fetchRewardHistory();
+        else setRewardHistory([]);
     }, [currentState, fetchRewardHistory]);
 
     /**
@@ -349,31 +287,25 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
      */
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
-            if (
-                event.key === 'b' &&
-                (currentState === 'locked' ||
-                    currentState === 'countdown' ||
-                    currentState === 'testing')
-            ) {
+            if (event.key === 'b' && ['locked', 'armed', 'testing'].includes(currentState)) {
                 notification.warning({
-                    message: 'Stop/Abort Triggered',
-                    description:
-                        "Stop/Abort command triggered via keyboard shortcut ('b').",
+                    message: 'Abort Triggered via Keyboard',
                 });
                 abortSession();
             }
         };
         window.addEventListener('keydown', handleKeyDown);
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown);
-        };
+        return () => window.removeEventListener('keydown', handleKeyDown);
     }, [currentState, abortSession]);
 
+    // --- Computed Values for UI ---
+
     /**
-     * Memoized value for the main session timer.
+     * Determines the "Main Timer" to show in the UI.
      */
     const sessionTimeRemaining = useMemo(() => {
         if (!status) return 0;
+
         switch (status.status) {
             case 'locked':
                 return status.lockSecondsRemaining || 0;
@@ -381,29 +313,28 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
                 return status.penaltySecondsRemaining || 0;
             case 'testing':
                 return status.testSecondsRemaining || 0;
+            case 'armed':
+                // If waiting for button, show the timeout.
+                // If auto-counting down, this might be 0, but 'channelDelays' handles the UI.
+                return status.triggerStrategy === 'buttonTrigger' ? status.triggerTimeoutRemaining || 0 : 0;
             default:
                 return 0;
         }
     }, [status]);
 
     /**
-     * Memoized value for the channel countdown timers.
-     * Maps the 'delays' object { ch1: 10, ch2: 0 } to an array [10, 0, ...] for the UI.
+     * Maps the channel delays for the UI.
+     * Only relevant when status is 'armed'.
      */
     const channelDelays = useMemo(() => {
-        if (!status || status.status !== 'countdown') return [];
+        // If we are armed and in auto-countdown mode, show the ticking delays.
+        // If we are armed and in button mode, we technically have delays set,
+        // but they aren't ticking yet, so we could show them as static or hide them.
+        if (!status || status.status !== 'armed') return [];
 
-        // Extract from the 'delays' object
-        // We map only the channels that exist/are valid numbers
-        return [
-            status.delays?.ch1 ?? 0,
-            status.delays?.ch2 ?? 0,
-            status.delays?.ch3 ?? 0,
-            status.delays?.ch4 ?? 0,
-        ];
+        return [status.delays?.ch1 ?? 0, status.delays?.ch2 ?? 0, status.delays?.ch3 ?? 0, status.delays?.ch4 ?? 0];
     }, [status]);
 
-    // Package all state and functions into the context value
     const contextValue: SessionContextState = {
         status,
         currentState,
