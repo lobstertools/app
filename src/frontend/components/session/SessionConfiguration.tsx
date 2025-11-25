@@ -320,7 +320,7 @@ export const SessionConfiguration = () => {
                     <Title level={5}>2. Start Configuration</Title>
                     <Text type="secondary" style={{ marginTop: -8 }}>
                         {isManualTrigger
-                            ? 'The session will start after you long-press the device button.'
+                            ? 'The session will start after you double-click the device button.'
                             : 'Configure the countdown before the session starts automatically.'}
                     </Text>
 
