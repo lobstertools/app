@@ -4,7 +4,6 @@ import {
     QuestionCircleOutlined,
     SettingOutlined,
     BugOutlined,
-    SlidersOutlined,
     InfoCircleOutlined,
 } from '@ant-design/icons';
 import { Button, Dropdown, MenuProps, Modal, Tooltip } from 'antd';
@@ -23,7 +22,7 @@ interface ApplicationSettingsMenuProps {
  * and viewing the welcome guide.
  */
 export const ApplicationSettingsMenu = ({ theme, toggleTheme }: ApplicationSettingsMenuProps) => {
-    const { isDevelopmentMode, setWelcomeGuideOpen, setAppSettingsModalOpen, setAboutModalOpen } = useAppRuntime();
+    const { isDevelopmentMode, setWelcomeGuideOpen, setAboutModalOpen } = useAppRuntime();
 
     // Get all needed state/functions from useDeviceManager
     const { openDeviceModal } = useDeviceManager();
@@ -53,12 +52,6 @@ export const ApplicationSettingsMenu = ({ theme, toggleTheme }: ApplicationSetti
             label: 'Device Manager',
             icon: <SettingOutlined />,
             onClick: openDeviceModal,
-        },
-        {
-            key: 'app-settings',
-            label: 'Application Settings',
-            icon: <SlidersOutlined />,
-            onClick: () => setAppSettingsModalOpen(true),
         },
         { type: 'divider' },
 
