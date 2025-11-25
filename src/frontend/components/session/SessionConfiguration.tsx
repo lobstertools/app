@@ -288,7 +288,7 @@ export const SessionConfiguration = () => {
                 onFinish={handleFinish}
                 layout="vertical"
                 initialValues={{
-                    triggerStrategy: 'autoCountdown', // Default to auto
+                    triggerStrategy: 'buttonTrigger', // Default to auto
                     type: 'time-range',
                     timeRangeSelection: 'short',
                     duration: 30,
@@ -388,15 +388,6 @@ export const SessionConfiguration = () => {
                         <Form.Item name="triggerStrategy" style={{ marginBottom: 12, marginTop: 8 }}>
                             <Radio.Group buttonStyle="solid" block>
                                 <Radio.Button
-                                    value="autoCountdown"
-                                    style={{
-                                        width: '50%',
-                                        textAlign: 'center',
-                                    }}
-                                >
-                                    <TimerIcon /> Automatic Timer
-                                </Radio.Button>
-                                <Radio.Button
                                     value="buttonTrigger"
                                     style={{
                                         width: '50%',
@@ -404,6 +395,15 @@ export const SessionConfiguration = () => {
                                     }}
                                 >
                                     <ThunderboltOutlined /> Device Button
+                                </Radio.Button>
+                                <Radio.Button
+                                    value="autoCountdown"
+                                    style={{
+                                        width: '50%',
+                                        textAlign: 'center',
+                                    }}
+                                >
+                                    <TimerIcon /> Automatic Timer
                                 </Radio.Button>
                             </Radio.Group>
                         </Form.Item>
