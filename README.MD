@@ -1,3 +1,7 @@
+> [!IMPORTANT]
+> **Unreleased Beta**
+> This software is currently in an unreleased beta state. Features are subject to change and stability is not guaranteed.
+
 # Lobster Lock - Session Manager
 
 This is the main application for the Lobster Lock, a DIY self-bondage toolkit. It includes the frontend (React UI), the backend (Node.js/Express proxy server), and the desktop (Electron) wrapper.
