@@ -45,7 +45,10 @@ export const DeviceMenu = () => {
     const deviceName = activeDevice?.name;
     const displayDeviceAddress = activeDevice?.address || 'N/A';
     const paybackTimeEnabled = activeDevice?.deterrents?.enablePaybackTime || false;
-    const paybackTimeMinutes = activeDevice?.deterrents?.paybackTimeMinutes || 0;
+
+    const paybackDurationSeconds = activeDevice?.deterrents?.paybackDurationSeconds || 0;
+    const paybackTimeMinutes = Math.floor(paybackDurationSeconds / 60);
+
     const appVersion = activeDevice?.version || 'N/A';
     const appBuildType = activeDevice?.buildType || 'N/A';
 

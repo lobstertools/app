@@ -6,7 +6,7 @@ import { Reward, SessionStatus, ComputedAppStatus, SessionArmRequest } from '../
 
 import { apiClient } from '../lib/apiClient';
 import { useDeviceManager } from './useDeviceManager';
-import { SessionContext, SessionContextState, SessionFormData } from './useSessionContext';
+import { SessionContext, SessionContextState } from './useSessionContext';
 
 /**
  * Main state provider component.
@@ -111,78 +111,10 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     );
 
     /**
-     * Processes Form Data -> SessionArmRequest
+     * Starts the session.
+     * The payload is now fully constructed in the UI component.
      */
-    const startSession = (values: SessionFormData) => {
-        if (!activeDevice) return;
-
-        const {
-            type,
-            timeRangeSelection,
-            duration,
-            penaltyDuration,
-            hideTimer,
-            rangeMin,
-            rangeMax,
-            useMultiChannelDelay,
-            delayCh1,
-            delayCh2,
-            delayCh3,
-            delayCh4,
-            triggerStrategy, // NEW
-        } = values;
-
-        // --- Duration Calculation ---
-        let finalDurationMinutes: number;
-        const getRandom = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
-
-        switch (type) {
-            case 'time-range':
-                if (timeRangeSelection === 'short') finalDurationMinutes = getRandom(20, 45);
-                else if (timeRangeSelection === 'medium') finalDurationMinutes = getRandom(60, 90);
-                else finalDurationMinutes = getRandom(120, 180);
-                break;
-            case 'random':
-                if (!rangeMin || !rangeMax || rangeMin > rangeMax) {
-                    notification.error({
-                        message: 'Invalid Range',
-                        description: 'Min > Max.',
-                    });
-                    return;
-                }
-                finalDurationMinutes = getRandom(rangeMin, rangeMax);
-                break;
-            case 'fixed':
-            default:
-                finalDurationMinutes = duration || 30;
-                break;
-        }
-
-        // --- Delay Object Construction ---
-        const delaysObject = { ch1: 0, ch2: 0, ch3: 0, ch4: 0 };
-        const commonDelay = delayCh1 || 0;
-
-        if (useMultiChannelDelay) {
-            if (activeDevice.channels.ch1) delaysObject.ch1 = delayCh1 || 0;
-            if (activeDevice.channels.ch2) delaysObject.ch2 = delayCh2 || 0;
-            if (activeDevice.channels.ch3) delaysObject.ch3 = delayCh3 || 0;
-            if (activeDevice.channels.ch4) delaysObject.ch4 = delayCh4 || 0;
-        } else {
-            if (activeDevice.channels.ch1) delaysObject.ch1 = commonDelay;
-            if (activeDevice.channels.ch2) delaysObject.ch2 = commonDelay;
-            if (activeDevice.channels.ch3) delaysObject.ch3 = commonDelay;
-            if (activeDevice.channels.ch4) delaysObject.ch4 = commonDelay;
-        }
-
-        // --- Build Payload ---
-        const payload: SessionArmRequest = {
-            triggerStrategy, // Pass strategy (autoCountdown vs buttonTrigger)
-            duration: finalDurationMinutes,
-            hideTimer,
-            delays: delaysObject,
-            penaltyDuration,
-        };
-
+    const startSession = (payload: SessionArmRequest) => {
         sendArmCommand(payload);
     };
 
@@ -315,8 +247,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
                 return status.testSecondsRemaining || 0;
             case 'armed':
                 // If waiting for button, show the timeout.
-                // If auto-counting down, this might be 0, but 'channelDelays' handles the UI.
-                return status.triggerStrategy === 'buttonTrigger' ? status.triggerTimeoutRemaining || 0 : 0;
+                return status.triggerStrategy === 'buttonTrigger' ? status.triggerTimeoutRemainingSeconds || 0 : 0;
             default:
                 return 0;
         }
@@ -326,13 +257,12 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
      * Maps the channel delays for the UI.
      * Only relevant when status is 'armed'.
      */
-    const channelDelays = useMemo(() => {
+    const channelDelaysRemaining = useMemo(() => {
         // If we are armed and in auto-countdown mode, show the ticking delays.
-        // If we are armed and in button mode, we technically have delays set,
-        // but they aren't ticking yet, so we could show them as static or hide them.
         if (!status || status.status !== 'armed') return [];
 
-        return [status.delays?.ch1 ?? 0, status.delays?.ch2 ?? 0, status.delays?.ch3 ?? 0, status.delays?.ch4 ?? 0];
+        const d = status.channelDelaysRemainingSeconds || {};
+        return [d.ch1 ?? 0, d.ch2 ?? 0, d.ch3 ?? 0, d.ch4 ?? 0];
     }, [status]);
 
     const contextValue: SessionContextState = {
@@ -340,7 +270,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         currentState,
         rewardHistory,
         sessionTimeRemaining,
-        channelDelays,
+        channelDelaysRemaining,
         isLocking,
         startSession,
         abortSession,

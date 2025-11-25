@@ -27,15 +27,25 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
     /**
      * Handles the form submission.
      */
-    const handleFinish = async (values: DeviceProvisioningData) => {
+    const handleFinish = async (values: any) => {
         setError(null);
 
-        // Construct the payload:
-        // If enablePaybackTime is false, force paybackTimeMinutes to 0.
-        // Otherwise, use the value from the form.
+        // 1. Calculate Seconds from Minutes Input
+        // If disabled, set to 0.
+        const minutesInput = values.enablePaybackTime ? values.paybackTimeMinutes : 0;
+        const paybackDurationSeconds = minutesInput * 60;
+
+        // 2. Construct the strict payload matching DeviceProvisioningData interface
         const payload: DeviceProvisioningData = {
-            ...values,
-            paybackTimeMinutes: values.enablePaybackTime ? values.paybackTimeMinutes : 0,
+            ssid: values.ssid,
+            pass: values.pass,
+            enableStreaks: !!values.enableStreaks,
+            enablePaybackTime: !!values.enablePaybackTime,
+            paybackDurationSeconds: paybackDurationSeconds,
+            ch1Enabled: !!values.ch1Enabled,
+            ch2Enabled: !!values.ch2Enabled,
+            ch3Enabled: !!values.ch3Enabled,
+            ch4Enabled: !!values.ch4Enabled,
         };
 
         // Call the context function
@@ -59,7 +69,7 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
                 initialValues={{
                     enableStreaks: true,
                     enablePaybackTime: true,
-                    paybackTimeMinutes: 15,
+                    paybackTimeMinutes: 15, // User sees Minutes
                     ch1Enabled: true,
                     ch2Enabled: true,
                     ch3Enabled: false,

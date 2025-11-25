@@ -39,10 +39,10 @@ const ARMED_TIMEOUT_SECONDS = 600; // 10 minutes to press button
 // These settings mimic what would be saved in flash from provisioning
 const ENABLE_STREAKS = true;
 const ENABLE_PAYBACK_TIME = true;
-const PAYBACK_TIME_MINUTES = 10;
+const PAYBACK_DURATION_SECONDS = 600; // 10 Minutes
 
 let streaks = 0;
-let totalLockedTimeSeconds = 0;
+let totalTimeLockedSeconds = 0;
 let completed = 0;
 let aborted = 0;
 let pendingPaybackSeconds = 0;
@@ -198,7 +198,7 @@ const initializeState = () => {
     log(`   -> Device: ${DEVICE_ID} ${DEVICE_VERSION}`);
     log(`   -> Channels: ${NUMBER_OF_CHANNELS}`);
     log(`   -> Features: ${FEATURES.join(', ')}`);
-    log(`   -> Config: Payback ${PAYBACK_TIME_MINUTES} min, Streaks ${ENABLE_STREAKS}`);
+    log(`   -> Config: Payback ${PAYBACK_DURATION_SECONDS}s, Streaks ${ENABLE_STREAKS}`);
 
     stopAllTimers();
 
@@ -219,7 +219,7 @@ const initializeState = () => {
     log(`Generated new reward code for this session: ${newReward.code.substring(0, 8)}... (${newReward.checksum})`);
 
     streaks = 5;
-    totalLockedTimeSeconds = 50000;
+    totalTimeLockedSeconds = 50000;
     completed = 12;
     aborted = 2;
     pendingPaybackSeconds = 600;
@@ -269,7 +269,7 @@ const triggerAbort = (source: string): boolean => {
 
     // Add to debt bank if enabled
     if (ENABLE_PAYBACK_TIME) {
-        const paybackToAdd = PAYBACK_TIME_MINUTES * 60;
+        const paybackToAdd = PAYBACK_DURATION_SECONDS;
         pendingPaybackSeconds += paybackToAdd;
         log(`   -> Added ${paybackToAdd}s to payback bank. Total: ${pendingPaybackSeconds}s`);
     }
@@ -312,7 +312,7 @@ const startLockInterval = () => {
 
         if (lockSecondsRemaining > 0) {
             lockSecondsRemaining--;
-            totalLockedTimeSeconds++;
+            totalTimeLockedSeconds++;
         } else {
             completeSession();
         }
@@ -618,7 +618,7 @@ app.get('/details', (req, res) => {
         deterrents: {
             enableStreaks: ENABLE_STREAKS,
             enablePaybackTime: ENABLE_PAYBACK_TIME,
-            paybackTimeMinutes: PAYBACK_TIME_MINUTES,
+            paybackDurationSeconds: PAYBACK_DURATION_SECONDS,
         },
     } as any);
 });
@@ -655,36 +655,36 @@ app.post('/arm', (req, res) => {
     // Read from JSON payload (req.body)
     const {
         triggerStrategy, // 'autoCountdown' | 'buttonTrigger'
-        duration, // in minutes
-        penaltyDuration, // in minutes
+        lockDurationSeconds,
+        penaltyDurationSeconds,
         hideTimer: shouldHideTimer,
-        delays, // nested object { ch1: x, ... }
+        channelDelaysSeconds, // nested object { ch1: x, ... }
     } = req.body;
 
-    const durationMins = Number(duration);
-    const penaltyMins = Number(penaltyDuration);
+    const durationSec = Number(lockDurationSeconds);
+    const penaltySec = Number(penaltyDurationSeconds);
 
-    if (isNaN(durationMins) || durationMins < 1) {
-        log(`API: /arm FAILED (invalid duration: ${durationMins})`);
+    if (isNaN(durationSec) || durationSec < 1) {
+        log(`API: /arm FAILED (invalid duration: ${durationSec})`);
         return res.status(400).json({
             status: 'error',
             message: 'Invalid duration.',
         });
     }
 
-    if (isNaN(penaltyMins) || penaltyMins < 1) {
-        log(`API: /arm FAILED (invalid penalty duration: ${penaltyMins})`);
+    if (isNaN(penaltySec) || penaltySec < 1) {
+        log(`API: /arm FAILED (invalid penalty duration: ${penaltySec})`);
         return res.status(400).json({
             status: 'error',
             message: 'Invalid penalty duration.',
         });
     }
 
-    if (!delays || typeof delays !== 'object') {
+    if (!channelDelaysSeconds || typeof channelDelaysSeconds !== 'object') {
         log(`API: /arm FAILED (invalid delays object)`);
         return res.status(400).json({
             status: 'error',
-            message: `Invalid 'delays' object.`,
+            message: `Invalid 'channelDelaysSeconds' object.`,
         });
     }
 
@@ -692,20 +692,20 @@ app.post('/arm', (req, res) => {
     stopAllTimers();
 
     // Store config for this session
-    lockSecondsConfig = durationMins * 60 + pendingPaybackSeconds;
-    penaltySecondsConfig = penaltyMins * 60;
+    lockSecondsConfig = durationSec + pendingPaybackSeconds;
+    penaltySecondsConfig = penaltySec;
     hideTimer = shouldHideTimer || false;
 
     // Determine Strategy
     currentStrategy = triggerStrategy === 'buttonTrigger' ? 'buttonTrigger' : 'autoCountdown';
 
     // Parse channel delays from object
-    currentDelays.ch1 = Number(delays.ch1 || 0);
-    currentDelays.ch2 = Number(delays.ch2 || 0);
-    currentDelays.ch3 = Number(delays.ch3 || 0);
-    currentDelays.ch4 = Number(delays.ch4 || 0);
+    currentDelays.ch1 = Number(channelDelaysSeconds.ch1 || 0);
+    currentDelays.ch2 = Number(channelDelaysSeconds.ch2 || 0);
+    currentDelays.ch3 = Number(channelDelaysSeconds.ch3 || 0);
+    currentDelays.ch4 = Number(channelDelaysSeconds.ch4 || 0);
 
-    log(`🔒 /arm request. Strategy: ${currentStrategy}. Duration: ${durationMins}m.`);
+    log(`🔒 /arm request. Strategy: ${currentStrategy}. Duration: ${durationSec}s.`);
 
     // Transition to ARMED
     currentState = 'armed';
@@ -747,7 +747,7 @@ app.post('/start-test', (req, res) => {
 
     res.json({
         status: 'testing',
-        testTimeRemainingSeconds: testSecondsRemaining,
+        testSecondsRemaining: testSecondsRemaining,
     });
 });
 
@@ -810,7 +810,7 @@ app.get('/status', (req, res) => {
         status: currentState,
         // Send strategy context only if ARMED
         triggerStrategy: currentState === 'armed' ? currentStrategy : undefined,
-        triggerTimeoutRemaining:
+        triggerTimeoutRemainingSeconds:
             currentState === 'armed' && currentStrategy === 'buttonTrigger' ? triggerTimeoutRemaining : undefined,
 
         lockSecondsRemaining,
@@ -819,7 +819,7 @@ app.get('/status', (req, res) => {
         hideTimer: hideTimer,
 
         // Nested Delays Object
-        delays: {
+        channelDelaysRemainingSeconds: {
             ch1: currentDelays.ch1,
             ch2: currentDelays.ch2,
             ch3: currentDelays.ch3,
@@ -831,7 +831,7 @@ app.get('/status', (req, res) => {
             streaks,
             aborted,
             completed,
-            totalLockedTimeSeconds,
+            totalTimeLockedSeconds: totalTimeLockedSeconds,
             pendingPaybackSeconds,
         },
     } as SessionStatus);

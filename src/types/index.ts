@@ -111,7 +111,7 @@ export interface DeviceDetails {
     deterrents: {
         enableStreaks: boolean;
         enablePaybackTime: boolean;
-        paybackTimeMinutes: number;
+        paybackDurationSeconds: number;
     };
 }
 
@@ -132,7 +132,7 @@ export interface SessionArmRequest {
     /**
      * The total duration of the locked phase (in seconds).
      */
-    duration: number;
+    lockDurationSeconds: number;
 
     /**
      * If true, the device display remains dark/obscured during the session.
@@ -142,14 +142,14 @@ export interface SessionArmRequest {
     /**
      * Time added to duration if a violation occurs (in seconds).
      */
-    penaltyDuration: number;
+    penaltyDurationSeconds: number;
 
     /**
      * The start delays for each channel (in seconds).
      * - If strategy is 'autoCountdown': These are the countdown timers.
      * - If strategy is 'buttonTrigger': These are applied AFTER the button press.
      */
-    delays: {
+    channelDelaysSeconds: {
         ch1: number;
         ch2: number;
         ch3: number;
@@ -175,15 +175,16 @@ export interface SessionStatus {
      */
     triggerStrategy?: TriggerStrategy;
 
-    /** Timeout waiting for the long press session start */
-    triggerTimeoutRemaining?: number;
+    /** * Timeout waiting for the long press session start
+     */
+    triggerTimeoutRemainingSeconds?: number;
 
     /**
      * Live countdowns.
      * In 'autoCountdown', these tick down.
      * In 'buttonTrigger', these are static until locked.
      */
-    delays: {
+    channelDelaysRemainingSeconds: {
         ch1?: number;
         ch2?: number;
         ch3?: number;
@@ -196,7 +197,7 @@ export interface SessionStatus {
         streaks: number;
         aborted: number;
         completed: number;
-        totalLockedTimeSeconds: number;
+        totalTimeLockedSeconds: number;
         pendingPaybackSeconds: number;
     };
 }
@@ -216,7 +217,7 @@ export interface DeviceProvisioningData {
     pass: string;
     enableStreaks: boolean;
     enablePaybackTime: boolean;
-    paybackTimeMinutes: number;
+    paybackDurationSeconds: number;
     ch1Enabled: boolean;
     ch2Enabled: boolean;
     ch3Enabled: boolean;

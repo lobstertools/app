@@ -336,7 +336,7 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         pass,
         enableStreaks,
         enablePaybackTime,
-        paybackTimeMinutes,
+        paybackDurationSeconds,
         ch1Enabled,
         ch2Enabled,
         ch3Enabled,
@@ -349,7 +349,7 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         { key: 'pass', val: pass },
         { key: 'enableStreaks', val: enableStreaks },
         { key: 'enablePaybackTime', val: enablePaybackTime },
-        { key: 'paybackTimeMinutes', val: paybackTimeMinutes },
+        { key: 'paybackDurationSeconds', val: paybackDurationSeconds },
     ]
         .filter((field: { key: string; val: unknown }) => field.val === undefined)
         .map((field) => field.key);
@@ -448,9 +448,9 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         const enablePaybackTimeBuf = Buffer.alloc(1);
         enablePaybackTimeBuf.writeUInt8(enablePaybackTime ? 1 : 0, 0);
 
-        // paybackTimeMinutes (number) -> 2-byte Buffer (UInt16 LE)
-        const paybackTimeBuf = Buffer.alloc(2);
-        paybackTimeBuf.writeUInt16LE(paybackTimeMinutes, 0);
+        // paybackDurationSeconds (number) -> 4-byte Buffer (UInt32 LE)
+        const paybackTimeBuf = Buffer.alloc(4);
+        paybackTimeBuf.writeUInt32LE(paybackDurationSeconds, 0);
 
         const getBoolBuf = (val: boolean | undefined) => {
             const b = Buffer.alloc(1);
@@ -734,13 +734,13 @@ app.get('/api/devices/:id/session/status', async (req: Request, res: Response) =
     const errorResponse = {
         status: 'ready',
         message: 'Device not found or not ready.',
-        triggerStrategy: 'autoCountdown', // New
-        triggerTimeoutRemaining: 0, // New
+        triggerStrategy: 'autoCountdown',
+        triggerTimeoutRemainingSeconds: 0,
         lockSecondsRemaining: 0,
         penaltySecondsRemaining: 0,
         testSecondsRemaining: 0,
         hideTimer: false,
-        delays: {
+        channelDelaysRemainingSeconds: {
             ch1: 0,
             ch2: 0,
             ch3: 0,
@@ -750,7 +750,7 @@ app.get('/api/devices/:id/session/status', async (req: Request, res: Response) =
             streaks: 0,
             aborted: 0,
             completed: 0,
-            totalLockedTimeSeconds: 0,
+            totalTimeLockedSeconds: 0,
             pendingPaybackSeconds: 0,
         },
     };
@@ -789,7 +789,6 @@ app.post('/api/devices/:id/session/arm', async (req: Request, res: Response) => 
         });
     }
 
-    // Updated Target: /arm
     const targetUrl = buildTargetUrl(device.address, device.port, '/arm');
     try {
         const jsonPayload = req.body;

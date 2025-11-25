@@ -24,7 +24,7 @@ export const CountdownDisplay = () => {
 
     // --- RENDER: Manual Trigger View ---
     if (isManualTrigger) {
-        const timeout = status.triggerTimeoutRemaining ?? 0;
+        const timeout = status.triggerTimeoutRemainingSeconds ?? 0;
 
         return (
             <div style={{ padding: '24px 8px', textAlign: 'center' }}>
@@ -66,17 +66,19 @@ export const CountdownDisplay = () => {
     // Only render channels that are physically enabled in the device config
     const activeDelays = [];
 
+    const delays = status.channelDelaysRemainingSeconds || {};
+
     if (activeDevice.channels.ch1) {
-        activeDelays.push({ id: 1, val: status.delays?.ch1 ?? 0 });
+        activeDelays.push({ id: 1, val: delays.ch1 ?? 0 });
     }
     if (activeDevice.channels.ch2) {
-        activeDelays.push({ id: 2, val: status.delays?.ch2 ?? 0 });
+        activeDelays.push({ id: 2, val: delays.ch2 ?? 0 });
     }
     if (activeDevice.channels.ch3) {
-        activeDelays.push({ id: 3, val: status.delays?.ch3 ?? 0 });
+        activeDelays.push({ id: 3, val: delays.ch3 ?? 0 });
     }
     if (activeDevice.channels.ch4) {
-        activeDelays.push({ id: 4, val: status.delays?.ch4 ?? 0 });
+        activeDelays.push({ id: 4, val: delays.ch4 ?? 0 });
     }
 
     const maxDelay = Math.max(0, ...activeDelays.map((d) => d.val));

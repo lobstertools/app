@@ -114,6 +114,10 @@ export const DeviceSettingsModal = () => {
     }, [activeDevice]);
 
     // --- Device Config Items ---
+
+    const paybackDurationSeconds = activeDevice?.deterrents?.paybackDurationSeconds || 0;
+    const paybackTimeMinutes = Math.floor(paybackDurationSeconds / 60);
+
     const configItems = [
         {
             key: 'channels',
@@ -133,13 +137,13 @@ export const DeviceSettingsModal = () => {
         {
             key: 'paybackMins',
             label: 'Payback Time',
-            children: `${activeDevice?.deterrents?.paybackTimeMinutes || 'N/A'} min`,
+            children: `${paybackTimeMinutes} min`,
             span: 2,
         },
     ];
 
     // --- Session Stat Items  ---
-    const { streaks = 0, totalLockedTimeSeconds = 0, completed = 0, aborted = 0 } = status?.stats || {};
+    const { streaks = 0, totalTimeLockedSeconds = 0, completed = 0, aborted = 0 } = status?.stats || {};
 
     const sessionStatItems = [
         {
@@ -164,7 +168,7 @@ export const DeviceSettingsModal = () => {
                     </Space>
                 </Tooltip>
             ),
-            children: formatSeconds(totalLockedTimeSeconds),
+            children: formatSeconds(totalTimeLockedSeconds),
         },
         {
             key: 'completed',

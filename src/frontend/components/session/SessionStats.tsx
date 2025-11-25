@@ -38,10 +38,9 @@ export const SessionStats = () => {
     }
 
     // Extract stats from the nested 'stats' object.
-    // Updated to match new API property names.
     const {
         streaks = 0,
-        totalLockedTimeSeconds = 0,
+        totalTimeLockedSeconds = 0,
         completed = 0,
         aborted = 0,
         pendingPaybackSeconds = 0,
@@ -56,7 +55,7 @@ export const SessionStats = () => {
             </Tooltip>
             <Tooltip title="Total Time Locked">
                 <Tag icon={<ClockCircleOutlined />} color="blue" style={{ margin: 0 }}>
-                    {formatSeconds(totalLockedTimeSeconds)}
+                    {formatSeconds(totalTimeLockedSeconds)}
                 </Tag>
             </Tooltip>
             <Tooltip title="Total Sessions Completed">

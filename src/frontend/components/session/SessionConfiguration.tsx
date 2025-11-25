@@ -86,6 +86,63 @@ export const SessionConfiguration = () => {
         }
     }, [currentState, form]);
 
+    /**
+     * Handles the form submission.
+     * Converts User Friendly Units (Minutes) -> API Units (Seconds)
+     */
+    const handleFinish = (values: SessionFormData) => {
+        // 1. Convert Duration (Minutes -> Seconds)
+        let finalDurationMinutes: number;
+
+        if (values.type === 'fixed') {
+            finalDurationMinutes = values.duration || 30; // Default to 30 if undefined
+        } else if (values.type === 'random') {
+            const min = values.rangeMin || 15;
+            const max = values.rangeMax || 180;
+            finalDurationMinutes = Math.floor(Math.random() * (max - min + 1) + min);
+        } else {
+            // Default to 'time-range' logic
+            switch (values.timeRangeSelection) {
+                case 'short':
+                    finalDurationMinutes = Math.floor(Math.random() * (45 - 20 + 1) + 20); // 20-45 min
+                    break;
+                case 'medium':
+                    finalDurationMinutes = Math.floor(Math.random() * (90 - 60 + 1) + 60); // 60-90 min
+                    break;
+                case 'long':
+                    finalDurationMinutes = Math.floor(Math.random() * (180 - 120 + 1) + 120); // 120-180 min (2-3 hours)
+                    break;
+                default:
+                    finalDurationMinutes = 30; // Fallback
+            }
+        }
+
+        const lockDurationSeconds = finalDurationMinutes * 60;
+
+        // 2. Convert Penalty (Minutes -> Seconds)
+        const penaltyDurationSeconds = (values.penaltyDuration || 15) * 60;
+
+        // 3. Map Delays (Already Seconds in Form) to Channel Object
+        const channelDelaysSeconds = {
+            ch1: values.delayCh1 || 0,
+            ch2: values.useMultiChannelDelay ? values.delayCh2 || 0 : values.delayCh1 || 0,
+            ch3: values.useMultiChannelDelay ? values.delayCh3 || 0 : values.delayCh1 || 0,
+            ch4: values.useMultiChannelDelay ? values.delayCh4 || 0 : values.delayCh1 || 0,
+        };
+
+        // 4. Construct Payload
+        const payload = {
+            triggerStrategy: values.triggerStrategy,
+            lockDurationSeconds,
+            hideTimer: !!values.hideTimer,
+            penaltyDurationSeconds,
+            channelDelaysSeconds,
+        };
+
+        // 5. Call Context Action
+        startSession(payload);
+    };
+
     // Determines which step the <Steps> component highlights
     const currentStep = useMemo(() => {
         if (currentState === 'no_device_selected') return 0;
@@ -221,12 +278,14 @@ export const SessionConfiguration = () => {
     const renderConfigurationForm = () => {
         const pendingPaybackSeconds = status?.stats?.pendingPaybackSeconds || 0;
         const paybackTimeEnabled = activeDevice?.deterrents?.enablePaybackTime || false;
-        const paybackTimeMinutes = activeDevice?.deterrents?.paybackTimeMinutes || 0;
+
+        const paybackDurationSeconds = activeDevice?.deterrents?.paybackDurationSeconds || 0;
+        const paybackTimeMinutesDisplay = Math.floor(paybackDurationSeconds / 60);
 
         return (
             <Form
                 form={form}
-                onFinish={startSession}
+                onFinish={handleFinish}
                 layout="vertical"
                 initialValues={{
                     triggerStrategy: 'autoCountdown', // Default to auto
@@ -467,7 +526,7 @@ export const SessionConfiguration = () => {
                             <FieldTimeOutlined style={{ marginRight: 8 }} />
                             Time Payback is enabled: Aborting will add{' '}
                             <Text strong>
-                                {paybackTimeMinutes} {paybackTimeMinutes > 1 ? 'minutes' : 'minute'}
+                                {paybackTimeMinutesDisplay} {paybackTimeMinutesDisplay > 1 ? 'minutes' : 'minute'}
                             </Text>{' '}
                             to your next session.
                         </Text>
