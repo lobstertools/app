@@ -82,7 +82,7 @@ export const StatusBadge = () => {
         };
 
         const badgeContent = (
-            <Space size="small">
+            <Space size={4}>
                 <Text style={{ color: '#fff', margin: 0 }} strong>
                     {text}
                 </Text>
