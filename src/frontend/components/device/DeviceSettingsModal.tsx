@@ -27,7 +27,6 @@ import {
     FireOutlined,
     ClockCircleOutlined,
     CloseCircleOutlined,
-    ThunderboltOutlined,
     BulbOutlined,
 } from '@ant-design/icons';
 import { useDeviceManager } from '../../context/useDeviceManager';
@@ -199,13 +198,8 @@ export const DeviceSettingsModal = () => {
     // --- Feature Tags Generation ---
     const getFeatureTagInfo = (feature: DeviceFeature) => {
         switch (feature) {
-            case 'abortLongPress':
-                return { label: 'Abort Pedal', icon: <UsbOutlined /> };
-            case 'startLongPress':
-                return {
-                    label: 'Manual Trigger',
-                    icon: <ThunderboltOutlined />,
-                };
+            case 'footPedal':
+                return { label: 'Foot Pedal', icon: <UsbOutlined /> };
             case 'startCountdown':
                 return {
                     label: 'Auto Countdown',

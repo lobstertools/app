@@ -39,7 +39,7 @@ export const CountdownDisplay = () => {
                     Waiting for Trigger
                 </Title>
                 <Text type="secondary" style={{ fontSize: '1.1rem' }}>
-                    Double-click the button on the device to start the session.
+                    Long press the button on the device to start the session.
                 </Text>
 
                 <Divider />

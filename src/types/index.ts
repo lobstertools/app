@@ -9,8 +9,7 @@ import { Peripheral } from '@abandonware/noble';
  * UI uses these to infer interaction logic (e.g. "Hold for 3s").
  */
 export const DEVICE_FEATURES = [
-    'abortLongPress', // Requires long press to abort in 'locked' state
-    'startLongPress', // Requires long press (3s) to trigger 'armed' -> 'locked'
+    'footPedal', // For long press and double click support
     'startCountdown', // Supports auto-sequence
     'statusLed', // Supports a status LED
 ] as const;

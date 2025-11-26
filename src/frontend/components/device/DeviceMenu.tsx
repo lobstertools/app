@@ -19,7 +19,6 @@ import {
     UsbOutlined,
     FieldTimeOutlined,
     SlidersOutlined,
-    ThunderboltOutlined,
     ClockCircleOutlined,
     BulbOutlined,
 } from '@ant-design/icons';
@@ -157,17 +156,11 @@ export const DeviceMenu = () => {
 
     const getFeatureDetails = (feature: DeviceFeature) => {
         switch (feature) {
-            case 'abortLongPress':
+            case 'footPedal':
                 return {
-                    label: 'Abort Pedal Support',
+                    label: 'Foot Pedal Support',
                     icon: <UsbOutlined style={{ color: green[5] }} />,
-                    description: 'Physical button long-press aborts the session immediately.',
-                };
-            case 'startLongPress':
-                return {
-                    label: 'Manual Start Trigger',
-                    icon: <ThunderboltOutlined style={{ color: green[5] }} />,
-                    description: 'Allows starting the session by holding the physical button.',
+                    description: 'Physical button to start and abort sessions.',
                 };
             case 'startCountdown':
                 return {

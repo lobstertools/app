@@ -19,7 +19,7 @@ import cors from 'cors';
 import readline from 'readline';
 import bonjour from 'bonjour';
 
-import { Reward, SessionStatus, TriggerStrategy } from '../types/';
+import { DeviceFeature, Reward, SessionStatus, TriggerStrategy } from '../types/';
 
 const app = express();
 const PORT = 3003;
@@ -31,7 +31,7 @@ const DEVICE_ID = 'Mock-LobsterLock';
 const DEVICE_VERSION = 'v1.4-mock';
 const NUMBER_OF_CHANNELS = 4;
 
-const FEATURES = ['abortLongPress', 'startLongPress', 'startCountdown', 'statusLed'];
+const FEATURES: DeviceFeature[] = ['footPedal', 'startCountdown', 'statusLed'];
 
 const TEST_DURATION_SECONDS = 60; // 60 second test
 const ARMED_TIMEOUT_SECONDS = 600; // 10 minutes to press button

@@ -64,7 +64,7 @@ export const SessionConfiguration = () => {
 
     // Check hardware capabilities
     const supportsManualTrigger = useMemo(() => {
-        return activeDevice?.features?.includes('startLongPress') ?? false;
+        return activeDevice?.features?.includes('footPedal') ?? false;
     }, [activeDevice]);
 
     // Calculate enabled channels for the UI based on the new API structure
@@ -412,7 +412,7 @@ export const SessionConfiguration = () => {
                     <Title level={5}>2. Start Configuration</Title>
                     <Text type="secondary" style={{ marginTop: -8 }}>
                         {isManualTrigger
-                            ? 'The session will start after you double-click the device button.'
+                            ? 'The session will start after you long press the device button.'
                             : 'Configure the countdown before the session starts automatically.'}
                     </Text>
 

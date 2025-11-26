@@ -1,18 +1,24 @@
-import { EyeInvisibleOutlined, StopOutlined } from '@ant-design/icons';
-import { Typography, Button, Modal, Statistic } from 'antd';
+import { EyeInvisibleOutlined, StopOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { Typography, Button, Modal, Statistic, Space } from 'antd';
 import { formatSeconds } from '../../utils/time';
 import { useSession } from '../../context/useSessionContext';
+import { useDeviceManager } from '../../context/useDeviceManager';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 /**
  * A full-screen modal that appears when a session is active.
  */
 export const SessionLockModal = () => {
     const { status, abortSession, sessionTimeRemaining } = useSession();
+    const { activeDevice } = useDeviceManager();
 
     const isLocked = status?.status === 'locked';
     const isTimerHidden = status?.hideTimer === true;
+
+    // Check if the connected device supports the foot pedal feature
+    const hasFootPedal = activeDevice?.features?.includes('footPedal');
+
     const modalBodyStyle: React.CSSProperties = {
         minHeight: '80vh',
         display: 'flex',
@@ -61,16 +67,27 @@ export const SessionLockModal = () => {
                     />
                 )}
             </div>
-            <Button
-                type="primary"
-                danger
-                icon={<StopOutlined />}
-                onClick={abortSession}
-                size="large"
-                style={{ minWidth: '300px', marginTop: 64 }}
-            >
-                Abort Session
-            </Button>
+
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 64 }}>
+                <Button
+                    type="primary"
+                    danger
+                    icon={<StopOutlined />}
+                    onClick={abortSession}
+                    size="large"
+                    style={{ minWidth: '300px' }}
+                >
+                    Abort Session
+                </Button>
+
+                {/* Show hardware shortcut hint if supported */}
+                {hasFootPedal && (
+                    <Space style={{ marginTop: 16, color: 'rgba(255, 255, 255, 0.65)' }}>
+                        <ThunderboltOutlined />
+                        <Text style={{ color: 'inherit' }}>Double-click foot pedal to abort</Text>
+                    </Space>
+                )}
+            </div>
         </Modal>
     );
 };
