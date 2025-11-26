@@ -21,6 +21,7 @@ import { AppContent } from './components/layout/AppContent';
 import { SessionProvider } from './context/SessionProvider.tsx';
 import { AppRuntimeProvider } from './context/AppRuntimeProvider.tsx';
 import { DeviceManagerProvider } from './context/DeviceManagerProvider.tsx';
+import { KeyboardProvider } from './context/KeyboardProvider.tsx';
 
 const globalStyles = `
   body {
@@ -72,7 +73,9 @@ function App() {
                     <AppRuntimeProvider>
                         <DeviceManagerProvider>
                             <SessionProvider>
-                                <AppContent theme={theme} toggleTheme={toggleTheme} />
+                                <KeyboardProvider>
+                                    <AppContent theme={theme} toggleTheme={toggleTheme} />
+                                </KeyboardProvider>
                             </SessionProvider>
                         </DeviceManagerProvider>
                     </AppRuntimeProvider>

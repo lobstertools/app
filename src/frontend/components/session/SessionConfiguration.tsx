@@ -17,6 +17,7 @@ import {
     List,
     Radio,
     theme as antdTheme,
+    notification, // Added notification
 } from 'antd';
 import {
     LockOutlined,
@@ -30,13 +31,14 @@ import {
     HddOutlined,
     FieldTimeOutlined,
     ThunderboltOutlined,
-    FieldTimeOutlined as TimerIcon, // Alias for distinction
+    FieldTimeOutlined as TimerIcon,
 } from '@ant-design/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { formatSeconds } from '../../utils/time';
 import { CountdownDisplay } from './CountdownDisplay';
 import { useDeviceManager } from '../../context/useDeviceManager';
 import { useSession, SessionFormData } from '../../context/useSessionContext';
+import { useKeyboard } from '../../context/useKeyboardContext'; // Added Hook
 
 const { Title, Text } = Typography;
 
@@ -48,6 +50,7 @@ export const SessionConfiguration = () => {
     // Destructure status here so it's available for the render function
     const { currentState, startSession, isLocking, sessionTimeRemaining, status } = useSession();
     const { activeDevice, openDeviceModal } = useDeviceManager();
+    const { registerStartConfigAction } = useKeyboard(); // Consume Keyboard Context
 
     const [form] = Form.useForm<SessionFormData>();
     const [setupStep, setSetupStep] = useState(0);
@@ -85,6 +88,36 @@ export const SessionConfiguration = () => {
             form.resetFields();
         }
     }, [currentState, form]);
+
+    // --- Keyboard Shortcut Registration ---
+    useEffect(() => {
+        registerStartConfigAction(() => {
+            // Logic to determine what 'Start Configuration' (key: s) does based on state
+            if (currentState === 'no_device_selected') {
+                notification.info({ message: 'Please select a device first.' });
+                openDeviceModal();
+                return;
+            }
+
+            if (currentState === 'ready') {
+                if (setupStep === 0) {
+                    setSetupStep(1);
+                    notification.success({
+                        message: 'Configuration Started',
+                        description: 'Moved to configuration step.',
+                        duration: 1.5,
+                    });
+                } else if (setupStep === 1) {
+                    // Already in configuration, visual feedback only
+                    notification.info({
+                        message: 'Already Configuring',
+                        description: 'You are already in the configuration step.',
+                        duration: 1.5,
+                    });
+                }
+            }
+        });
+    }, [currentState, setupStep, openDeviceModal, registerStartConfigAction]);
 
     /**
      * Handles the form submission.

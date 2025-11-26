@@ -214,22 +214,6 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         else setRewardHistory([]);
     }, [currentState, fetchRewardHistory]);
 
-    /**
-     * Effect to add a keyboard shortcut ('b' key) for abort.
-     */
-    useEffect(() => {
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === 'b' && ['locked', 'armed', 'testing'].includes(currentState)) {
-                notification.warning({
-                    message: 'Abort Triggered via Keyboard',
-                });
-                abortSession();
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [currentState, abortSession]);
-
     // --- Computed Values for UI ---
 
     /**

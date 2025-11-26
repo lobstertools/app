@@ -49,7 +49,7 @@ export const TestSessionModal = () => {
                 </div>
 
                 <Text strong style={{ display: 'block' }}>
-                    Press <Text code>b</Text> to emergency stop
+                    Press <Text code>b</Text> to abort
                 </Text>
 
                 <Button danger size="large" type="primary" onClick={abortSession} block>

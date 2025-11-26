@@ -8,17 +8,17 @@ import { SessionLockModal } from '../session/SessionLockModal';
 import { DeviceMenu } from '../device/DeviceMenu';
 import { DeviceLogModal } from '../device/DeviceLogModal';
 import { SessionStats } from '../session/SessionStats';
-import { WelcomeScreen } from '../onboarding/WelcomeScreen';
-import { ApplicationSettingsMenu } from '../settings/ApplicationSettingsMenu';
+import { WelcomeScreen } from '../app/WelcomeScreen';
+import { ApplicationSettingsMenu } from '../app/ApplicationSettingsMenu';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
 
 import lobsterLogo from '../../assets/lobster-logo.png';
-import { ApplicationSettingsModal } from '../settings/ApplicationSettingsModal';
+import { ApplicationSettingsModal } from '../app/ApplicationSettingsModal';
 import { DeviceSettingsModal } from '../device/DeviceSettingsModal';
 import { BuildWarningBanner } from './BuildWarningBanner';
-import { AboutAppModal } from '../settings/AboutModal';
+import { AboutAppModal } from '../app/AboutModal';
 import { TestSessionModal } from '../session/TestSessionModal';
 
 /**

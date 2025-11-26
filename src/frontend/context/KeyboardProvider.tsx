@@ -1,0 +1,98 @@
+import { ReactNode, useEffect, useState, useCallback, useRef } from 'react';
+import { notification } from 'antd';
+
+import { KeyboardContext, KeyboardContextState } from './useKeyboardContext';
+import { useSession } from './useSessionContext';
+import { useDeviceManager } from './useDeviceManager';
+import { KeyboardHelpModal } from '../components/app/KeyboardHelpModal';
+
+export const KeyboardProvider = ({ children }: { children: ReactNode }) => {
+    const [isHelpOpen, setIsHelpOpen] = useState(false);
+
+    // We use a ref for the start config action so the effect
+    // doesn't need to re-bind when the callback changes.
+    const startConfigActionRef = useRef<(() => void) | null>(null);
+
+    // Consume existing contexts to trigger actions
+    const { currentState, abortSession, startTestSession } = useSession();
+    const { openDeviceModal } = useDeviceManager();
+
+    const openHelp = useCallback(() => setIsHelpOpen(true), []);
+    const closeHelp = useCallback(() => setIsHelpOpen(false), []);
+
+    const registerStartConfigAction = useCallback((cb: () => void) => {
+        startConfigActionRef.current = cb;
+    }, []);
+
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            // 1. Ignore shortcuts if user is typing in an input field
+            const target = event.target as HTMLElement;
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+                return;
+            }
+
+            // 2. Handle Keys
+            switch (event.key) {
+                case 'b': // Break / Abort
+                    if (['locked', 'armed', 'testing'].includes(currentState)) {
+                        notification.warning({
+                            message: 'Abort Triggered via Keyboard',
+                            duration: 2,
+                        });
+                        abortSession();
+                    }
+                    break;
+
+                case 't': // Test
+                    if (currentState === 'ready') {
+                        notification.info({
+                            message: 'Hardware Test Triggered via Keyboard',
+                            duration: 2,
+                        });
+                        startTestSession();
+                    }
+                    break;
+
+                case 'm': // Device Manager
+                    // Prevent opening if we are in a critical state
+                    if (['locked', 'armed'].includes(currentState)) {
+                        notification.warning({ message: 'Cannot switch devices while active.' });
+                    } else {
+                        openDeviceModal();
+                    }
+                    break;
+
+                case 's': // Start Config
+                    if (startConfigActionRef.current) {
+                        startConfigActionRef.current();
+                    }
+                    break;
+
+                case '?': // Help
+                    setIsHelpOpen((prev) => !prev);
+                    break;
+
+                default:
+                    break;
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [currentState, abortSession, startTestSession, openDeviceModal]);
+
+    const contextValue: KeyboardContextState = {
+        isHelpOpen,
+        openHelp,
+        closeHelp,
+        registerStartConfigAction,
+    };
+
+    return (
+        <KeyboardContext.Provider value={contextValue}>
+            {children}
+            <KeyboardHelpModal />
+        </KeyboardContext.Provider>
+    );
+};
