@@ -254,6 +254,14 @@ const triggerAbort = (source: string): boolean => {
         return true;
     }
 
+    // Safe Abort (Safety is ON)
+    if (currentState === 'testing') {
+        log(`🔬 Hardware Testing canceled by ${source}. Returning to READY.`);
+        stopAllTimers();
+        currentState = 'ready';
+        return true;
+    }
+
     if (currentState !== 'locked') {
         log(`triggerAbort called from ${source} but state is ${currentState}. Ignoring.`);
         return false;
