@@ -188,10 +188,10 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         let pollInterval: number;
         switch (currentState) {
             case 'locked':
-            case 'armed': // Poll fast during arming to see countdowns or button press
+            case 'armed':
             case 'aborted':
             case 'testing':
-                pollInterval = 500;
+                pollInterval = 1000;
                 break;
             case 'ready':
             case 'completed':

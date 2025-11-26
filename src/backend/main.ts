@@ -554,7 +554,7 @@ app.post('/api/devices/:id/factory-reset', async (req: Request, res: Response) =
     try {
         log(`Forwarding /factory-reset request to ${targetUrl}`);
         // Expect a timeout because the device reboots
-        await axios.post(targetUrl, {}, { timeout: 2000 });
+        await axios.post(targetUrl, {}, { timeout: 4000 });
         log(`Device ${id} responded to factory-reset. Removing from cache.`);
     } catch (error: unknown) {
         // Expected timeout handling...
@@ -599,7 +599,7 @@ app.get('/api/devices/:id/log', async (req: Request, res: Response) => {
     try {
         const lockResponse = await axios.get(targetUrl, {
             responseType: 'text',
-            timeout: 2000,
+            timeout: 4000,
         });
         refreshDeviceTimestamp(id);
         res.status(lockResponse.status).send(lockResponse.data);
@@ -673,7 +673,7 @@ app.get('/api/devices/:id/health', async (req: Request, res: Response) => {
 
     const targetUrl = buildTargetUrl(device.address, device.port, '/status');
     try {
-        await axios.get(targetUrl, { timeout: 2000 });
+        await axios.get(targetUrl, { timeout: 4000 });
         refreshDeviceTimestamp(id);
         res.status(200).json({ status: 'ok' });
     } catch (error: unknown) {
@@ -707,7 +707,7 @@ app.post('/api/devices/:id/keepalive', async (req: Request, res: Response) => {
     if (device.state === 'ready') {
         const targetUrl = buildTargetUrl(device.address, device.port, '/keepalive');
         try {
-            await axios.post(targetUrl, {}, { timeout: 2000 });
+            await axios.post(targetUrl, {}, { timeout: 4000 });
             return res.status(200).json({ status: 'ok' });
         } catch (error: unknown) {
             let message = 'Device is unreachable.';
@@ -762,7 +762,7 @@ app.get('/api/devices/:id/session/status', async (req: Request, res: Response) =
 
     const targetUrl = buildTargetUrl(device.address, device.port, '/status');
     try {
-        const lockResponse = await axios.get(targetUrl, { timeout: 2000 });
+        const lockResponse = await axios.get(targetUrl, { timeout: 4000 });
         refreshDeviceTimestamp(id);
         res.status(lockResponse.status).json(lockResponse.data);
     } catch (error: unknown) {
@@ -893,7 +893,7 @@ app.get('/api/devices/:id/session/reward', async (req: Request, res: Response) =
 
     const targetUrl = buildTargetUrl(device.address, device.port, '/reward');
     try {
-        const lockResponse = await axios.get(targetUrl, { timeout: 2000 });
+        const lockResponse = await axios.get(targetUrl, { timeout: 4000 });
         refreshDeviceTimestamp(id);
         res.status(lockResponse.status).json(lockResponse.data);
     } catch (error: unknown) {
