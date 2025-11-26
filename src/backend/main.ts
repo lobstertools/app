@@ -281,11 +281,11 @@ function startDiscoveryService() {
         cycleMDNSBrowser();
     }, 30000);
 
-    // 4. The "Heartbeat" (Every 5s)
+    // 4. The "Heartbeat" (Every 15s)
     // Actively pings devices via HTTP to keep them alive in cache.
     setInterval(() => {
         performHealthChecks();
-    }, 5000);
+    }, 15000);
 
     // 5. Cache Pruning (Every 60s)
     // Removes devices not seen (via mDNS or HTTP) for 2 minutes.
