@@ -9,21 +9,7 @@ import {
     ClockCircleOutlined,
     WarningOutlined,
 } from '@ant-design/icons';
-
-/**
- * Helper function to format seconds into a readable string (e.g., "12h 30m")
- */
-const formatSeconds = (totalSeconds: number) => {
-    if (!totalSeconds || totalSeconds < 60) return '0m';
-
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-
-    if (hours > 0) {
-        return `${hours}h ${minutes}m`;
-    }
-    return `${minutes}m`;
-};
+import { formatSeconds } from '../../utils/time';
 
 /**
  * A small component that displays the user's high-level session stats.
@@ -46,31 +32,34 @@ export const SessionStats = () => {
         pendingPaybackSeconds = 0,
     } = status.stats;
 
+    // Standard spacing style for icons inside tags
+    const iconStyle = { marginRight: 4 };
+
     return (
-        <Space size="small">
+        <Space size={4}>
             <Tooltip title="Current Session Streak">
-                <Tag icon={<FireOutlined />} color="gold" style={{ margin: 0 }}>
+                <Tag icon={<FireOutlined style={iconStyle} />} color="gold" style={{ margin: 0 }}>
                     {streaks}
                 </Tag>
             </Tooltip>
             <Tooltip title="Total Time Locked">
-                <Tag icon={<ClockCircleOutlined />} color="blue" style={{ margin: 0 }}>
+                <Tag icon={<ClockCircleOutlined style={iconStyle} />} color="blue" style={{ margin: 0 }}>
                     {formatSeconds(totalTimeLockedSeconds)}
                 </Tag>
             </Tooltip>
             <Tooltip title="Total Sessions Completed">
-                <Tag icon={<CheckCircleOutlined />} color="green" style={{ margin: 0 }}>
+                <Tag icon={<CheckCircleOutlined style={iconStyle} />} color="green" style={{ margin: 0 }}>
                     {completed}
                 </Tag>
             </Tooltip>
             <Tooltip title="Total Sessions Aborted">
-                <Tag icon={<CloseCircleOutlined />} color="red" style={{ margin: 0 }}>
+                <Tag icon={<CloseCircleOutlined style={iconStyle} />} color="red" style={{ margin: 0 }}>
                     {aborted}
                 </Tag>
             </Tooltip>
             {pendingPaybackSeconds > 0 && (
                 <Tooltip title="Accumulated Payback Debt">
-                    <Tag icon={<WarningOutlined />} color="volcano" style={{ margin: 0 }}>
+                    <Tag icon={<WarningOutlined style={iconStyle} />} color="volcano" style={{ margin: 0 }}>
                         {formatSeconds(pendingPaybackSeconds)}
                     </Tag>
                 </Tooltip>
