@@ -1,6 +1,5 @@
 import { ReactNode, useEffect, useState } from 'react';
 
-import '../types/electron';
 import { AppRuntimeContext, AppRuntimeContextState } from './useAppRuntime.ts';
 import { BuildType } from '../../types/index.ts';
 
