@@ -18,9 +18,9 @@ import { useEffect, useState } from 'react';
 
 import { ConfigProvider, theme as antdTheme, App as AntdApp } from 'antd';
 import { AppContent } from './components/layout/AppContent';
-import { SessionProvider } from './context/SessionContext';
-import { AppRuntimeProvider } from './context/AppRuntimeContext.tsx';
-import { DeviceManagerProvider } from './context/DeviceManagerContext.tsx';
+import { SessionProvider } from './context/SessionProvider.tsx';
+import { AppRuntimeProvider } from './context/AppRuntimeProvider.tsx';
+import { DeviceManagerProvider } from './context/DeviceManagerProvider.tsx';
 
 const globalStyles = `
   body {
