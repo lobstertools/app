@@ -196,6 +196,8 @@ const createWindow = () => {
             preload: preloadScriptPath,
             contextIsolation: true,
             nodeIntegration: false,
+            // Prevents the renderer from throttling timers when backgrounded
+            backgroundThrottling: false,
         },
     });
 
