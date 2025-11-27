@@ -10,13 +10,18 @@ import {
     WarningOutlined,
 } from '@ant-design/icons';
 import { formatSeconds } from '../../utils/time';
+import { useDeviceManager } from '../../context/useDeviceManager';
 
 /**
  * A small component that displays the user's high-level session stats.
  */
 export const SessionStats = () => {
-    // The 'status' object is provided by the context
+    const { activeDevice } = useDeviceManager();
     const { status } = useSession();
+
+    if (activeDevice?.deterrents.enableStreaks == false) {
+        return <></>;
+    }
 
     // Don't render anything if there's no device status or stats object
     if (!status || !status.stats) {
