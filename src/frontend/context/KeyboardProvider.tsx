@@ -15,7 +15,7 @@ export const KeyboardProvider = ({ children }: { children: ReactNode }) => {
 
     // Consume existing contexts to trigger actions
     const { currentState, abortSession, startTestSession } = useSession();
-    const { openDeviceModal } = useDeviceManager();
+    const { openDeviceModal, openDeviceSettingsModal, activeDevice } = useDeviceManager();
 
     const openHelp = useCallback(() => setIsHelpOpen(true), []);
     const closeHelp = useCallback(() => setIsHelpOpen(false), []);
@@ -69,6 +69,22 @@ export const KeyboardProvider = ({ children }: { children: ReactNode }) => {
                     }
                     break;
 
+                case 'd': // Device Settings
+                    if (activeDevice === null) {
+                        notification.warning({
+                            message: 'Cannot open settings without active device. Select a device first.',
+                        });
+                        openDeviceModal();
+                        return;
+                    }
+
+                    // Prevent opening if we are in a critical state
+                    if (['locked', 'armed'].includes(currentState) && activeDevice !== null) {
+                        notification.warning({ message: 'Cannot configure devices while active.' });
+                    } else {
+                        openDeviceSettingsModal();
+                    }
+                    break;
                 case '?': // Help
                     setIsHelpOpen((prev) => !prev);
                     break;
@@ -80,7 +96,7 @@ export const KeyboardProvider = ({ children }: { children: ReactNode }) => {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [currentState, abortSession, startTestSession, openDeviceModal]);
+    }, [currentState, abortSession, startTestSession, openDeviceModal, openDeviceSettingsModal, activeDevice]);
 
     const contextValue: KeyboardContextState = {
         isHelpOpen,

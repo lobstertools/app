@@ -82,6 +82,7 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
         const paybackDurationSeconds = minutesInput * 60;
 
         // 2. Construct the strict payload matching DeviceProvisioningData interface
+        // Note: Because we used display:none for steps, values.ssid etc are guaranteed to be here.
         const payload: DeviceProvisioningData = {
             ssid: values.ssid,
             pass: values.pass,
@@ -275,6 +276,7 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
                     form={form}
                     layout="vertical"
                     onFinish={handleFinish}
+                    preserve={true} // Ensure values are kept even if components unmount
                     initialValues={{
                         // Deterrent Defaults
                         enableStreaks: true,
@@ -294,10 +296,10 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
                         </Form.Item>
                     )}
 
-                    {/* Step Content */}
+                    {/* Step Content: We use display styling to hide/show so DOM elements remain active */}
                     <div style={{ marginTop: 24 }}>
-                        {currentStep === 0 && renderConnectionStep()}
-                        {currentStep === 1 && renderDeterrentsStep()}
+                        <div style={{ display: currentStep === 0 ? 'block' : 'none' }}>{renderConnectionStep()}</div>
+                        <div style={{ display: currentStep === 1 ? 'block' : 'none' }}>{renderDeterrentsStep()}</div>
                     </div>
 
                     {/* Navigation Buttons */}

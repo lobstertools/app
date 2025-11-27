@@ -10,6 +10,7 @@ export const KeyboardHelpModal = () => {
         { key: 'b', action: 'Abort Session / Break', context: 'When Armed, Locked, or Testing' },
         { key: 't', action: 'Start Hardware Test', context: 'When Device is Ready' },
         { key: 'm', action: 'Open Device Manager', context: 'Global' },
+        { key: 'd', action: 'Device Settings', context: 'When Device is Ready' },
         { key: 's', action: 'Start Configuration', context: 'Global (Navigation)' },
         { key: '?', action: 'Toggle this Help Menu', context: 'Global' },
     ];
