@@ -355,6 +355,10 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         { key: 'enablePaybackTime', val: enablePaybackTime },
         { key: 'paybackDurationSeconds', val: paybackDurationSeconds },
         { key: 'enableRewardCode', val: enableRewardCode },
+        { key: 'ch1Enabled', val: ch1Enabled },
+        { key: 'ch2Enabled', val: ch2Enabled },
+        { key: 'ch3Enabled', val: ch3Enabled },
+        { key: 'ch4Enabled', val: ch4Enabled },
     ]
         .filter((field: { key: string; val: unknown }) => field.val === undefined)
         .map((field) => field.key);
@@ -442,7 +446,6 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
             log(`[Provision] Found characteristics: ${characteristics.join(',')}`);
             throw new Error(`Could not find all required provisioning characteristics. Missing: ${missingList}`);
         }
-        log(`[Provision] Writing credentials and settings...`);
 
         // --- DATA CONVERSION ---
         // LE = Little-Endian, BE = Big-Endian.
@@ -470,8 +473,7 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         };
         // --- END DATA CONVERSION ---
 
-        await ssidChar!.writeAsync(Buffer.from(ssid), false);
-        await passChar!.writeAsync(Buffer.from(pass || ''), false);
+        log(`[Provision] Writing configuration settings...`);
         await enableStreaksChar!.writeAsync(enableStreaksBuf, false);
         await enablePaybackTimeChar!.writeAsync(enablePaybackTimeBuf, false);
         await paybackTimeChar!.writeAsync(paybackTimeBuf, false);
@@ -481,6 +483,11 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         await ch2Char!.writeAsync(getBoolBuf(ch2Enabled || false), false);
         await ch3Char!.writeAsync(getBoolBuf(ch3Enabled || false), false);
         await ch4Char!.writeAsync(getBoolBuf(ch4Enabled || false), false);
+
+        // --- 2. Write Password LAST (Triggers Reboot) ---
+        log(`[Provision] Writing ssid & password (triggering reboot)...`);
+        await ssidChar!.writeAsync(Buffer.from(ssid), false);
+        await passChar!.writeAsync(Buffer.from(pass || ''), false);
 
         log(`[Provision] Credentials and settings sent! Disconnecting...`);
         await peripheral.disconnectAsync();
