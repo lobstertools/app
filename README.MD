@@ -8,6 +8,20 @@ This is the main application for the Lobster Lock, a DIY self-bondage toolkit. I
 
 The backend server discovers Lobster Lock devices on the network, provides a stable API for the frontend, and manages device connections.
 
+## ⚠️ Disclaimer & Safety Warning
+
+This project is intended for educational and novelty purposes by responsible adults. Self-bondage carries inherent and serious risks, including nerve damage, circulation loss, and asphyxiation.
+
+* You are building this toolkit at your **own risk**.
+* Thoroughly test all components, especially release mechanisms, before any use.
+* Always have a failsafe plan and emergency tools (like shears or cutters) within reach.
+* Never use this system in a way that restricts breathing or in any situation you cannot safely escape from.
+* The creators of this project assume **no liability** for any harm, damage, or legal consequences.
+
+## License
+
+Distributed under the Apache License 2.0. See `LICENSE` for more information.
+
 ## Technical Overview
 
 * **Frontend:** React (built with Vite)
