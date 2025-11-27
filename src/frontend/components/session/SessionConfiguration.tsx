@@ -17,7 +17,7 @@ import {
     List,
     Radio,
     theme as antdTheme,
-    notification, // Added notification
+    notification,
 } from 'antd';
 import {
     LockOutlined,
@@ -38,7 +38,7 @@ import { formatSeconds } from '../../utils/time';
 import { CountdownDisplay } from './CountdownDisplay';
 import { useDeviceManager } from '../../context/useDeviceManager';
 import { useSession, SessionFormData } from '../../context/useSessionContext';
-import { useKeyboard } from '../../context/useKeyboardContext'; // Added Hook
+import { useKeyboard } from '../../context/useKeyboardContext';
 
 const { Title, Text } = Typography;
 
@@ -50,7 +50,7 @@ export const SessionConfiguration = () => {
     // Destructure status here so it's available for the render function
     const { currentState, startSession, isLocking, sessionTimeRemaining, status } = useSession();
     const { activeDevice, openDeviceModal } = useDeviceManager();
-    const { registerStartConfigAction } = useKeyboard(); // Consume Keyboard Context
+    const { registerStartConfigAction } = useKeyboard();
 
     const [form] = Form.useForm<SessionFormData>();
     const [setupStep, setSetupStep] = useState(0);
@@ -66,6 +66,9 @@ export const SessionConfiguration = () => {
     const supportsManualTrigger = useMemo(() => {
         return activeDevice?.features?.includes('footPedal') ?? false;
     }, [activeDevice]);
+
+    // Check deterrent configuration
+    const enableRewardCode = activeDevice?.deterrents?.enableRewardCode ?? true;
 
     // Calculate enabled channels for the UI based on the new API structure
     const enabledChannels = useMemo(() => {
@@ -199,7 +202,7 @@ export const SessionConfiguration = () => {
         { title: 'Configure' },
         { title: 'Arming' },
         { title: 'Lock' },
-        { title: 'Reward' },
+        { title: enableRewardCode ? 'Reward' : 'Complete' }, // Dynamic Title
     ];
 
     /**
@@ -253,37 +256,42 @@ export const SessionConfiguration = () => {
     const renderPreparationInstructions = () => (
         <div style={{ width: '100%' }}>
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
-                <div>
-                    <Title level={5}>Prepare Your Reward Lock</Title>
-                    <Text type="secondary">
-                        Before continuing, program your physical lock using the combination pattern shown on the right.
-                    </Text>
-                    <List
-                        size="small"
-                        bordered
-                        style={{
-                            marginTop: '16px',
-                            backgroundColor: token.colorFillAlter,
-                        }}
-                        dataSource={[
-                            'Place the lock in the open position.',
-                            'On the back of the lock, slide the reset lever to the "up" position (towards "R").',
-                            'Insert the shackle into the lock and squeeze firmly twice to clear it.',
-                            'Pull up the shackle to re-open it.',
-                            'Enter the new combination pattern (from the image on the right).',
-                            'Slide the reset lever back to the "down" position.',
-                            'Place the lock onto the box containing your reward.',
-                            'Insert the shackle and squeeze firmly to secure it.',
-                        ]}
-                        renderItem={(item, index) => (
-                            <List.Item>
-                                <Text>
-                                    <Text strong>{index + 1}.</Text> {item}
-                                </Text>
-                            </List.Item>
-                        )}
-                    />
-                </div>
+                {/* Only show Reward Lock instructions if the feature is enabled */}
+                {enableRewardCode && (
+                    <div>
+                        <Title level={5}>Prepare Your Reward Lock</Title>
+                        <Text type="secondary">
+                            Before continuing, program your physical lock using the combination pattern shown on the
+                            right.
+                        </Text>
+                        <List
+                            size="small"
+                            bordered
+                            style={{
+                                marginTop: '16px',
+                                backgroundColor: token.colorFillAlter,
+                            }}
+                            dataSource={[
+                                'Place the lock in the open position.',
+                                'On the back of the lock, slide the reset lever to the "up" position (towards "R").',
+                                'Insert the shackle into the lock and squeeze firmly twice to clear it.',
+                                'Pull up the shackle to re-open it.',
+                                'Enter the new combination pattern (from the image on the right).',
+                                'Slide the reset lever back to the "down" position.',
+                                'Place the lock onto the box containing your reward.',
+                                'Insert the shackle and squeeze firmly to secure it.',
+                            ]}
+                            renderItem={(item, index) => (
+                                <List.Item>
+                                    <Text>
+                                        <Text strong>{index + 1}.</Text> {item}
+                                    </Text>
+                                </List.Item>
+                            )}
+                        />
+                    </div>
+                )}
+
                 <Alert
                     message="Disable Sleep Mode"
                     description="To ensure you can always access the controls, please go to your system settings and temporarily disable sleep mode and the screensaver."
@@ -394,14 +402,26 @@ export const SessionConfiguration = () => {
                     </Form.Item>
 
                     {paybackTimeEnabled && pendingPaybackSeconds > 0 && (
-                        <Text type="success" style={{ display: 'block' }}>
-                            <FieldTimeOutlined style={{ marginRight: 8 }} />
-                            You have{' '}
-                            <Text type="success" strong>
-                                {formatSeconds(pendingPaybackSeconds)}
-                            </Text>{' '}
-                            of pending payback, which will be added to this session.
-                        </Text>
+                        <Card size="small" style={{ marginTop: 12, borderColor: red[5], borderWidth: 1 }}>
+                            <Row justify="space-between" align="middle">
+                                <Col span={18}>
+                                    <Space direction="vertical" size={0}>
+                                        <Text type="danger" strong>
+                                            <FieldTimeOutlined style={{ marginRight: 8 }} />
+                                            Pending Payback
+                                        </Text>
+                                        <Text type="secondary">
+                                            You have accrued time debt which will be added to this session.
+                                        </Text>
+                                    </Space>
+                                </Col>
+                                <Col span={6} style={{ textAlign: 'right' }}>
+                                    <Text type="danger" strong style={{ fontSize: '1.2em' }}>
+                                        +{formatSeconds(pendingPaybackSeconds)}
+                                    </Text>
+                                </Col>
+                            </Row>
+                        </Card>
                     )}
                 </Space>
 
@@ -513,26 +533,33 @@ export const SessionConfiguration = () => {
 
                 <Divider />
 
-                {/* --- 3. PENALTY --- */}
-                <Space direction="vertical" style={{ width: '100%' }}>
-                    <Title level={5}>3. Abort Penalty</Title>
-                    <Text type="secondary" style={{ marginTop: -8 }}>
-                        Set the cooldown duration if the session is aborted early.
-                    </Text>
+                {/* --- 3. PENALTY (CONDITIONAL) --- */}
+                {enableRewardCode && (
+                    <>
+                        <Space direction="vertical" style={{ width: '100%' }}>
+                            <Title level={5}>3. Abort Penalty</Title>
+                            <Text type="secondary" style={{ marginTop: -8 }}>
+                                Set the cooldown duration if the session is aborted early.
+                            </Text>
 
-                    <Form.Item name="penaltyDuration" label="Abort Penalty (15-180 min)" style={{ marginTop: 8 }}>
-                        <InputNumber min={15} max={180} addonAfter="min" style={{ width: 200 }} />
-                    </Form.Item>
-                    <Text type="secondary" style={{ marginTop: -16, display: 'block' }}>
-                        When aborted, the reward code will remain hidden for this duration.
-                    </Text>
-                </Space>
-
-                <Divider />
+                            <Form.Item
+                                name="penaltyDuration"
+                                label="Abort Penalty (15-180 min)"
+                                style={{ marginTop: 8 }}
+                            >
+                                <InputNumber min={15} max={180} addonAfter="min" style={{ width: 200 }} />
+                            </Form.Item>
+                            <Text type="secondary" style={{ marginTop: -16, display: 'block' }}>
+                                When aborted, the reward code will remain hidden for this duration.
+                            </Text>
+                        </Space>
+                        <Divider />
+                    </>
+                )}
 
                 {/* --- 4. TENSION --- */}
                 <Space direction="vertical" style={{ width: '100%' }}>
-                    <Title level={5}>4. Tension Mode</Title>
+                    <Title level={5}>{enableRewardCode ? '4.' : '3.'} Tension Mode</Title>
                     <Text type="secondary" style={{ marginTop: -8 }}>
                         Hides the session timer for an extra challenge.
                     </Text>
@@ -548,22 +575,31 @@ export const SessionConfiguration = () => {
                 </Space>
 
                 {paybackTimeEnabled && (
-                    <div
-                        style={{
-                            marginBottom: 8,
-                            marginTop: 0,
-                            textAlign: 'center',
-                        }}
-                    >
-                        <Text type="secondary">
-                            <FieldTimeOutlined style={{ marginRight: 8 }} />
-                            Time Payback is enabled: Aborting will add{' '}
-                            <Text strong>
-                                {paybackTimeMinutesDisplay} {paybackTimeMinutesDisplay > 1 ? 'minutes' : 'minute'}
-                            </Text>{' '}
-                            to your next session.
-                        </Text>
-                    </div>
+                    <Card size="small" style={{ marginTop: 24, marginBottom: 8 }}>
+                        <Row justify="space-between" align="middle">
+                            <Col span={18}>
+                                <Space direction="vertical" size={0}>
+                                    <Text strong>
+                                        <FieldTimeOutlined style={{ marginRight: 8 }} />
+                                        Time Payback Enabled
+                                    </Text>
+                                    <Text type="secondary">
+                                        Aborting will add{' '}
+                                        <Text strong>
+                                            {paybackTimeMinutesDisplay}{' '}
+                                            {paybackTimeMinutesDisplay > 1 ? 'minutes' : 'minute'}
+                                        </Text>{' '}
+                                        to your next session.
+                                    </Text>
+                                </Space>
+                            </Col>
+                            <Col span={6} style={{ textAlign: 'right' }}>
+                                <Text strong type="warning" style={{ fontSize: '1.2em' }}>
+                                    +{paybackTimeMinutesDisplay}m
+                                </Text>
+                            </Col>
+                        </Row>
+                    </Card>
                 )}
 
                 {/* Submit button */}
@@ -596,15 +632,23 @@ export const SessionConfiguration = () => {
     const renderSessionActiveContent = () => {
         const isLocked = currentState === 'locked';
 
+        let description = '';
+        if (isLocked) {
+            description = enableRewardCode
+                ? 'The MagLock is engaged. Wait for the timer to end to get the code for the reward lock.'
+                : 'The MagLock is engaged. Wait for the timer to end to complete the session.';
+        } else {
+            // Aborted
+            description = enableRewardCode
+                ? 'The MagLock has disengaged. The code for the reward lock remains hidden until the penalty cooldown ends.'
+                : 'The MagLock has disengaged. The session will remain in penalty state until the cooldown ends.';
+        }
+
         return (
             <Space direction="vertical" style={{ width: '100%' }}>
                 <Alert
                     message={isLocked ? 'Session Active' : 'Penalty Cooldown'}
-                    description={
-                        isLocked
-                            ? 'The MagLock is engaged. Wait for the timer to end to get the code for the reward lock.'
-                            : 'The MagLock has disengaged. The code for the reward lock remains hidden until the penalty cooldown ends.'
-                    }
+                    description={description}
                     type={isLocked ? 'info' : 'error'}
                     showIcon
                 />
@@ -636,10 +680,18 @@ export const SessionConfiguration = () => {
                 <Title level={3} style={{ marginTop: 16 }}>
                     Session Complete!
                 </Title>
-                <Text type="secondary">The code for your reward lock is now visible.</Text>
+                <Text type="secondary">
+                    {enableRewardCode
+                        ? 'The code for your reward lock is now visible.'
+                        : 'You may now access your reward.'}
+                </Text>
                 <Alert
                     message="Reboot Required for Next Session"
-                    description="To start a new session, you must power the lock controller off and then on again. It will automatically generate a new reward code."
+                    description={
+                        enableRewardCode
+                            ? 'To start a new session, you must power the lock controller off and then on again. It will automatically generate a new reward code.'
+                            : 'To start a new session, you must power the lock controller off and then on again.'
+                    }
                     type="info"
                     showIcon
                     icon={<PoweroffOutlined />}

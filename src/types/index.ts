@@ -111,6 +111,7 @@ export interface DeviceDetails {
         enableStreaks: boolean;
         enablePaybackTime: boolean;
         paybackDurationSeconds: number;
+        enableRewardCode: boolean;
     };
 }
 
@@ -217,6 +218,7 @@ export interface DeviceProvisioningData {
     enableStreaks: boolean;
     enablePaybackTime: boolean;
     paybackDurationSeconds: number;
+    enableRewardCode: boolean;
     ch1Enabled: boolean;
     ch2Enabled: boolean;
     ch3Enabled: boolean;

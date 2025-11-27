@@ -1,5 +1,6 @@
 import { Layout, Typography, Card, Space, Row, Col, theme as antdTheme } from 'antd';
 import { useSession } from '../../context/useSessionContext';
+import { useDeviceManager } from '../../context/useDeviceManager';
 import { StatusBadge } from '../device/StatusBadge';
 import { DeviceManagerModal } from '../device/DeviceManagerModal';
 import { RewardDisplay } from '../reward/RewardDisplay';
@@ -26,8 +27,16 @@ import { TestSessionModal } from '../session/TestSessionModal';
  */
 export const AppContent = ({ theme, toggleTheme }: { theme: 'light' | 'dark'; toggleTheme: () => void }) => {
     const { currentState } = useSession();
-
+    const { activeDevice } = useDeviceManager();
     const { token } = antdTheme.useToken();
+
+    // Determine if the Reward Code feature is enabled on the device
+    const enableRewardCode = activeDevice?.deterrents?.enableRewardCode ?? true;
+
+    // Determine layout mode:
+    // 1. If state is 'armed', we always go full width for focus.
+    // 2. If 'enableRewardCode' is FALSE, we always go full width because there is no reward panel to show.
+    const useFullWidthLayout = currentState === 'armed' || !enableRewardCode;
 
     return (
         <>
@@ -76,15 +85,15 @@ export const AppContent = ({ theme, toggleTheme }: { theme: 'light' | 'dark'; to
                     <div style={{ maxWidth: '1600px', margin: '0 auto' }}>
                         <Space direction="vertical" size="large" style={{ width: '100%' }}>
                             <Row gutter={[24, 24]}>
-                                {currentState === 'armed' ? (
-                                    // Special layout for armed: full width
+                                {useFullWidthLayout ? (
+                                    // Full width layout (Armed OR Reward Code Disabled)
                                     <Col xs={24} lg={24}>
                                         <Card title="Session Configuration" style={{ minHeight: '100%' }}>
                                             <SessionConfiguration />
                                         </Card>
                                     </Col>
                                 ) : (
-                                    // Standard 50/50 layout
+                                    // Standard 50/50 layout (Ready/Locked/etc AND Reward Code Enabled)
                                     <>
                                         <Col xs={24} lg={12}>
                                             <Card title="Session Configuration" style={{ minHeight: '100%' }}>

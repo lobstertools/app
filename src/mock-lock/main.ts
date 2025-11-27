@@ -36,11 +36,14 @@ const FEATURES: DeviceFeature[] = ['footPedal', 'startCountdown', 'statusLed'];
 const TEST_DURATION_SECONDS = 60; // 60 second test
 const ARMED_TIMEOUT_SECONDS = 600; // 10 minutes to press button
 
-// These settings mimic what would be saved in flash from provisioning
-const ENABLE_STREAKS = true;
-const ENABLE_PAYBACK_TIME = true;
-const PAYBACK_DURATION_SECONDS = 600; // 10 Minutes
+// --- Mutable Settings (Simulating Flash Storage) ---
+let enableStreaks = true;
+let enablePaybackTime = true;
+let enableRewardCode = false;
+let paybackDurationSeconds = 600; // 10 Minutes
+const channelConfig = { ch1: true, ch2: true, ch3: true, ch4: true };
 
+// --- Dynamic Session State ---
 let streaks = 0;
 let totalTimeLockedSeconds = 0;
 let completed = 0;
@@ -48,7 +51,6 @@ let aborted = 0;
 let pendingPaybackSeconds = 0;
 
 // State Machine
-// 'armed' replaces the old 'countdown' state logic
 let currentState: 'ready' | 'armed' | 'locked' | 'aborted' | 'completed' | 'testing' = 'ready';
 let currentStrategy: TriggerStrategy = 'autoCountdown';
 
@@ -192,31 +194,36 @@ const stopAllTimers = () => {
 
 /**
  * Resets the mock device to its default "boot" state.
+ * This is where the NEW code for the upcoming session is generated.
  */
 const initializeState = () => {
     log('Initializing state (simulating device boot).');
     log(`   -> Device: ${DEVICE_ID} ${DEVICE_VERSION}`);
     log(`   -> Channels: ${NUMBER_OF_CHANNELS}`);
     log(`   -> Features: ${FEATURES.join(', ')}`);
-    log(`   -> Config: Payback ${PAYBACK_DURATION_SECONDS}s, Streaks ${ENABLE_STREAKS}`);
+    log(`   -> Config: Payback ${paybackDurationSeconds}s, Streaks ${enableStreaks}, Code ${enableRewardCode}`);
 
     stopAllTimers();
 
     rewardHistory = [];
-    // Generate some fake historical codes
-    const numberOfHistoricalCodes = 4;
-    for (let i = 0; i < numberOfHistoricalCodes; i++) {
-        rewardHistory.push(generateUniqueReward());
+
+    if (enableRewardCode) {
+        // Generate some fake historical codes
+        const numberOfHistoricalCodes = 4;
+        for (let i = 0; i < numberOfHistoricalCodes; i++) {
+            rewardHistory.push(generateUniqueReward());
+        }
+
+        // No real need to reverse since they are random, but mimicking structure
+        rewardHistory.reverse();
+        log(`   -> Generated ${numberOfHistoricalCodes} historical reward codes.`);
+
+        // Generate the "Current" code (Index 0)
+        // This is the code the user sees in READY state to set their lock.
+        const newReward = generateUniqueReward();
+        rewardHistory.unshift(newReward);
+        log(`Generated new reward code for this session: ${newReward.code} (${newReward.checksum})`);
     }
-
-    // No real need to reverse since they are random, but mimicking structure
-    rewardHistory.reverse();
-    log(`   -> Generated ${numberOfHistoricalCodes} historical reward codes.`);
-
-    // Generate the one "current" code
-    const newReward = generateUniqueReward();
-    rewardHistory.unshift(newReward);
-    log(`Generated new reward code for this session: ${newReward.code.substring(0, 8)}... (${newReward.checksum})`);
 
     streaks = 5;
     totalTimeLockedSeconds = 50000;
@@ -231,7 +238,7 @@ const initializeState = () => {
     penaltySecondsRemaining = 0;
     testSecondsRemaining = 0;
     triggerTimeoutRemaining = 0;
-    lastKeepAliveTime = 0; // Disarm watchdog
+    lastKeepAliveTime = 0;
 
     currentDelays = { ch1: 0, ch2: 0, ch3: 0, ch4: 0 };
     hideTimer = false;
@@ -268,27 +275,36 @@ const triggerAbort = (source: string): boolean => {
     }
 
     // Hard Abort (Point of No Return passed)
-    log(`🔓 Session aborted by ${source}! Penalty timer started.`);
+    log(`🔓 Session aborted by ${source}!`);
     if (lockInterval) clearInterval(lockInterval);
     lockInterval = null;
 
-    currentState = 'aborted';
     lastKeepAliveTime = 0; // <-- DISARM WATCHDOG
+    aborted++; // Increment stat
 
     // Add to debt bank if enabled
-    if (ENABLE_PAYBACK_TIME) {
-        const paybackToAdd = PAYBACK_DURATION_SECONDS;
+    if (enablePaybackTime) {
+        const paybackToAdd = paybackDurationSeconds;
         pendingPaybackSeconds += paybackToAdd;
         log(`   -> Added ${paybackToAdd}s to payback bank. Total: ${pendingPaybackSeconds}s`);
     }
-    if (ENABLE_STREAKS) {
+    if (enableStreaks) {
         log(`   -> Streak reset to 0.`);
         streaks = 0; // Aborting resets streaks
     }
 
+    // LOGIC CHANGE: If Reward Code is Disabled, skip penalty phase.
+    if (!enableRewardCode) {
+        log(`   -> Reward Code disabled. Skipping penalty timer and moving to COMPLETED.`);
+        completeSession();
+        return true;
+    }
+
+    // Reward Code Enabled: Enforce Penalty
+    log(`   -> Penalty timer started.`);
+    currentState = 'aborted';
     lockSecondsRemaining = 0;
     penaltySecondsRemaining = penaltySecondsConfig;
-    aborted++; // Increment stat
 
     // Start penalty timer
     penaltyInterval = setInterval(() => {
@@ -409,7 +425,7 @@ const startTestInterval = () => {
  * Transitions the state to COMPLETED.
  */
 const completeSession = () => {
-    log('Session COMPLETED. Awaiting mock server restart to reset.');
+    log('Session COMPLETED. Awaiting reboot to generate next code.');
     stopAllTimers();
     currentState = 'completed';
     lastKeepAliveTime = 0; // Disarm watchdog
@@ -421,21 +437,14 @@ const completeSession = () => {
 
     completed++; // Increment stat
 
-    if (ENABLE_STREAKS) {
+    if (enableStreaks) {
         streaks++;
         log(`Streak count incremented to: ${streaks}`);
     }
 
-    // Generate a new code for the *next* session
-    const newReward = generateUniqueReward();
-    rewardHistory.unshift(newReward);
-
-    // Keep buffer size reasonable (simulate C++ circular buffer somewhat)
-    if (rewardHistory.length > 10) {
-        rewardHistory.pop();
-    }
-
-    log(`Generated new reward code for next session: ${newReward.code.substring(0, 8)}... (${newReward.checksum})`);
+    // NOTE: We do NOT generate a new reward code here.
+    // The user needs to see the code they just unlocked (Index 0).
+    // The new code for the NEXT session is generated in initializeState() (Reboot).
 };
 
 /**
@@ -539,6 +548,7 @@ app.get('/', (req, res) => {
 Endpoints:
 - GET /status
 - GET /details
+- POST /provision
 - POST /arm
 - POST /abort
 - POST /start-test
@@ -602,6 +612,49 @@ app.post('/update-wifi', (req, res) => {
 });
 
 /**
+ * POST /provision
+ * Handles the initial device setup or reconfiguration from the 'ProvisionDeviceForm'.
+ * Updates the mock "flash" settings.
+ */
+app.post('/provision', (req, res) => {
+    // Provisioning usually happens when connected via BLE or AP mode,
+    // but in the mock we allow it during 'ready' to test the UI.
+    if (currentState !== 'ready') {
+        log('API: /provision FAILED (not ready)');
+        return res.status(409).json({
+            status: 'error',
+            message: 'Device must be in READY state to provision.',
+        });
+    }
+
+    const body = req.body;
+    log('API: /provision received. Updating settings...');
+
+    // Update Mutable Settings
+    if (body.enableStreaks !== undefined) enableStreaks = !!body.enableStreaks;
+    if (body.enablePaybackTime !== undefined) enablePaybackTime = !!body.enablePaybackTime;
+    if (body.paybackDurationSeconds !== undefined) paybackDurationSeconds = Number(body.paybackDurationSeconds);
+    if (body.enableRewardCode !== undefined) enableRewardCode = !!body.enableRewardCode;
+
+    // Update Channels
+    channelConfig.ch1 = !!body.ch1Enabled;
+    channelConfig.ch2 = !!body.ch2Enabled;
+    channelConfig.ch3 = !!body.ch3Enabled;
+    channelConfig.ch4 = !!body.ch4Enabled;
+
+    log(`   -> Streaks: ${enableStreaks}`);
+    log(`   -> Payback: ${enablePaybackTime} (${paybackDurationSeconds}s)`);
+    log(`   -> Reward Code: ${enableRewardCode}`);
+    log(`   -> Channels: ${JSON.stringify(channelConfig)}`);
+    log(`   -> WiFi: ${body.ssid} (Stored)`);
+
+    res.json({
+        status: 'success',
+        message: 'Device Provisioned. Settings saved.',
+    });
+});
+
+/**
  * GET /details
  * Returns the static device configuration (ActiveDevice)
  */
@@ -615,34 +668,45 @@ app.get('/details', (req, res) => {
         features: FEATURES,
         numberOfChannels: NUMBER_OF_CHANNELS,
         buildType: 'mock',
-        // Mock all channels enabled
-        channels: {
-            ch1: true,
-            ch2: true,
-            ch3: true,
-            ch4: true,
-        },
-        // New deterrents structure
+        channels: { ...channelConfig },
         deterrents: {
-            enableStreaks: ENABLE_STREAKS,
-            enablePaybackTime: ENABLE_PAYBACK_TIME,
-            paybackDurationSeconds: PAYBACK_DURATION_SECONDS,
+            enableStreaks: enableStreaks,
+            enablePaybackTime: enablePaybackTime,
+            paybackDurationSeconds: paybackDurationSeconds,
+            enableRewardCode: enableRewardCode,
         },
     } as any);
 });
 
 /**
  * GET /reward
- * Retrieve code history. Only allowed if not in an active session.
+ * Retrieve code history.
+ * Logic:
+ * - Ready/Completed: Visible (History review)
+ * - Armed: Hidden (Cannot see code while arming)
+ * - Locked: Hidden (It's in the box)
+ * - Aborted: Hidden if Penalty active, Visible if Penalty over
  */
 app.get('/reward', (req, res) => {
-    if (currentState === 'locked' || currentState === 'aborted' || currentState === 'armed') {
-        log('API: /reward FAILED (session active)');
+    // 1. LOCKED or ARMED: Always hidden
+    if (currentState === 'locked' || currentState === 'armed') {
+        log(`API: /reward DENIED (Session ${currentState})`);
         return res.status(403).json({
             status: 'forbidden',
-            message: 'Reward is not yet available.',
+            message: 'Reward is locked away.',
         });
     }
+
+    // 2. ABORTED: Hidden ONLY if penalty is still ticking
+    if (currentState === 'aborted' && penaltySecondsRemaining > 0) {
+        log(`API: /reward DENIED (Penalty Active: ${penaltySecondsRemaining}s)`);
+        return res.status(403).json({
+            status: 'forbidden',
+            message: `Reward locked for penalty duration (${penaltySecondsRemaining}s).`,
+        });
+    }
+
+    // 3. READY, COMPLETED, TESTING: Allow
     log(`API: /reward requested. Sending ${rewardHistory.length} codes.`);
     res.json(rewardHistory);
 });

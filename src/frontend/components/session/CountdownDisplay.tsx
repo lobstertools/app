@@ -117,7 +117,7 @@ export const CountdownDisplay = () => {
             </Row>
             <Divider />
             <Button danger onClick={abortSession} size="large" style={{ width: '100%' }}>
-                Cancel Start (No Penalty)
+                Cancel Start
             </Button>
         </div>
     );

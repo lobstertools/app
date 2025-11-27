@@ -133,9 +133,15 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
                     description: 'The session start was cancelled. No penalty.',
                 });
             } else if (stateBeforeAbort === 'locked') {
+                let description = 'Reboot the device for your next session.';
+
+                if (activeDevice.deterrents.enableRewardCode) {
+                    description = 'Penalty timer has started.';
+                }
+
                 notification.warning({
                     message: 'Session Aborted',
-                    description: 'Penalty timer has started.',
+                    description,
                 });
             } else if (stateBeforeAbort === 'testing') {
                 notification.info({

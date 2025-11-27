@@ -1,5 +1,22 @@
-import { Form, Input, Button, InputNumber, Checkbox, Spin, Alert, Typography, Divider, Row, Col, Card } from 'antd';
+import {
+    Form,
+    Input,
+    Button,
+    InputNumber,
+    Checkbox,
+    Spin,
+    Alert,
+    Typography,
+    Divider,
+    Row,
+    Col,
+    Steps,
+    Space,
+    Switch,
+    theme as antdTheme,
+} from 'antd';
 import { useState } from 'react';
+import { WifiOutlined, SafetyCertificateOutlined, RightOutlined, LeftOutlined, SaveOutlined } from '@ant-design/icons';
 import { DiscoveredDevice, DeviceProvisioningData } from '../../../types';
 import { useDeviceManager } from '../../context/useDeviceManager';
 
@@ -12,17 +29,47 @@ interface ProvisionDeviceFormProps {
     onSuccess: () => void;
 }
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 
 export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormProps) => {
     const [form] = Form.useForm();
+    const [currentStep, setCurrentStep] = useState(0);
     const [error, setError] = useState<string | null>(null);
 
-    // Watch the "enablePaybackTime" field to conditionally render the minutes input
+    // Get theme tokens for the "inset" styling
+    const { token } = antdTheme.useToken();
+
+    // Watchers for conditional rendering
     const enablePaybackTime = Form.useWatch('enablePaybackTime', form);
 
     // Use the context for provisioning and loading state
     const { provisionDevice, isProvisioning } = useDeviceManager();
+
+    // Styling for the dependent configuration
+    const dependentConfigStyle = {
+        paddingLeft: 12,
+        marginLeft: 4,
+        borderLeft: `2px solid ${token.colorBorderSecondary}`,
+        marginTop: 8,
+        marginBottom: 8,
+    };
+
+    /**
+     * validate fields for the current step before moving forward
+     */
+    const handleNext = async () => {
+        try {
+            // Validate only fields relevant to step 0
+            await form.validateFields(['ssid', 'pass', 'ch1Enabled', 'ch2Enabled', 'ch3Enabled', 'ch4Enabled']);
+            setCurrentStep(1);
+        } catch (e) {
+            // Validation failed, fields will be highlighted
+        }
+    };
+
+    const handlePrev = () => {
+        setCurrentStep(0);
+    };
 
     /**
      * Handles the form submission.
@@ -31,7 +78,6 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
         setError(null);
 
         // 1. Calculate Seconds from Minutes Input
-        // If disabled, set to 0.
         const minutesInput = values.enablePaybackTime ? values.paybackTimeMinutes : 0;
         const paybackDurationSeconds = minutesInput * 60;
 
@@ -42,6 +88,7 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
             enableStreaks: !!values.enableStreaks,
             enablePaybackTime: !!values.enablePaybackTime,
             paybackDurationSeconds: paybackDurationSeconds,
+            enableRewardCode: !!values.enableRewardCode,
             ch1Enabled: !!values.ch1Enabled,
             ch2Enabled: !!values.ch2Enabled,
             ch3Enabled: !!values.ch3Enabled,
@@ -55,134 +102,229 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
             onSuccess();
         } else {
             // Error notification is handled by the context,
-            // but we can set a local error for the form Alert.
+            // but we can set a local error for the form Alert as backup.
             setError('Provisioning failed. Please check the console or server logs.');
         }
     };
 
-    return (
-        <Spin spinning={isProvisioning}>
-            <Form
-                form={form}
-                layout="vertical"
-                onFinish={handleFinish}
-                initialValues={{
-                    enableStreaks: true,
-                    enablePaybackTime: true,
-                    paybackTimeMinutes: 15, // User sees Minutes
-                    ch1Enabled: true,
-                    ch2Enabled: true,
-                    ch3Enabled: false,
-                    ch4Enabled: false,
-                }}
-            >
-                {error && (
-                    <Form.Item>
-                        <Alert message="Error" description={error} type="error" showIcon />
-                    </Form.Item>
-                )}
+    const steps = [
+        {
+            title: 'Connection & Hardware',
+            icon: <WifiOutlined />,
+        },
+        {
+            title: 'Deterrents',
+            icon: <SafetyCertificateOutlined />,
+        },
+    ];
 
-                <Text type="secondary">These settings are sent once and stored on the device.</Text>
+    // --- RENDER STEPS ---
 
-                <Alert
-                    message="Review Your Configuration"
-                    description="Wi-Fi settings can be updated later. Session preferences (Payback, Streaks) are stored permanently in the session config until a factory reset."
-                    type="info"
-                    showIcon
-                    style={{ marginTop: 16 }}
-                />
+    const renderConnectionStep = () => (
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            {/* Wi-Fi Section */}
+            <div>
+                <Title level={5}>1. Wi-Fi Connection</Title>
+                <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+                    Enter the credentials for your 2.4GHz network. The device does not support 5GHz.
+                </Text>
 
-                <Divider orientation="left">Wi-Fi Credentials</Divider>
-
-                {/* --- Wi-Fi Section --- */}
                 <Form.Item
                     name="ssid"
-                    label="Wi-Fi Name (SSID)"
+                    label="Network Name (SSID)"
                     rules={[{ required: true, message: 'SSID is required' }]}
+                    style={{ marginBottom: 16 }}
                 >
-                    <Input placeholder="Your 2.4GHz Wi-Fi Network Name" />
+                    <Input placeholder="WiFi Network Name" />
                 </Form.Item>
 
                 <Form.Item
                     name="pass"
-                    label="Wi-Fi Password"
+                    label="Password"
                     rules={[{ required: true, message: 'Password is required' }]}
+                    style={{ marginBottom: 0 }}
                 >
-                    <Input.Password placeholder="Your Wi-Fi Password" />
+                    <Input.Password placeholder="WiFi Password" />
                 </Form.Item>
+            </div>
 
-                <Divider orientation="left">Hardware Configuration</Divider>
+            <Divider style={{ margin: '12px 0' }} />
+
+            {/* Hardware Section */}
+            <div>
+                <Title level={5}>2. Hardware Mapping</Title>
                 <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
-                    Select which outputs are physically connected to MagLocks.
+                    Select which physical outputs on the controller are connected to MagLocks.
                 </Text>
 
-                <Card size="small" style={{ marginBottom: 24 }}>
-                    <Row gutter={16}>
-                        <Col span={6}>
+                <div
+                    style={{
+                        backgroundColor: token.colorFillAlter,
+                        padding: '16px',
+                        borderRadius: token.borderRadius,
+                        border: `1px solid ${token.colorBorderSecondary}`,
+                    }}
+                >
+                    <Row gutter={24}>
+                        <Col span={12}>
                             <Form.Item name="ch1Enabled" valuePropName="checked" noStyle>
-                                <Checkbox>Ch 1</Checkbox>
+                                <Checkbox style={{ display: 'flex', marginBottom: 8 }}>Channel 1</Checkbox>
                             </Form.Item>
-                        </Col>
-                        <Col span={6}>
                             <Form.Item name="ch2Enabled" valuePropName="checked" noStyle>
-                                <Checkbox>Ch 2</Checkbox>
+                                <Checkbox style={{ display: 'flex' }}>Channel 2</Checkbox>
                             </Form.Item>
                         </Col>
-                        <Col span={6}>
+                        <Col span={12}>
                             <Form.Item name="ch3Enabled" valuePropName="checked" noStyle>
-                                <Checkbox>Ch 3</Checkbox>
+                                <Checkbox style={{ display: 'flex', marginBottom: 8 }}>Channel 3</Checkbox>
                             </Form.Item>
-                        </Col>
-                        <Col span={6}>
                             <Form.Item name="ch4Enabled" valuePropName="checked" noStyle>
-                                <Checkbox>Ch 4</Checkbox>
+                                <Checkbox style={{ display: 'flex' }}>Channel 4</Checkbox>
                             </Form.Item>
                         </Col>
                     </Row>
-                </Card>
+                </div>
+            </div>
+        </Space>
+    );
 
-                <Divider orientation="left">Abort Deterrents</Divider>
+    const renderDeterrentsStep = () => (
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <Text type="secondary" style={{ marginBottom: 8, display: 'block' }}>
+                Configure behavioral deterrents to discourage aborting sessions early. These settings are stored on the
+                device.
+            </Text>
 
-                {/* --- Streaks Section --- */}
-                <Form.Item
-                    name="enableStreaks"
-                    valuePropName="checked"
-                    help="The device will track consecutive completed sessions. This 'Streak' is visible as a badge in the app to provide motivation."
-                >
-                    <Checkbox>Enable Session Streaks</Checkbox>
+            {/* 1. Streak Tracking */}
+            <div>
+                <Title level={5}>1. Session Streaks</Title>
+                <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                    Track consecutive successful sessions. This creates a "Streak" badge in the app to provide
+                    motivation.
+                </Text>
+                <Form.Item name="enableStreaks" valuePropName="checked" style={{ marginBottom: 0 }}>
+                    <Switch checkedChildren="Enabled" unCheckedChildren="Disabled" />
+                </Form.Item>
+            </div>
+
+            <Divider style={{ margin: '8px 0' }} />
+
+            {/* 2. Payback Time */}
+            <div>
+                <Title level={5}>2. Time Payback</Title>
+                <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                    Discourages bailing out. When a session is aborted (via pedal, UI, or power loss), a "time debt" is
+                    created and added to the start of your next session.
+                </Text>
+                <Form.Item name="enablePaybackTime" valuePropName="checked" style={{ marginBottom: 8 }}>
+                    <Switch checkedChildren="Enabled" unCheckedChildren="Disabled" />
                 </Form.Item>
 
-                {/* --- Payback Section --- */}
-                <Form.Item
-                    name="enablePaybackTime"
-                    valuePropName="checked"
-                    help="Discourages bailing out. When a session is aborted (via pedal, UI, or power loss), a 'time debt' is created and added to the start of your next session."
-                >
-                    <Checkbox>Enable Time Payback for aborted sessions</Checkbox>
-                </Form.Item>
-
-                {/* Conditionally render the minutes input based on the checkbox */}
+                {/* Dependent Configuration: Inset Style */}
                 {enablePaybackTime && (
-                    <Form.Item
-                        name="paybackTimeMinutes"
-                        label="Payback Time per Abort (10 to 60 Minutes)"
-                        rules={[
-                            {
-                                required: true,
-                                message: 'Please set the payback time',
-                            },
-                        ]}
-                    >
-                        <InputNumber min={10} max={60} style={{ width: '100%' }} />
-                    </Form.Item>
+                    <div style={dependentConfigStyle}>
+                        <Form.Item
+                            name="paybackTimeMinutes"
+                            label="Payback Penalty (Minutes)"
+                            style={{ marginBottom: 0 }}
+                            rules={[
+                                {
+                                    required: true,
+                                    message: 'Please set the payback time',
+                                },
+                            ]}
+                        >
+                            <InputNumber
+                                min={10}
+                                max={120}
+                                style={{ width: 200 }}
+                                addonAfter="min"
+                                placeholder="e.g. 15"
+                            />
+                        </Form.Item>
+                        <Text type="secondary" style={{ fontSize: '0.85em', marginTop: 4, display: 'block' }}>
+                            This duration is added to your next session for every abort.
+                        </Text>
+                    </div>
                 )}
+            </div>
 
-                <Form.Item style={{ marginTop: 16 }}>
-                    <Button type="primary" htmlType="submit" loading={isProvisioning} block>
-                        Provision Device
-                    </Button>
+            <Divider style={{ margin: '8px 0' }} />
+
+            {/* 3. Reward Code */}
+            <div>
+                <Title level={5}>3. Reward Code</Title>
+                <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                    Generates a random directional code (Up, Down, Left, Right) for a Master Lock 1500iD. This code is
+                    visible at the start to lock away your reward. When fully completing the session the code is shown
+                    again immediately. If aborted, it is shown only after the penalty time expires.
+                </Text>
+                <Form.Item name="enableRewardCode" valuePropName="checked" style={{ marginBottom: 0 }}>
+                    <Switch checkedChildren="Enabled" unCheckedChildren="Disabled" />
                 </Form.Item>
-            </Form>
+            </div>
+        </Space>
+    );
+
+    return (
+        <Spin spinning={isProvisioning}>
+            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                <Steps current={currentStep} items={steps} />
+
+                <Form
+                    form={form}
+                    layout="vertical"
+                    onFinish={handleFinish}
+                    initialValues={{
+                        // Deterrent Defaults
+                        enableStreaks: true,
+                        enablePaybackTime: true,
+                        enableRewardCode: true,
+                        paybackTimeMinutes: 15,
+                        // Hardware Defaults
+                        ch1Enabled: true,
+                        ch2Enabled: true,
+                        ch3Enabled: false,
+                        ch4Enabled: false,
+                    }}
+                >
+                    {error && (
+                        <Form.Item>
+                            <Alert message="Error" description={error} type="error" showIcon />
+                        </Form.Item>
+                    )}
+
+                    {/* Step Content */}
+                    <div style={{ marginTop: 24 }}>
+                        {currentStep === 0 && renderConnectionStep()}
+                        {currentStep === 1 && renderDeterrentsStep()}
+                    </div>
+
+                    {/* Navigation Buttons */}
+                    <div style={{ marginTop: 32, display: 'flex', justifyContent: 'space-between' }}>
+                        {currentStep > 0 && (
+                            <Button onClick={handlePrev} icon={<LeftOutlined />}>
+                                Back
+                            </Button>
+                        )}
+                        {currentStep === 0 && (
+                            <Button
+                                type="primary"
+                                onClick={handleNext}
+                                icon={<RightOutlined />}
+                                style={{ marginLeft: 'auto' }}
+                            >
+                                Next
+                            </Button>
+                        )}
+                        {currentStep === 1 && (
+                            <Button type="primary" htmlType="submit" loading={isProvisioning} icon={<SaveOutlined />}>
+                                Provision Device
+                            </Button>
+                        )}
+                    </div>
+                </Form>
+            </Space>
         </Spin>
     );
 };

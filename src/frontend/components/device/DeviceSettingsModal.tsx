@@ -129,6 +129,11 @@ export const DeviceSettingsModal = () => {
             children: activeDevice?.deterrents?.enableStreaks ? 'Yes' : 'No',
         },
         {
+            key: 'rewardCode',
+            label: 'Reward Code Enabled',
+            children: activeDevice?.deterrents?.enableRewardCode ? 'Yes' : 'No',
+        },
+        {
             key: 'payback',
             label: 'Payback Time Enabled',
             children: activeDevice?.deterrents?.enablePaybackTime ? 'Yes' : 'No',

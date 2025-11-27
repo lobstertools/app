@@ -42,9 +42,12 @@ const PROV_SERVICE_UUID = '5a160000-8334-469b-a316-c340cf29188f';
 
 const PROV_SSID_CHAR_UUID = '5a160001-8334-469b-a316-c340cf29188f';
 const PROV_PASS_CHAR_UUID = '5a160002-8334-469b-a316-c340cf29188f';
+
+const PROV_ENABLE_REWARD_CODE_CHAR_UUID = '5a160003-8334-469b-a316-c340cf29188f';
 const PROV_ENABLE_STREAKS_CHAR_UUID = '5a160004-8334-469b-a316-c340cf29188f';
 const PROV_ENABLE_PAYBACK_TIME_CHAR_UUID = '5a160005-8334-469b-a316-c340cf29188f';
 const PROV_PAYBACK_TIME_CHAR_UUID = '5a160006-8334-469b-a316-c340cf29188f';
+
 const PROV_CH1_ENABLE_UUID = '5a16000A-8334-469b-a316-c340cf29188f';
 const PROV_CH2_ENABLE_UUID = '5a16000B-8334-469b-a316-c340cf29188f';
 const PROV_CH3_ENABLE_UUID = '5a16000C-8334-469b-a316-c340cf29188f';
@@ -337,6 +340,7 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         enableStreaks,
         enablePaybackTime,
         paybackDurationSeconds,
+        enableRewardCode,
         ch1Enabled,
         ch2Enabled,
         ch3Enabled,
@@ -350,6 +354,7 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         { key: 'enableStreaks', val: enableStreaks },
         { key: 'enablePaybackTime', val: enablePaybackTime },
         { key: 'paybackDurationSeconds', val: paybackDurationSeconds },
+        { key: 'enableRewardCode', val: enableRewardCode },
     ]
         .filter((field: { key: string; val: unknown }) => field.val === undefined)
         .map((field) => field.key);
@@ -407,6 +412,7 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         const enableStreaksChar = findChar(PROV_ENABLE_STREAKS_CHAR_UUID);
         const enablePaybackTimeChar = findChar(PROV_ENABLE_PAYBACK_TIME_CHAR_UUID);
         const paybackTimeChar = findChar(PROV_PAYBACK_TIME_CHAR_UUID);
+        const enableRewardCodeChar = findChar(PROV_ENABLE_REWARD_CODE_CHAR_UUID);
 
         // Channel Config Characteristics
         const ch1Char = findChar(PROV_CH1_ENABLE_UUID);
@@ -421,6 +427,7 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
             { name: 'EnableStreaks', value: enableStreaksChar },
             { name: 'EnablePayback', value: enablePaybackTimeChar },
             { name: 'PaybackTime', value: paybackTimeChar },
+            { name: 'EnableRewardCode', value: enableRewardCodeChar },
             { name: 'Ch1', value: ch1Char },
             { name: 'Ch2', value: ch2Char },
             { name: 'Ch3', value: ch3Char },
@@ -448,6 +455,10 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         const enablePaybackTimeBuf = Buffer.alloc(1);
         enablePaybackTimeBuf.writeUInt8(enablePaybackTime ? 1 : 0, 0);
 
+        // enableRewardCode (boolean) -> 1-byte Buffer
+        const enableRewardCodeBuf = Buffer.alloc(1);
+        enableRewardCodeBuf.writeUInt8(enableRewardCode ? 1 : 0, 0);
+
         // paybackDurationSeconds (number) -> 4-byte Buffer (UInt32 LE)
         const paybackTimeBuf = Buffer.alloc(4);
         paybackTimeBuf.writeUInt32LE(paybackDurationSeconds, 0);
@@ -464,6 +475,7 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         await enableStreaksChar!.writeAsync(enableStreaksBuf, false);
         await enablePaybackTimeChar!.writeAsync(enablePaybackTimeBuf, false);
         await paybackTimeChar!.writeAsync(paybackTimeBuf, false);
+        await enableRewardCodeChar!.writeAsync(enableRewardCodeBuf, false);
 
         await ch1Char!.writeAsync(getBoolBuf(ch1Enabled || false), false);
         await ch2Char!.writeAsync(getBoolBuf(ch2Enabled || false), false);
