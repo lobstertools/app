@@ -4,6 +4,8 @@
 
 # Lobster Lock - Session Manager
 
+![AI Assisted](https://img.shields.io/badge/Code-AI_Assisted-success)
+
 This is the main application for the Lobster Lock, a DIY self-bondage toolkit. It includes the frontend (React UI), the backend (Node.js/Express proxy server), and the desktop (Electron) wrapper.
 
 The backend server discovers Lobster Lock devices on the network, provides a stable API for the frontend, and manages device connections.
