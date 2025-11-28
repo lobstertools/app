@@ -31,7 +31,7 @@ export interface DeviceManagerContextState {
     isScanningPorts: boolean;
     isFlashing: boolean;
     flashProgress: number;
-    scanForSerialPorts: () => void;
+    scanForSerialPorts: (filterKnownDevices?: boolean) => void;
     selectFirmwareFile: () => Promise<string | null>;
     flashDevice: (
         port: string,

@@ -39,7 +39,7 @@ const ARMED_TIMEOUT_SECONDS = 600; // 10 minutes to press button
 // --- Mutable Settings (Simulating Flash Storage) ---
 const enableStreaks = true;
 const enablePaybackTime = true;
-const enableRewardCode = false;
+const enableRewardCode = true;
 const paybackDurationSeconds = 600; // 10 Minutes
 const channelConfig = { ch1: true, ch2: true, ch3: true, ch4: true };
 

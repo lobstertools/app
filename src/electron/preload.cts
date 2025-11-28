@@ -45,7 +45,8 @@ contextBridge.exposeInMainWorld('api', {
      * Asks the main process for a list of available serial ports.
      * @returns A promise that resolves with an array of SerialPortInfo objects.
      */
-    listSerialPorts: (): Promise<SerialPortInfo[]> => ipcRenderer.invoke('list-serial-ports'),
+    listSerialPorts: (filterforKnownDevices: boolean): Promise<SerialPortInfo[]> =>
+        ipcRenderer.invoke('list-serial-ports', { filterforKnownDevices }),
 
     /**
      * Registers a listener for flashing progress updates.

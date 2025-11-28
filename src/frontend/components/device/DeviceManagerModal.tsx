@@ -314,10 +314,11 @@ export const DeviceManagerModal = () => {
             <Button
                 key="scan"
                 icon={<SearchOutlined />}
-                onClick={() => {
+                onClick={(e: React.MouseEvent<HTMLElement>) => {
                     scanForDevices();
                     if (isElectron) {
-                        scanForSerialPorts(); // Scan both
+                        const filter = !e.shiftKey;
+                        scanForSerialPorts(filter);
                     }
                 }}
                 loading={isScanning || isScanningPorts}

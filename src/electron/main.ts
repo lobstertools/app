@@ -415,19 +415,21 @@ app.on('ready', () => {
     );
 
     // --- IPC handler: list-serial-ports ---
-    ipcMain.handle('list-serial-ports', async () => {
+    ipcMain.handle('list-serial-ports', async (_, { filterforKnownDevices }: { filterforKnownDevices: boolean }) => {
         try {
             const ports = await SerialPort.list();
 
             console.log('[Electron] All serial ports found:', JSON.stringify(ports, null, 2));
 
-            const filteredPorts = ports.filter(
-                (port) =>
-                    port.vendorId === '10C4' || // Silicon Labs (CP210x)
-                    port.vendorId === '1A86' || // WCH (CH340)
-                    port.vendorId === '303A' || // Espressif
-                    port.vendorId === '067b' // Prolific
-            );
+            const filteredPorts = filterforKnownDevices
+                ? ports.filter(
+                      (port) =>
+                          port.vendorId === '10C4' || // Silicon Labs (CP210x)
+                          port.vendorId === '1A86' || // WCH (CH340)
+                          port.vendorId === '303A' || // Espressif
+                          port.vendorId === '067b' // Prolific
+                  )
+                : ports;
 
             const processedPorts = filteredPorts.map((port) => {
                 if (process.platform === 'darwin' && port.path.startsWith('/dev/tty.')) {

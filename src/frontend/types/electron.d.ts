@@ -44,7 +44,7 @@ export interface IpcApi {
      * Asks the main process for a list of available serial ports.
      * @returns A promise that resolves with an array of SerialPortInfo objects.
      */
-    listSerialPorts: () => Promise<SerialPortInfo[]>;
+    listSerialPorts: (filterforKnownDevices: boolean) => Promise<SerialPortInfo[]>;
 
     /**
      * Registers a listener for flashing progress updates.

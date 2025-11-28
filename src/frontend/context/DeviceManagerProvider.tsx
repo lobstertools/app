@@ -54,25 +54,28 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
      * Triggers a new scan for BLE (new) and mDNS (ready) devices.
      * Populates the `discoveredDevices` list.
      */
-    const scanForDevices = useCallback(async (silent = false) => {
-        if (!silent) {
-            setIsScanning(true);
-        }
-        try {
-            const response = await apiClient.get<DiscoveredDevice[]>('/devices');
-            // Since the backend handles cache, this returns the current "Truth"
-            setDiscoveredDevices(response.data);
-        } catch (err) {
-            console.error('Failed to fetch devices:', err);
+    const scanForDevices = useCallback(
+        async (silent = false) => {
             if (!silent) {
-                notification.error({ message: 'Failed to scan for devices' });
+                setIsScanning(true);
             }
-        } finally {
-            if (!silent) {
-                setIsScanning(false);
+            try {
+                const response = await apiClient.get<DiscoveredDevice[]>('/devices');
+                // Since the backend handles cache, this returns the current "Truth"
+                setDiscoveredDevices(response.data);
+            } catch (err) {
+                console.error('Failed to fetch devices:', err);
+                if (!silent) {
+                    notification.error({ message: 'Failed to scan for devices' });
+                }
+            } finally {
+                if (!silent) {
+                    setIsScanning(false);
+                }
             }
-        }
-    }, []);
+        },
+        [notification]
+    );
 
     /**
      * Sends Wi-Fi credentials and configuration data to a 'new' (BLE) device.
@@ -102,7 +105,7 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
                 return false;
             }
         },
-        [scanForDevices]
+        [notification, scanForDevices]
     );
 
     /**
@@ -112,26 +115,29 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
      * @param pass The new Wi-Fi password.
      * @returns True on success, false on failure.
      */
-    const updateWifi = useCallback(async (deviceId: string, ssid: string, pass: string) => {
-        setIsUpdatingWifi(true);
-        try {
-            await apiClient.post(`/devices/${deviceId}/update-wifi`, {
-                ssid,
-                pass,
-            });
-            // Notification is handled by the modal on success
-            return true;
-        } catch (err: any) {
-            const msg = err.response?.data?.message || 'Failed to send Wi-Fi update command.';
-            notification.error({
-                message: 'Update Failed',
-                description: msg,
-            });
-            return false;
-        } finally {
-            setIsUpdatingWifi(false);
-        }
-    }, []);
+    const updateWifi = useCallback(
+        async (deviceId: string, ssid: string, pass: string) => {
+            setIsUpdatingWifi(true);
+            try {
+                await apiClient.post(`/devices/${deviceId}/update-wifi`, {
+                    ssid,
+                    pass,
+                });
+                // Notification is handled by the modal on success
+                return true;
+            } catch (err: any) {
+                const msg = err.response?.data?.message || 'Failed to send Wi-Fi update command.';
+                notification.error({
+                    message: 'Update Failed',
+                    description: msg,
+                });
+                return false;
+            } finally {
+                setIsUpdatingWifi(false);
+            }
+        },
+        [notification]
+    );
 
     /**
      * Deselects the currently active device, clears it from localStorage,
@@ -206,7 +212,7 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
                 clearDevice(); // Go back to 'no device' state
             }
         },
-        [clearDevice, refreshDeviceDetails]
+        [clearDevice, notification, refreshDeviceDetails]
     );
 
     /**
@@ -231,7 +237,7 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
                 });
             }
         },
-        [clearDevice]
+        [clearDevice, notification]
     );
 
     /**
@@ -279,21 +285,24 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
     /**
      * Scans for available serial ports (Electron only).
      */
-    const scanForSerialPorts = useCallback(async () => {
-        if (!isElectron) return;
-        setIsScanningPorts(true);
-        try {
-            const ports = await window.api.listSerialPorts();
-            setSerialPorts(ports);
-        } catch (err: any) {
-            notification.error({
-                message: 'Failed to list serial ports',
-                description: err.message,
-            });
-        } finally {
-            setIsScanningPorts(false);
-        }
-    }, [isElectron]);
+    const scanForSerialPorts = useCallback(
+        async (filterKnownDevices: boolean = true) => {
+            if (!isElectron) return;
+            setIsScanningPorts(true);
+            try {
+                const ports = await window.api.listSerialPorts(filterKnownDevices);
+                setSerialPorts(ports);
+            } catch (err: any) {
+                notification.error({
+                    message: 'Failed to list serial ports',
+                    description: err.message,
+                });
+            } finally {
+                setIsScanningPorts(false);
+            }
+        },
+        [isElectron, notification]
+    );
 
     /**
      * Opens the Electron dialog to select a firmware file.
@@ -310,7 +319,7 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
             });
             return null;
         }
-    }, [isElectron]);
+    }, [isElectron, notification]);
 
     /**
      * Flashes a device with the selected firmware (Electron only).
@@ -354,7 +363,7 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
                 setFlashProgress(0); // Reset progress
             }
         },
-        [isElectron]
+        [isElectron, notification]
     );
 
     // --- Health & Keepalive (Internal) ---
