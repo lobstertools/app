@@ -156,6 +156,7 @@ export const DeviceManagerModal = () => {
                                     {isReadyList ? 'IP: ' : 'BLE: '}
                                     {device.address}
                                     {isReadyList ? `:${device.port}` : ''}
+                                    {isReadyList ? ` [${device.mac}]` : ''}
                                 </Text>
                             </Space>
 

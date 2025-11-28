@@ -129,6 +129,7 @@ function cycleMDNSBrowser() {
     bonjourBrowser.on('up', (service) => {
         // Select the first valid IPv4 address if available, otherwise fallback to IPv6
         let ip = service.addresses.find((addr) => !addr.includes(':')) || service.addresses[0];
+        const mac = service.txt && service.txt.mac ? service.txt.mac : 'Unknown';
         const port = service.port;
 
         // --- HACK FOR MOCK DEVICE ON MANAGED MACHINES ---
@@ -150,11 +151,12 @@ function cycleMDNSBrowser() {
                     name: 'Lobster Lock (Mock BLE)',
                     state: 'new_unprovisioned',
                     address: FAKE_BLE_DEVICE_ID,
+                    mac: '00:1A:2B:3C:4D:5E',
                     port: 0,
                     lastSeenTimestamp: Date.now(),
                     peripheral: undefined,
                     failedAttempts: 0,
-                });
+                } as DiscoveredDevice);
             }
             // --- END MOCK ---
         }
@@ -170,13 +172,13 @@ function cycleMDNSBrowser() {
                 existingDevice.port = port;
             }
             existingDevice.lastSeenTimestamp = Date.now();
-            // log(`[mDNS] Refreshed 'ready' device: ${existingDevice.name}`);
         } else {
             const device: DiscoveredDevice = {
                 id: service.fqdn,
                 name: service.name,
                 state: 'ready',
                 address: ip,
+                mac: mac,
                 port: port,
                 lastSeenTimestamp: Date.now(),
                 failedAttempts: 0,
@@ -266,6 +268,7 @@ function startDiscoveryService() {
                 name: peripheral.advertisement.localName || 'Lobster Lock',
                 state: 'new_unprovisioned',
                 address: peripheral.id,
+                mac: '',
                 port: 0,
                 lastSeenTimestamp: Date.now(),
                 peripheral: peripheral,
@@ -313,17 +316,16 @@ function startDiscoveryService() {
  * Lists all currently discoverable devices from the cache.
  */
 app.get('/api/devices', (_: Request, res: Response) => {
-    const deviceList = Array.from(deviceCache.values()).map(
-        (d) =>
-            ({
-                id: d.id,
-                name: d.name,
-                state: d.state,
-                address: d.address,
-                port: d.port,
-                lastSeenTimestamp: d.lastSeenTimestamp,
-            }) as DiscoveredDevice
-    );
+    const deviceList: DiscoveredDevice[] = Array.from(deviceCache.values()).map((d) => ({
+        id: d.id,
+        name: d.name,
+        state: d.state,
+        address: d.address,
+        mac: d.mac,
+        port: d.port,
+        lastSeenTimestamp: d.lastSeenTimestamp,
+        failedAttempts: d.failedAttempts,
+    }));
     res.json(deviceList);
 });
 

@@ -43,6 +43,7 @@ export const DeviceMenu = () => {
     // Pulling static config from activeDevice
     const deviceName = activeDevice?.name;
     const displayDeviceAddress = activeDevice?.address || 'N/A';
+    const displayMacAddress = activeDevice?.mac || 'N/A';
     const paybackTimeEnabled = activeDevice?.deterrents?.enablePaybackTime || false;
 
     const paybackDurationSeconds = activeDevice?.deterrents?.paybackDurationSeconds || 0;
@@ -284,6 +285,12 @@ export const DeviceMenu = () => {
                         {
                             key: 'device-ip',
                             label: `IP: ${displayDeviceAddress || 'N/A'}`,
+                            icon: <HddOutlined />,
+                            disabled: true,
+                        },
+                        {
+                            key: 'device-mac',
+                            label: `MAC: ${displayMacAddress || 'N/A'}`,
                             icon: <HddOutlined />,
                             disabled: true,
                         },

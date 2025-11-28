@@ -77,6 +77,7 @@ export interface DiscoveredDevice {
     name: string; // 'lobster-lock' (mDNS) or 'Lobster Lock-XYZ' (BLE)
     state: DeviceProvisioningState;
     address: string; // IP address (mDNS) or peripheral.id (BLE)
+    mac: string; // MAC address when connecting over IP
     port: number;
     lastSeenTimestamp: number; // Date.now()
     peripheral?: Peripheral; // Store the noble object for BLE devices
@@ -95,6 +96,7 @@ export interface DeviceDetails {
     id: string;
     name: string;
     address: string;
+    mac: string;
     version: string;
     buildType: BuildType;
     features: DeviceFeature[];

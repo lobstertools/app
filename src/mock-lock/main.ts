@@ -19,7 +19,7 @@ import cors from 'cors';
 import readline from 'readline';
 import bonjour from 'bonjour';
 
-import { DeviceFeature, Reward, SessionStatus, TriggerStrategy } from '../types/';
+import { DeviceDetails, DeviceFeature, Reward, SessionStatus, TriggerStrategy } from '../types/';
 
 const app = express();
 const PORT = 3003;
@@ -620,6 +620,7 @@ app.get('/details', (req, res) => {
         id: DEVICE_ID,
         name: DEVICE_ID,
         address: '127.0.0.1',
+        mac: '00:1A:2B:3C:4D:5E',
         version: DEVICE_VERSION,
         features: FEATURES,
         numberOfChannels: NUMBER_OF_CHANNELS,
@@ -631,7 +632,7 @@ app.get('/details', (req, res) => {
             paybackDurationSeconds: paybackDurationSeconds,
             enableRewardCode: enableRewardCode,
         },
-    } as any);
+    } as DeviceDetails);
 });
 
 /**
