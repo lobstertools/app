@@ -37,10 +37,10 @@ const TEST_DURATION_SECONDS = 60; // 60 second test
 const ARMED_TIMEOUT_SECONDS = 600; // 10 minutes to press button
 
 // --- Mutable Settings (Simulating Flash Storage) ---
-let enableStreaks = true;
-let enablePaybackTime = true;
-let enableRewardCode = false;
-let paybackDurationSeconds = 600; // 10 Minutes
+const enableStreaks = true;
+const enablePaybackTime = true;
+const enableRewardCode = false;
+const paybackDurationSeconds = 600; // 10 Minutes
 const channelConfig = { ch1: true, ch2: true, ch3: true, ch4: true };
 
 // --- Dynamic Session State ---
@@ -548,7 +548,6 @@ app.get('/', (req, res) => {
 Endpoints:
 - GET /status
 - GET /details
-- POST /provision
 - POST /arm
 - POST /abort
 - POST /start-test
@@ -608,49 +607,6 @@ app.post('/update-wifi', (req, res) => {
     res.json({
         status: 'success',
         message: 'Wi-Fi credentials updated. Please reboot the device to apply.',
-    });
-});
-
-/**
- * POST /provision
- * Handles the initial device setup or reconfiguration from the 'ProvisionDeviceForm'.
- * Updates the mock "flash" settings.
- */
-app.post('/provision', (req, res) => {
-    // Provisioning usually happens when connected via BLE or AP mode,
-    // but in the mock we allow it during 'ready' to test the UI.
-    if (currentState !== 'ready') {
-        log('API: /provision FAILED (not ready)');
-        return res.status(409).json({
-            status: 'error',
-            message: 'Device must be in READY state to provision.',
-        });
-    }
-
-    const body = req.body;
-    log('API: /provision received. Updating settings...');
-
-    // Update Mutable Settings
-    if (body.enableStreaks !== undefined) enableStreaks = !!body.enableStreaks;
-    if (body.enablePaybackTime !== undefined) enablePaybackTime = !!body.enablePaybackTime;
-    if (body.paybackDurationSeconds !== undefined) paybackDurationSeconds = Number(body.paybackDurationSeconds);
-    if (body.enableRewardCode !== undefined) enableRewardCode = !!body.enableRewardCode;
-
-    // Update Channels
-    channelConfig.ch1 = !!body.ch1Enabled;
-    channelConfig.ch2 = !!body.ch2Enabled;
-    channelConfig.ch3 = !!body.ch3Enabled;
-    channelConfig.ch4 = !!body.ch4Enabled;
-
-    log(`   -> Streaks: ${enableStreaks}`);
-    log(`   -> Payback: ${enablePaybackTime} (${paybackDurationSeconds}s)`);
-    log(`   -> Reward Code: ${enableRewardCode}`);
-    log(`   -> Channels: ${JSON.stringify(channelConfig)}`);
-    log(`   -> WiFi: ${body.ssid} (Stored)`);
-
-    res.json({
-        status: 'success',
-        message: 'Device Provisioned. Settings saved.',
     });
 });
 
