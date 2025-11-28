@@ -226,11 +226,15 @@ const createWindow = () => {
     if (IS_DEV) {
         console.log(`[Electron] Loading dev server: ${LOBSTER_DEV_SERVER_URL}`);
         mainWindow.loadURL(LOBSTER_DEV_SERVER_URL!);
-        mainWindow.webContents.openDevTools();
     } else {
         const frontendIndexPath = path.join(__dirname, '..', 'frontend', 'index.html');
         console.log(`[Electron] Loading production build: ${frontendIndexPath}`);
         mainWindow.loadFile(frontendIndexPath);
+    }
+
+    if (IS_DEV || process.argv.includes('--debug-mode')) {
+        console.log('[Electron] Opening DevTools (Triggered by IS_DEV or --debug flag)');
+        mainWindow.webContents.openDevTools();
     }
 };
 
