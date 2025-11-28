@@ -33,7 +33,14 @@ export interface DeviceManagerContextState {
     flashProgress: number;
     scanForSerialPorts: () => void;
     selectFirmwareFile: () => Promise<string | null>;
-    flashDevice: (port: string, firmwarePath: string) => Promise<boolean>;
+    flashDevice: (
+        port: string,
+        files: {
+            firmwarePath: string;
+            bootloaderPath: string;
+            partitionsPath: string;
+        }
+    ) => Promise<boolean>;
 
     // --- Properties for Device Settings ---
     isDeviceSettingsModalOpen: boolean;

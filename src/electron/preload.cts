@@ -38,15 +38,14 @@ contextBridge.exposeInMainWorld('api', {
      * @param firmwarePath The local filesystem path to the .bin firmware file.
      * @returns A promise that resolves with 'success' or rejects with an error.
      */
-    flashDevice: (port: string, firmwarePath: string) =>
-        ipcRenderer.invoke('flash-device', { port, firmwarePath }),
+    flashDevice: (port: string, files: { firmwarePath: string; bootloaderPath: string; partitionsPath: string }) =>
+        ipcRenderer.invoke('flash-device', { port, files }),
 
     /**
      * Asks the main process for a list of available serial ports.
      * @returns A promise that resolves with an array of SerialPortInfo objects.
      */
-    listSerialPorts: (): Promise<SerialPortInfo[]> =>
-        ipcRenderer.invoke('list-serial-ports'),
+    listSerialPorts: (): Promise<SerialPortInfo[]> => ipcRenderer.invoke('list-serial-ports'),
 
     /**
      * Registers a listener for flashing progress updates.
@@ -54,8 +53,7 @@ contextBridge.exposeInMainWorld('api', {
      * @returns A function that, when called, removes the listener.
      */
     onFlashProgress: (callback: (progress: number) => void) => {
-        const listener = (_event: IpcRendererEvent, progress: number) =>
-            callback(progress);
+        const listener = (_event: IpcRendererEvent, progress: number) => callback(progress);
         ipcRenderer.on('flash-progress', listener);
         // Return a function to remove the listener
         return () => ipcRenderer.removeListener('flash-progress', listener);

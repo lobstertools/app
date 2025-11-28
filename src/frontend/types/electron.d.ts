@@ -28,10 +28,17 @@ export interface IpcApi {
     /**
      * Triggers the main process to flash a device.
      * @param port The COM port (e.g., 'COM3')
-     * @param firmwarePath The local filesystem path to the .bin firmware file.
+     * @param files The local filesystem path to the .bin files.
      * @returns A promise that resolves with 'success' or rejects with an error.
      */
-    flashDevice: (port: string, firmwarePath: string) => Promise<'success'>;
+    flashDevice: (
+        port: string,
+        files: {
+            firmwarePath: string;
+            bootloaderPath: string;
+            partitionsPath: string;
+        }
+    ) => Promise<'success'>;
 
     /**
      * Asks the main process for a list of available serial ports.

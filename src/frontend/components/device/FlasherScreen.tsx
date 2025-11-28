@@ -1,39 +1,36 @@
 import { useState } from 'react';
 import { UploadOutlined, WarningOutlined, ArrowLeftOutlined } from '@ant-design/icons';
-import { Typography, Button, Card, Space, theme as antdTheme, Progress, Alert } from 'antd';
+import { Typography, Button, Card, Space, theme as antdTheme, Progress, Alert, Divider } from 'antd';
 
 import { useDeviceManager } from '../../context/useDeviceManager';
 import { SerialPortInfo } from '../../types/electron';
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 
-/**
- * Props for the FlasherScreen component.
- */
 interface FlasherScreenProps {
     port: SerialPortInfo;
     onSuccess: () => void;
     onCancel: () => void;
 }
 
-/**
- * A self-contained form component for selecting firmware
- * and flashing a device on a specific port.
- */
 export const FlasherScreen = ({ port, onSuccess, onCancel }: FlasherScreenProps) => {
     const { token } = antdTheme.useToken();
     const { isFlashing, flashProgress, selectFirmwareFile, flashDevice } = useDeviceManager();
 
+    // State for all three required files
+    const [bootloaderPath, setBootloaderPath] = useState<string | null>(null);
+    const [partitionsPath, setPartitionsPath] = useState<string | null>(null);
     const [firmwarePath, setFirmwarePath] = useState<string | null>(null);
+
     const [flashScreenError, setFlashScreenError] = useState<string | null>(null);
 
     /**
-     * Handles selection of the firmware file.
+     * Generic handler to open file dialog and set state
      */
-    const handleSelectFirmware = async () => {
-        const path = await selectFirmwareFile(); // Use context function
+    const handleSelectFile = async (setter: (path: string | null) => void) => {
+        const path = await selectFirmwareFile(); // Reusing the existing dialog opener
         if (path) {
-            setFirmwarePath(path);
+            setter(path);
         }
     };
 
@@ -41,39 +38,77 @@ export const FlasherScreen = ({ port, onSuccess, onCancel }: FlasherScreenProps)
      * Handles the 'Flash' button click.
      */
     const handleFlash = async () => {
-        if (!port || !firmwarePath) return;
+        if (!port || !firmwarePath || !bootloaderPath || !partitionsPath) return;
 
         setFlashScreenError(null);
 
         try {
-            // Use context function
-            await flashDevice(port.path, firmwarePath);
-            // If it doesn't throw, it succeeded
-            onSuccess(); // Report success to the parent modal
+            // Note: You must update your useDeviceManager context and preload.ts
+            // to accept this object structure if you haven't already.
+            await flashDevice(port.path, {
+                firmwarePath,
+                bootloaderPath,
+                partitionsPath,
+            });
+            onSuccess();
         } catch (err: any) {
-            // Catch the error thrown from the context and display it
             setFlashScreenError(err.message || 'An unknown flash error occurred.');
         }
     };
 
-    // Truncate firmware path for display
-    const displayPath = firmwarePath
-        ? '...' + firmwarePath.substring(Math.max(0, firmwarePath.length - 50))
-        : 'No file selected.';
+    // Helper to render a file selection row
+    const renderFileSelector = (
+        label: string,
+        path: string | null,
+        setter: (p: string | null) => void,
+        placeholder: string
+    ) => {
+        const displayPath = path ? '...' + path.substring(Math.max(0, path.length - 40)) : placeholder;
+
+        return (
+            <div style={{ marginBottom: 12 }}>
+                <Text strong style={{ display: 'block', marginBottom: 4 }}>
+                    {label}
+                </Text>
+                <Space.Compact style={{ width: '100%' }}>
+                    <Button icon={<UploadOutlined />} onClick={() => handleSelectFile(setter)} disabled={isFlashing}>
+                        Select
+                    </Button>
+                    <Text
+                        code
+                        ellipsis
+                        style={{
+                            padding: '4px 11px',
+                            border: `1px solid ${token.colorBorder}`,
+                            borderRadius: `0 ${token.borderRadius}px ${token.borderRadius}px 0`,
+                            background: token.colorBgContainer,
+                            width: '100%',
+                            color: path ? token.colorText : token.colorTextPlaceholder,
+                        }}
+                    >
+                        {displayPath}
+                    </Text>
+                </Space.Compact>
+            </div>
+        );
+    };
+
+    const allFilesSelected = !!bootloaderPath && !!partitionsPath && !!firmwarePath;
 
     return (
         <div>
             <Button
                 type="link"
                 icon={<ArrowLeftOutlined />}
-                onClick={onCancel} // Go back
+                onClick={onCancel}
                 style={{ paddingLeft: 0, marginBottom: 16, display: 'block' }}
                 disabled={isFlashing}
             >
                 Back to Device List
             </Button>
 
-            <Text type="secondary">Select a firmware .bin file to upload to the device.</Text>
+            <Title level={5}>Flash Firmware</Title>
+            <Text type="secondary">Select the three required binary files generated by PlatformIO.</Text>
 
             <Card
                 size="small"
@@ -84,24 +119,28 @@ export const FlasherScreen = ({ port, onSuccess, onCancel }: FlasherScreenProps)
                 }}
             >
                 <Space direction="vertical" style={{ width: '100%' }}>
-                    <Space.Compact style={{ width: '100%' }}>
-                        <Button icon={<UploadOutlined />} onClick={handleSelectFirmware} disabled={isFlashing}>
-                            Select Firmware
-                        </Button>
-                        <Text
-                            code
-                            ellipsis
-                            style={{
-                                padding: '4px 11px',
-                                border: `1px solid ${token.colorBorder}`,
-                                borderRadius: `0 ${token.borderRadius}px ${token.borderRadius}px 0`,
-                                background: token.colorBgContainer,
-                                width: '100%',
-                            }}
-                        >
-                            {displayPath}
-                        </Text>
-                    </Space.Compact>
+                    {renderFileSelector(
+                        '1. Bootloader (bootloader.bin)',
+                        bootloaderPath,
+                        setBootloaderPath,
+                        'Select bootloader.bin...'
+                    )}
+
+                    {renderFileSelector(
+                        '2. Partitions (partitions.bin)',
+                        partitionsPath,
+                        setPartitionsPath,
+                        'Select partitions.bin...'
+                    )}
+
+                    {renderFileSelector(
+                        '3. Firmware (firmware.bin)',
+                        firmwarePath,
+                        setFirmwarePath,
+                        'Select firmware.bin...'
+                    )}
+
+                    <Divider style={{ margin: '12px 0' }} />
 
                     {isFlashing && <Progress percent={flashProgress} status="active" strokeColor={token.colorInfo} />}
 
@@ -116,23 +155,26 @@ export const FlasherScreen = ({ port, onSuccess, onCancel }: FlasherScreenProps)
                         />
                     )}
 
-                    <Alert
-                        message="Warning"
-                        description="Flashing firmware can brick your device. Ensure you have selected the correct file and port."
-                        type="warning"
-                        showIcon
-                        icon={<WarningOutlined />}
-                    />
+                    {!allFilesSelected && !isFlashing && (
+                        <Alert
+                            message="Missing Files"
+                            description="Please select all three files to proceed."
+                            type="info"
+                            showIcon
+                            style={{ marginBottom: 10 }}
+                        />
+                    )}
 
                     <Button
                         type="primary"
                         danger
+                        icon={!isFlashing && <WarningOutlined />}
                         onClick={handleFlash}
                         loading={isFlashing}
-                        disabled={!firmwarePath || isFlashing}
-                        style={{ width: '100%', marginTop: 16 }}
+                        disabled={!allFilesSelected || isFlashing}
+                        style={{ width: '100%' }}
                     >
-                        {isFlashing ? 'Flashing...' : 'Flash Device'}
+                        {isFlashing ? 'Flashing Device...' : 'Flash Device'}
                     </Button>
                 </Space>
             </Card>

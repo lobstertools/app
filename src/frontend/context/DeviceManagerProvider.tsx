@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
-import { notification } from 'antd';
+import { App } from 'antd';
 
 import { DiscoveredDevice, DeviceDetails, ConnectionHealth, DeviceProvisioningData } from '../../types';
 import { apiClient } from '../lib/apiClient';
@@ -21,6 +21,7 @@ const INITIAL_HEALTH: ConnectionHealth = {
 export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => {
     // This is the one place we consume AppRuntimeContext
     const { isBackendReady, isElectron } = useAppRuntime();
+    const { notification } = App.useApp();
 
     const [connectionHealth, setConnectionHealth] = useState<ConnectionHealth>(INITIAL_HEALTH);
 
@@ -320,7 +321,14 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
      * @throws An error with the failure message.
      */
     const flashDevice = useCallback(
-        async (port: string, firmwarePath: string) => {
+        async (
+            port: string,
+            files: {
+                firmwarePath: string;
+                bootloaderPath: string;
+                partitionsPath: string;
+            }
+        ) => {
             if (!isElectron) {
                 // Still return false for the non-electron case
                 return false;
@@ -332,7 +340,7 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
             try {
                 // This will either resolve with 'success'
                 // or throw an error from the main process
-                await window.api.flashDevice(port, firmwarePath);
+                await window.api.flashDevice(port, files);
 
                 // Success!
                 notification.success({

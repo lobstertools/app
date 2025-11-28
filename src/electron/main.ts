@@ -323,76 +323,96 @@ app.on('ready', () => {
     });
 
     // --- IPC handler: flash-device ---
-    ipcMain.handle('flash-device', async (_event, args: { port: string; firmwarePath: string }) => {
-        let esptoolPath: string;
-        try {
-            esptoolPath = getEsptoolPath();
-        } catch (err: any) {
-            console.error('[Electron] Error getting esptool path:', err);
-            throw new Error(err.message);
+    ipcMain.handle(
+        'flash-device',
+        async (
+            _event,
+            args: {
+                port: string;
+                files: {
+                    firmwarePath: string;
+                    bootloaderPath: string;
+                    partitionsPath: string;
+                };
+            }
+        ) => {
+            let esptoolPath: string;
+            try {
+                esptoolPath = getEsptoolPath();
+            } catch (err: any) {
+                console.error('[Electron] Error getting esptool path:', err);
+                throw new Error(err.message);
+            }
+
+            // Construct the command with specific offsets for ESP32
+            const flashArgs = [
+                '--port',
+                args.port,
+                '--baud',
+                '115200',
+                '--before',
+                'default_reset',
+                '--after',
+                'hard_reset',
+                'write-flash',
+                '--flash_mode',
+                'dio',
+                '--flash_freq',
+                '40m',
+                '--flash_size',
+                'detect',
+                '0x1000',
+                args.files.bootloaderPath,
+                '0x8000',
+                args.files.partitionsPath,
+                '0x10000',
+                args.files.firmwarePath,
+            ];
+
+            console.log(`[Electron] Spawning esptool: ${esptoolPath}`);
+            console.log(`[Electron] Args: ${flashArgs.join(' ')}`);
+
+            const esptool = spawn(esptoolPath, flashArgs);
+
+            return new Promise((resolve, reject) => {
+                let stderr = '';
+
+                esptool.stdout.on('data', (data: Buffer) => {
+                    const line = data.toString();
+                    console.log(`[esptool]: ${line.trim()}`);
+
+                    if (!mainWindow) return;
+
+                    const progressMatch = line.match(/(\d+(\.\d)?)%/);
+                    if (progressMatch && progressMatch[1]) {
+                        const progress = Math.floor(parseFloat(progressMatch[1]));
+                        mainWindow.webContents.send('flash-progress', progress);
+                    }
+                });
+
+                esptool.stderr.on('data', (data: Buffer) => {
+                    const line = data.toString();
+                    stderr += line;
+                    console.error(`[esptool stderr]: ${line.trim()}`);
+                });
+
+                esptool.on('close', (code) => {
+                    console.log(`[esptool] Exited with code: ${code}`);
+                    if (code === 0) {
+                        mainWindow?.webContents.send('flash-progress', 100);
+                        resolve('success');
+                    } else {
+                        reject(new Error(`Flash failed (code ${code}).\nError: ${stderr}`));
+                    }
+                });
+
+                esptool.on('error', (err: any) => {
+                    console.error('[Electron] Failed to start esptool.', err);
+                    reject(new Error(`Failed to start esptool (${err.code}): ${err.message}`));
+                });
+            });
         }
-
-        const flashArgs = [
-            '--port',
-            args.port,
-            '--baud',
-            '115200',
-            '--before',
-            'no-reset',
-            '--after',
-            'no-reset',
-            'write-flash',
-            '0x10000',
-            args.firmwarePath,
-        ];
-
-        console.log(`[Electron] Spawning esptool: ${esptoolPath}`);
-        console.log(`[Electron] Args: ${flashArgs.join(' ')}`);
-
-        const esptool = spawn(esptoolPath, flashArgs);
-
-        return new Promise((resolve, reject) => {
-            let stderr = '';
-
-            esptool.stdout.on('data', (data: Buffer) => {
-                const line = data.toString();
-                console.log(`[esptool]: ${line.trim()}`);
-
-                if (!mainWindow) return;
-
-                const progressMatch = line.match(/(\d+(\.\d)?)%/);
-                if (progressMatch && progressMatch[1]) {
-                    const progress = Math.floor(parseFloat(progressMatch[1]));
-                    mainWindow.webContents.send('flash-progress', progress);
-                }
-            });
-
-            esptool.stderr.on('data', (data: Buffer) => {
-                const line = data.toString();
-                stderr += line;
-                console.error(`[esptool stderr]: ${line.trim()}`);
-            });
-
-            esptool.on('close', (code) => {
-                console.log(`[esptool] Exited with code: ${code}`);
-                if (code === 0) {
-                    mainWindow?.webContents.send('flash-progress', 100);
-                    resolve('success');
-                } else {
-                    reject(
-                        new Error(
-                            `Flash failed (code ${code}). Did you put the device in bootloader mode?\nError: ${stderr}`
-                        )
-                    );
-                }
-            });
-
-            esptool.on('error', (err: any) => {
-                console.error('[Electron] Failed to start esptool.', err);
-                reject(new Error(`Failed to start esptool (${err.code}): ${err.message}`));
-            });
-        });
-    });
+    );
 
     // --- IPC handler: list-serial-ports ---
     ipcMain.handle('list-serial-ports', async () => {
