@@ -620,6 +620,7 @@ app.get('/details', (req, res) => {
         id: DEVICE_ID,
         name: DEVICE_ID,
         address: '127.0.0.1',
+        port: PORT,
         mac: '00:1A:2B:3C:4D:5E',
         version: DEVICE_VERSION,
         features: FEATURES,

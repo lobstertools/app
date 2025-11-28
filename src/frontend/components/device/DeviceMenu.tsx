@@ -21,6 +21,8 @@ import {
     SlidersOutlined,
     ClockCircleOutlined,
     BulbOutlined,
+    FireOutlined,
+    GiftOutlined,
 } from '@ant-design/icons';
 import { useMemo } from 'react';
 import { DeviceFeature } from '../../../types';
@@ -44,9 +46,15 @@ export const DeviceMenu = () => {
     const deviceName = activeDevice?.name;
     const displayDeviceAddress = activeDevice?.address || 'N/A';
     const displayMacAddress = activeDevice?.mac || 'N/A';
-    const paybackTimeEnabled = activeDevice?.deterrents?.enablePaybackTime || false;
+    const displayPort = activeDevice?.port || 'N/A';
 
-    const paybackDurationSeconds = activeDevice?.deterrents?.paybackDurationSeconds || 0;
+    // Deterrent Logic Extraction
+    const deterrents = activeDevice?.deterrents;
+    const paybackTimeEnabled = deterrents?.enablePaybackTime || false;
+    const streaksEnabled = deterrents?.enableStreaks || false;
+    const rewardCodeEnabled = deterrents?.enableRewardCode || false;
+
+    const paybackDurationSeconds = deterrents?.paybackDurationSeconds || 0;
     const paybackTimeMinutes = Math.floor(paybackDurationSeconds / 60);
 
     const appVersion = activeDevice?.version || 'N/A';
@@ -283,14 +291,8 @@ export const DeviceMenu = () => {
                             disabled: true,
                         },
                         {
-                            key: 'device-ip',
-                            label: `IP: ${displayDeviceAddress || 'N/A'}`,
-                            icon: <HddOutlined />,
-                            disabled: true,
-                        },
-                        {
-                            key: 'device-mac',
-                            label: `MAC: ${displayMacAddress || 'N/A'}`,
+                            key: 'device-net',
+                            label: `Net: ${displayDeviceAddress}:${displayPort} [${displayMacAddress}]`,
                             icon: <HddOutlined />,
                             disabled: true,
                         },
@@ -300,6 +302,14 @@ export const DeviceMenu = () => {
                             icon: <ApiOutlined />,
                             disabled: true,
                         },
+                    ],
+                },
+                // --- NEW DETERRENTS SECTION ---
+                {
+                    key: 'group-deterrents',
+                    type: 'group',
+                    label: <Text type="secondary">Deterrents</Text>,
+                    children: [
                         {
                             key: 'payback',
                             label: paybackTimeEnabled
@@ -308,8 +318,21 @@ export const DeviceMenu = () => {
                             icon: <FieldTimeOutlined />,
                             disabled: true,
                         },
+                        {
+                            key: 'streaks',
+                            label: streaksEnabled ? 'Streaks: Enabled' : 'Streaks: Disabled',
+                            icon: <FireOutlined />,
+                            disabled: true,
+                        },
+                        {
+                            key: 'reward-code',
+                            label: rewardCodeEnabled ? 'Reward Code: Enabled' : 'Reward Code: Disabled',
+                            icon: <GiftOutlined />,
+                            disabled: true,
+                        },
                     ],
                 },
+                // --- END NEW DETERRENTS SECTION ---
                 ...(featureItems.length > 0
                     ? [
                           {

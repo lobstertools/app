@@ -96,6 +96,7 @@ export interface DeviceDetails {
     id: string;
     name: string;
     address: string;
+    port: number;
     mac: string;
     version: string;
     buildType: BuildType;
