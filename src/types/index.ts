@@ -95,6 +95,7 @@ export interface DiscoveredDevice {
 export interface DeviceDetails {
     id: string;
     name: string;
+    longPressMs: number;
     address: string;
     port: number;
     mac: string;
@@ -202,6 +203,18 @@ export interface SessionStatus {
         completed: number;
         totalTimeLockedSeconds: number;
         pendingPaybackSeconds: number;
+    };
+
+    /**
+     * Real-time hardware telemetry.
+     */
+    hardwareStatus: {
+        buttonPressed: boolean;
+        currentPressDurationMs: number;
+        rssi: number;
+        freeHeap: number;
+        uptimeSeconds: number;
+        internalTempC: number | 'N/A';
     };
 }
 

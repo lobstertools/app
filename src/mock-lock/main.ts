@@ -33,7 +33,7 @@ const NUMBER_OF_CHANNELS = 4;
 
 const FEATURES: DeviceFeature[] = ['footPedal', 'startCountdown', 'statusLed'];
 
-const TEST_DURATION_SECONDS = 60; // 60 second test
+const TEST_DURATION_SECONDS = 240; // 4 minute test
 const ARMED_TIMEOUT_SECONDS = 600; // 10 minutes to press button
 
 // --- Mutable Settings (Simulating Flash Storage) ---
@@ -616,7 +616,7 @@ app.post('/update-wifi', (req, res) => {
  */
 app.get('/details', (req, res) => {
     log('API: /details requested.');
-    res.json({
+    const response: DeviceDetails = {
         id: DEVICE_ID,
         name: DEVICE_ID,
         address: '127.0.0.1',
@@ -624,7 +624,6 @@ app.get('/details', (req, res) => {
         mac: '00:1A:2B:3C:4D:5E',
         version: DEVICE_VERSION,
         features: FEATURES,
-        numberOfChannels: NUMBER_OF_CHANNELS,
         buildType: 'mock',
         channels: { ...channelConfig },
         deterrents: {
@@ -633,7 +632,9 @@ app.get('/details', (req, res) => {
             paybackDurationSeconds: paybackDurationSeconds,
             enableRewardCode: enableRewardCode,
         },
-    } as DeviceDetails);
+        longPressMs: 3000,
+    };
+    res.json(response);
 });
 
 /**
@@ -836,7 +837,7 @@ app.post('/factory-reset', (req, res) => {
  * Returns camelCase SessionStatusResponse
  */
 app.get('/status', (req, res) => {
-    res.json({
+    const response: SessionStatus = {
         status: currentState,
         // Send strategy context only if ARMED
         triggerStrategy: currentState === 'armed' ? currentStrategy : undefined,
@@ -864,7 +865,18 @@ app.get('/status', (req, res) => {
             totalTimeLockedSeconds: totalTimeLockedSeconds,
             pendingPaybackSeconds,
         },
-    } as SessionStatus);
+
+        hardwareStatus: {
+            buttonPressed: false,
+            currentPressDurationMs: 0,
+            rssi: 90,
+            freeHeap: 1000000,
+            uptimeSeconds: 10000,
+            internalTempC: 30,
+        },
+    };
+
+    res.json(response);
 });
 
 // --- Server Start ---
