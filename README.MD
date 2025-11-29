@@ -50,9 +50,18 @@ yarn install
 
 There are two main ways to run the app for development:
 
-**1. Standard Web Development (Recommended)**
+**1. Electron Desktop Development (Recommended)**
 
-This runs the React frontend, the Node.js backend, and the mock device server. This is the fastest way to work on the UI.
+This runs the full stack inside the Electron wrapper, which is necessary for testing Firmware Flashing.
+
+```bash
+# Runs frontend, backend, mock-lock, and electron app
+yarn dev:electron
+```
+
+**2. Standard Web Development**
+
+This runs the React frontend, the Node.js backend, and the mock device server. This is the fastest way to work on the UI, but it's missing some features.
 
 ```bash
 # Runs frontend, backend, and mock-lock concurrently
@@ -63,14 +72,6 @@ yarn dev
   * **Backend Server:** `http://localhost:3001`
   * **Mock Device:** `http://localhost:3003`
 
-**2. Electron Desktop Development**
-
-This runs the full stack inside the Electron wrapper, which is necessary for testing Bluetooth features.
-
-```bash
-# Runs frontend, backend, mock-lock, and electron app
-yarn dev:electron
-```
 
 ### Other Scripts
 
