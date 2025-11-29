@@ -1,4 +1,4 @@
-import { InfoCircleOutlined, GlobalOutlined, GithubOutlined, BookOutlined, RedditOutlined } from '@ant-design/icons';
+import { InfoCircleOutlined, GlobalOutlined, GithubOutlined, BookOutlined } from '@ant-design/icons';
 import { Modal, Row, Col, Button, Space, Divider, Typography } from 'antd';
 import { useAppRuntime } from '../../context/useAppRuntime';
 
@@ -77,7 +77,7 @@ export const AboutAppModal = () => {
                     >
                         Source Code (GitHub)
                     </Button>
-                    <Button
+                    {/* <Button
                         href="https://reddit.com/r/lobstertools"
                         target="_blank"
                         rel="noopener noreferrer"
@@ -85,7 +85,7 @@ export const AboutAppModal = () => {
                         block
                     >
                         Support Reddit
-                    </Button>
+                    </Button> */}
                     <Divider style={{ margin: '16px 0' }} />
 
                     {/* License */}
