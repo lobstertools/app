@@ -45,7 +45,6 @@ export const DeviceMenu = () => {
     // Pulling static config from activeDevice
     const deviceName = activeDevice?.name;
     const displayDeviceAddress = activeDevice?.address || 'N/A';
-    const displayMacAddress = activeDevice?.mac || 'N/A';
     const displayPort = activeDevice?.port || 'N/A';
 
     // Deterrent Logic Extraction
@@ -292,7 +291,7 @@ export const DeviceMenu = () => {
                         },
                         {
                             key: 'device-net',
-                            label: `Net: ${displayDeviceAddress}:${displayPort} [${displayMacAddress}]`,
+                            label: `Net: ${displayDeviceAddress}:${displayPort}`,
                             icon: <HddOutlined />,
                             disabled: true,
                         },
