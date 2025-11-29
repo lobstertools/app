@@ -40,7 +40,7 @@ export const DeviceMenu = () => {
     const { currentState, abortSession, startTestSession } = useSession();
 
     // Get all needed state/functions from useDeviceManager
-    const { connectionHealth, fetchDeviceLogs, activeDevice, openDeviceSettingsModal } = useDeviceManager();
+    const { connectionHealth, openDeviceLogs, activeDevice, openDeviceSettingsModal } = useDeviceManager();
 
     // Pulling static config from activeDevice
     const deviceName = activeDevice?.name;
@@ -200,7 +200,7 @@ export const DeviceMenu = () => {
             featureItems.push({
                 key: `feat-${feature}`,
                 label: (
-                    <Tooltip title={details.description} placement="right" overlayStyle={{ maxWidth: 300 }}>
+                    <Tooltip title={details.description} placement="right" styles={{ root: { maxWidth: 300 } }}>
                         <Space style={{ pointerEvents: 'auto' }}>
                             <span>{details.label}</span>
                             <InfoCircleOutlined
@@ -353,7 +353,7 @@ export const DeviceMenu = () => {
                     key: 'logs',
                     label: 'View Device Logs',
                     icon: <FileTextOutlined />,
-                    onClick: fetchDeviceLogs,
+                    onClick: openDeviceLogs,
                     disabled: !activeDevice || connectionHealth.device.status !== 'ok',
                 },
                 mainActionItem,

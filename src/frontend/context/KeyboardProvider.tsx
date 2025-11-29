@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useState, useCallback, useRef } from 'react';
-import { notification } from 'antd';
+import { App } from 'antd';
 
 import { KeyboardContext, KeyboardContextState } from './useKeyboardContext';
 import { useSession } from './useSessionContext';
@@ -8,6 +8,7 @@ import { KeyboardHelpModal } from '../components/app/KeyboardHelpModal';
 
 export const KeyboardProvider = ({ children }: { children: ReactNode }) => {
     const [isHelpOpen, setIsHelpOpen] = useState(false);
+    const { notification } = App.useApp();
 
     // We use a ref for the start config action so the effect
     // doesn't need to re-bind when the callback changes.
@@ -15,7 +16,7 @@ export const KeyboardProvider = ({ children }: { children: ReactNode }) => {
 
     // Consume existing contexts to trigger actions
     const { currentState, abortSession, startTestSession } = useSession();
-    const { openDeviceModal, openDeviceSettingsModal, activeDevice } = useDeviceManager();
+    const { openDeviceModal, openDeviceSettingsModal, activeDevice, openDeviceLogs } = useDeviceManager();
 
     const openHelp = useCallback(() => setIsHelpOpen(true), []);
     const closeHelp = useCallback(() => setIsHelpOpen(false), []);
@@ -46,10 +47,6 @@ export const KeyboardProvider = ({ children }: { children: ReactNode }) => {
 
                 case 't': // Test
                     if (currentState === 'ready') {
-                        notification.info({
-                            message: 'Hardware Test Triggered via Keyboard',
-                            duration: 2,
-                        });
                         startTestSession();
                     }
                     break;
@@ -67,6 +64,10 @@ export const KeyboardProvider = ({ children }: { children: ReactNode }) => {
                     if (startConfigActionRef.current) {
                         startConfigActionRef.current();
                     }
+                    break;
+
+                case 'l': // Shows logs
+                    openDeviceLogs();
                     break;
 
                 case 'd': // Device Settings
@@ -96,7 +97,16 @@ export const KeyboardProvider = ({ children }: { children: ReactNode }) => {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [currentState, abortSession, startTestSession, openDeviceModal, openDeviceSettingsModal, activeDevice]);
+    }, [
+        currentState,
+        abortSession,
+        startTestSession,
+        openDeviceModal,
+        openDeviceSettingsModal,
+        activeDevice,
+        notification,
+        openDeviceLogs,
+    ]);
 
     const contextValue: KeyboardContextState = {
         isHelpOpen,

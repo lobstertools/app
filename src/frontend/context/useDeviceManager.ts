@@ -23,7 +23,7 @@ export interface DeviceManagerContextState {
     openDeviceModal: () => void;
     closeDeviceModal: () => void;
     factoryResetDevice: (deviceId: string) => void;
-    fetchDeviceLogs: () => void;
+    openDeviceLogs: () => void;
     closeLogModal: () => void;
 
     // --- Flashing Properties ---

@@ -269,7 +269,7 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
      * Fetches the full diagnostic log contents from the currently
      * active device and opens the log modal.
      */
-    const fetchDeviceLogs = useCallback(async () => {
+    const openDeviceLogs = useCallback(async () => {
         if (!activeDevice) return;
         setLogContent('Loading logs from device...');
         setIsLogModalOpen(true);
@@ -547,7 +547,7 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
         openDeviceModal,
         closeDeviceModal,
         factoryResetDevice,
-        fetchDeviceLogs,
+        openDeviceLogs,
         closeLogModal,
 
         serialPorts,

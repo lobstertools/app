@@ -65,6 +65,7 @@ export const AppContent = ({ theme, toggleTheme }: { theme: 'light' | 'dark'; to
                         level={3}
                         style={{
                             margin: '0 24px 0 0',
+                            textWrap: 'nowrap',
                         }}
                     >
                         Lobster

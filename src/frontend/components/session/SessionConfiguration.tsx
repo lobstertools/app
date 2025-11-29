@@ -17,7 +17,7 @@ import {
     List,
     Radio,
     theme as antdTheme,
-    notification,
+    App,
 } from 'antd';
 import {
     LockOutlined,
@@ -51,6 +51,8 @@ export const SessionConfiguration = () => {
     const { currentState, startSession, isLocking, sessionTimeRemaining, status } = useSession();
     const { activeDevice, openDeviceModal } = useDeviceManager();
     const { registerStartConfigAction } = useKeyboard();
+
+    const { notification } = App.useApp();
 
     const [form] = Form.useForm<SessionFormData>();
     const [setupStep, setSetupStep] = useState(0);
@@ -120,7 +122,7 @@ export const SessionConfiguration = () => {
                 }
             }
         });
-    }, [currentState, setupStep, openDeviceModal, registerStartConfigAction]);
+    }, [currentState, setupStep, openDeviceModal, registerStartConfigAction, notification]);
 
     /**
      * Handles the form submission.

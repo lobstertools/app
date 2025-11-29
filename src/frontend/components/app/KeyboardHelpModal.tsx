@@ -12,6 +12,7 @@ export const KeyboardHelpModal = () => {
         { key: 'm', action: 'Open Device Manager', context: 'Global' },
         { key: 'd', action: 'Device Settings', context: 'When Device is Ready' },
         { key: 's', action: 'Start Configuration', context: 'Global (Navigation)' },
+        { key: 'l', action: 'Open Device Logs', context: 'Global' },
         { key: '?', action: 'Toggle this Help Menu', context: 'Global' },
     ];
 
