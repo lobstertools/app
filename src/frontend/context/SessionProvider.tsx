@@ -1,5 +1,5 @@
 import { useMemo, ReactNode, useCallback, useEffect, useState } from 'react';
-import { notification, Alert } from 'antd';
+import { App, Alert } from 'antd';
 import axios from 'axios';
 
 import { Reward, SessionStatus, ComputedAppStatus, SessionArmRequest } from '../../types';
@@ -18,6 +18,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     const [rewardHistory, setRewardHistory] = useState<Reward[]>([]);
 
     const { activeDevice, connectionHealth } = useDeviceManager();
+    const { notification } = App.useApp();
 
     // 1. Compute the high-level application state
     const currentState = useMemo<ComputedAppStatus>(() => {
@@ -107,7 +108,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
                 setIsLocking(false);
             }
         },
-        [activeDevice, currentState, fetchSessionStatus]
+        [activeDevice, currentState, fetchSessionStatus, notification]
     );
 
     /**
@@ -159,7 +160,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
             setError(msg);
             notification.error({ message: 'Abort Failed', description: msg });
         }
-    }, [activeDevice, fetchSessionStatus, status]);
+    }, [activeDevice, fetchSessionStatus, notification, status?.status]);
 
     /**
      * Sends the /start-test command to the device.
@@ -180,7 +181,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
                 description: 'Could not start test mode.',
             });
         }
-    }, [activeDevice, currentState, fetchSessionStatus]);
+    }, [activeDevice, currentState, fetchSessionStatus, notification]);
 
     // --- Polling Effects ---
 
