@@ -14,6 +14,9 @@ const INITIAL_HEALTH: ConnectionHealth = {
     device: { status: 'pending', message: 'Waiting for server...' },
 };
 
+const STORAGE_KEY_DEVICE_ID = 'lobster-device-id';
+const STORAGE_KEY_LEGACY = 'lobster-active-device';
+
 /**
  * Main provider component. Wraps the application to provide global state
  * and logic for discovering, provisioning, and interacting with devices.
@@ -25,10 +28,8 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
 
     const [connectionHealth, setConnectionHealth] = useState<ConnectionHealth>(INITIAL_HEALTH);
 
-    const [activeDevice, setActiveDevice] = useState<DeviceDetails | null>(() => {
-        const savedDevice = localStorage.getItem('lobster-active-device');
-        return savedDevice ? JSON.parse(savedDevice) : null;
-    });
+    // Initialize as null, using a fresh fetch in the useEffect below.
+    const [activeDevice, setActiveDevice] = useState<DeviceDetails | null>(null);
 
     const [discoveredDevices, setDiscoveredDevices] = useState<DiscoveredDevice[]>([]);
     const [isDeviceModalOpen, setIsDeviceModalOpen] = useState(false);
@@ -145,7 +146,10 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
      */
     const clearDevice = useCallback(() => {
         setActiveDevice(null);
-        localStorage.removeItem('lobster-active-device');
+
+        localStorage.removeItem(STORAGE_KEY_DEVICE_ID);
+        localStorage.removeItem(STORAGE_KEY_LEGACY);
+
         setConnectionHealth({
             server: { status: 'ok', message: 'Server connected.' },
             device: { status: 'pending', message: 'No device selected.' },
@@ -179,7 +183,8 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
         }
 
         setActiveDevice(fullDevice);
-        localStorage.setItem('lobster-active-device', JSON.stringify(fullDevice));
+
+        localStorage.setItem(STORAGE_KEY_DEVICE_ID, deviceId);
         return fullDevice;
     }, []);
 
@@ -444,12 +449,38 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
 
     // --- Effects ---
 
-    // Startup Device Refresh
+    // Startup Device Refresh & Migration
     useEffect(() => {
-        // Only run if we have an active device (from localStorage) AND backend is ready
-        if (isBackendReady && activeDevice?.id) {
-            console.log('[DeviceManager] Refreshing active device details...');
-            refreshDeviceDetails(activeDevice.id).catch((err) => {
+        if (!isBackendReady) return;
+
+        // 1. Retrieve the ID
+        let storedId = localStorage.getItem(STORAGE_KEY_DEVICE_ID);
+
+        // 2. Migration: If no ID found, check for the legacy JSON blob
+        if (!storedId) {
+            const legacyData = localStorage.getItem(STORAGE_KEY_LEGACY);
+            if (legacyData) {
+                try {
+                    const parsed = JSON.parse(legacyData);
+                    if (parsed && parsed.id) {
+                        console.log('[DeviceManager] Migrating legacy storage to ID-only format.');
+                        storedId = parsed.id;
+                        // Save the new format immediately
+                        localStorage.setItem(STORAGE_KEY_DEVICE_ID, parsed.id);
+                        // Clear the old format
+                        localStorage.removeItem(STORAGE_KEY_LEGACY);
+                    }
+                } catch (e) {
+                    console.warn('[DeviceManager] Failed to migrate legacy storage:', e);
+                    localStorage.removeItem(STORAGE_KEY_LEGACY);
+                }
+            }
+        }
+
+        // 3. If we have an ID (either existing or migrated), fetch the details
+        if (storedId) {
+            console.log(`[DeviceManager] Restoring session for device: ${storedId}`);
+            refreshDeviceDetails(storedId).catch((err) => {
                 console.warn('[DeviceManager] Startup refresh failed:', err);
 
                 // If the backend explicitly returns 404 (Not Found),
