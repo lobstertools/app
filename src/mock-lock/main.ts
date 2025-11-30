@@ -40,7 +40,7 @@ const ARMED_TIMEOUT_SECONDS = 600; // 10 minutes to press button
 const enableStreaks = true;
 const enablePaybackTime = true;
 const enableRewardCode = true;
-const paybackDurationSeconds = 600; // 10 Minutes
+const paybackDurationSeconds = 0;
 const channelConfig = { ch1: true, ch2: true, ch3: true, ch4: true };
 
 // --- Dynamic Session State ---
@@ -229,7 +229,7 @@ const initializeState = () => {
     totalTimeLockedSeconds = 50000;
     completed = 12;
     aborted = 2;
-    pendingPaybackSeconds = 600;
+    pendingPaybackSeconds = 10;
 
     currentState = 'ready';
     currentStrategy = 'autoCountdown';
@@ -631,8 +631,15 @@ app.get('/details', (req, res) => {
             enablePaybackTime: enablePaybackTime,
             paybackDurationSeconds: paybackDurationSeconds,
             enableRewardCode: enableRewardCode,
+            minPaybackTimeSeconds: 300,
+            maxPaybackTimeSeconds: 2700
         },
         longPressMs: 3000,
+        minLockSeconds: 120,
+        maxLockSeconds: 600,
+        minPenaltySeconds: 60,
+        maxPenaltySeconds: 300,
+        testModeDurationSeconds: 240
     };
     res.json(response);
 });

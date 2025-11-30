@@ -103,6 +103,13 @@ export interface DeviceDetails {
     buildType: BuildType;
     features: DeviceFeature[];
 
+    // --- System Limits ---
+    minLockSeconds: number;
+    maxLockSeconds: number;
+    minPenaltySeconds: number;
+    maxPenaltySeconds: number;
+    testModeDurationSeconds: number;
+
     channels: {
         ch1: boolean;
         ch2: boolean;
@@ -115,6 +122,9 @@ export interface DeviceDetails {
         enableStreaks: boolean;
         enablePaybackTime: boolean;
         paybackDurationSeconds: number;
+        // Payback Limits
+        minPaybackTimeSeconds: number;
+        maxPaybackTimeSeconds: number;
         enableRewardCode: boolean;
     };
 }

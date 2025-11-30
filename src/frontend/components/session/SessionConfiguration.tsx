@@ -72,6 +72,25 @@ export const SessionConfiguration = () => {
     // Check deterrent configuration
     const enableRewardCode = activeDevice?.deterrents?.enableRewardCode ?? true;
 
+    // Dynamic System Limits
+    const minLockMin = useMemo(
+        () => Math.ceil((activeDevice?.minLockSeconds || 900) / 60),
+        [activeDevice?.minLockSeconds]
+    );
+    const maxLockMin = useMemo(
+        () => Math.floor((activeDevice?.maxLockSeconds || 10800) / 60),
+        [activeDevice?.maxLockSeconds]
+    );
+
+    const minPenaltyMin = useMemo(
+        () => Math.ceil((activeDevice?.minPenaltySeconds || 900) / 60),
+        [activeDevice?.minPenaltySeconds]
+    );
+    const maxPenaltyMin = useMemo(
+        () => Math.floor((activeDevice?.maxPenaltySeconds || 10800) / 60),
+        [activeDevice?.maxPenaltySeconds]
+    );
+
     // Calculate enabled channels for the UI based on the new API structure
     const enabledChannels = useMemo(() => {
         if (!activeDevice) return [];
@@ -125,6 +144,13 @@ export const SessionConfiguration = () => {
     }, [currentState, setupStep, openDeviceModal, registerStartConfigAction, notification]);
 
     /**
+     * Helper to ensure value is within device limits
+     */
+    const clamp = (val: number, min: number, max: number) => {
+        return Math.max(min, Math.min(val, max));
+    };
+
+    /**
      * Handles the form submission.
      * Converts User Friendly Units (Minutes) -> API Units (Seconds)
      */
@@ -135,8 +161,8 @@ export const SessionConfiguration = () => {
         if (values.type === 'fixed') {
             finalDurationMinutes = values.duration || 30; // Default to 30 if undefined
         } else if (values.type === 'random') {
-            const min = values.rangeMin || 15;
-            const max = values.rangeMax || 180;
+            const min = values.rangeMin || minLockMin;
+            const max = values.rangeMax || maxLockMin;
             finalDurationMinutes = Math.floor(Math.random() * (max - min + 1) + min);
         } else {
             // Default to 'time-range' logic
@@ -148,17 +174,22 @@ export const SessionConfiguration = () => {
                     finalDurationMinutes = Math.floor(Math.random() * (90 - 60 + 1) + 60); // 60-90 min
                     break;
                 case 'long':
-                    finalDurationMinutes = Math.floor(Math.random() * (180 - 120 + 1) + 120); // 120-180 min (2-3 hours)
+                    finalDurationMinutes = Math.floor(Math.random() * (180 - 120 + 1) + 120); // 120-180 min
                     break;
                 default:
                     finalDurationMinutes = 30; // Fallback
             }
         }
 
+        // Clamp duration to system limits
+        finalDurationMinutes = clamp(finalDurationMinutes, minLockMin, maxLockMin);
         const lockDurationSeconds = finalDurationMinutes * 60;
 
         // 2. Convert Penalty (Minutes -> Seconds)
-        const penaltyDurationSeconds = (values.penaltyDuration || 15) * 60;
+        let penaltyMinutes = values.penaltyDuration || 15;
+        // Clamp penalty
+        penaltyMinutes = clamp(penaltyMinutes, minPenaltyMin, maxPenaltyMin);
+        const penaltyDurationSeconds = penaltyMinutes * 60;
 
         // 3. Map Delays (Already Seconds in Form) to Channel Object
         const channelDelaysSeconds = {
@@ -331,13 +362,13 @@ export const SessionConfiguration = () => {
                 onFinish={handleFinish}
                 layout="vertical"
                 initialValues={{
-                    triggerStrategy: 'buttonTrigger', // Default to auto
+                    triggerStrategy: 'buttonTrigger',
                     type: 'time-range',
                     timeRangeSelection: 'short',
-                    duration: 30,
-                    rangeMin: 15,
-                    rangeMax: 45,
-                    penaltyDuration: 120,
+                    duration: clamp(30, minLockMin, maxLockMin),
+                    rangeMin: clamp(15, minLockMin, maxLockMin),
+                    rangeMax: clamp(180, minLockMin, maxLockMin),
+                    penaltyDuration: clamp(120, minPenaltyMin, maxPenaltyMin),
                     hideTimer: false,
                     useMultiChannelDelay: false,
                     delayCh1: 10,
@@ -380,8 +411,16 @@ export const SessionConfiguration = () => {
 
                             if (type === 'fixed') {
                                 return (
-                                    <Form.Item name="duration" label="Fixed Duration (15-180 min)">
-                                        <InputNumber min={15} max={180} addonAfter="min" style={{ width: 200 }} />
+                                    <Form.Item
+                                        name="duration"
+                                        label={`Fixed Duration (${minLockMin}-${maxLockMin} min)`}
+                                    >
+                                        <InputNumber
+                                            min={minLockMin}
+                                            max={maxLockMin}
+                                            addonAfter="min"
+                                            style={{ width: 200 }}
+                                        />
                                     </Form.Item>
                                 );
                             }
@@ -390,10 +429,10 @@ export const SessionConfiguration = () => {
                                 return (
                                     <Space align="start">
                                         <Form.Item name="rangeMin" label="Minimum (min)">
-                                            <InputNumber min={15} max={180} addonAfter="min" />
+                                            <InputNumber min={minLockMin} max={maxLockMin} />
                                         </Form.Item>
                                         <Form.Item name="rangeMax" label="Maximum (min)">
-                                            <InputNumber min={15} max={180} addonAfter="min" />
+                                            <InputNumber min={minLockMin} max={maxLockMin} />
                                         </Form.Item>
                                     </Space>
                                 );
@@ -546,10 +585,15 @@ export const SessionConfiguration = () => {
 
                             <Form.Item
                                 name="penaltyDuration"
-                                label="Abort Penalty (15-180 min)"
+                                label={`Abort Penalty (${minPenaltyMin}-${maxPenaltyMin} min)`}
                                 style={{ marginTop: 8 }}
                             >
-                                <InputNumber min={15} max={180} addonAfter="min" style={{ width: 200 }} />
+                                <InputNumber
+                                    min={minPenaltyMin}
+                                    max={maxPenaltyMin}
+                                    addonAfter="min"
+                                    style={{ width: 200 }}
+                                />
                             </Form.Item>
                             <Text type="secondary" style={{ marginTop: -16, display: 'block' }}>
                                 When aborted, the reward code will remain hidden for this duration.
