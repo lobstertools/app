@@ -26,7 +26,7 @@
     "include": [
         "src/frontend",
         "src/backend",
-        "src/mock",
+        "src/mock-lock",
         "src/electron", 
         "src/types/index.ts"
     ],

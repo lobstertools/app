@@ -483,7 +483,7 @@ const TIME_ADJUSTMENT_SECONDS = 60;
 readline.emitKeypressEvents(process.stdin);
 if (process.stdin.isTTY) process.stdin.setRawMode(true);
 
-process.stdin.on('keypress', (str, key) => {
+process.stdin.on('keypress', (_, key) => {
     // CTRL+C to exit
     if (key.ctrl && key.name === 'c') process.exit();
 
@@ -543,7 +543,7 @@ const handlePhysicalButtonLongPress = () => {
  * GET / (Root)
  * Simple info endpoint.
  */
-app.get('/', (req, res) => {
+app.get('/', (_, res) => {
     res.type('text/plain').send(`Mock Lobster-Lock API ${DEVICE_VERSION} (Reboot to Reset)
 Endpoints:
 - GET /status
@@ -562,7 +562,7 @@ Endpoints:
  * GET /log
  * Dumps the in-memory log buffer.
  */
-app.get('/log', (req, res) => {
+app.get('/log', (_, res) => {
     res.type('text/plain').send(logBuffer.join('\n'));
 });
 
@@ -570,7 +570,7 @@ app.get('/log', (req, res) => {
  * POST /keepalive
  * "Pets" the watchdog to prevent a timeout.
  */
-app.post('/keepalive', (req, res) => {
+app.post('/keepalive', (_, res) => {
     if (currentState === 'locked') {
         lastKeepAliveTime = Date.now();
         log('API: /keepalive received (watchdog petted).');
@@ -614,7 +614,7 @@ app.post('/update-wifi', (req, res) => {
  * GET /details
  * Returns the static device configuration (ActiveDevice)
  */
-app.get('/details', (req, res) => {
+app.get('/details', (_, res) => {
     log('API: /details requested.');
     const response: DeviceDetails = {
         id: DEVICE_ID,
@@ -632,14 +632,14 @@ app.get('/details', (req, res) => {
             paybackDurationSeconds: paybackDurationSeconds,
             enableRewardCode: enableRewardCode,
             minPaybackTimeSeconds: 300,
-            maxPaybackTimeSeconds: 2700
+            maxPaybackTimeSeconds: 2700,
         },
         longPressMs: 3000,
         minLockSeconds: 120,
         maxLockSeconds: 600,
         minPenaltySeconds: 60,
         maxPenaltySeconds: 300,
-        testModeDurationSeconds: 240
+        testModeDurationSeconds: 240,
     };
     res.json(response);
 });
@@ -653,7 +653,7 @@ app.get('/details', (req, res) => {
  * - Locked: Hidden (It's in the box)
  * - Aborted: Hidden if Penalty active, Visible if Penalty over
  */
-app.get('/reward', (req, res) => {
+app.get('/reward', (_, res) => {
     // 1. LOCKED or ARMED: Always hidden
     if (currentState === 'locked' || currentState === 'armed') {
         log(`API: /reward DENIED (Session ${currentState})`);
@@ -770,7 +770,7 @@ app.post('/arm', (req, res) => {
  * POST /start-test
  * Start a test session.
  */
-app.post('/start-test', (req, res) => {
+app.post('/start-test', (_, res) => {
     if (currentState !== 'ready') {
         log('API: /start-test FAILED (not ready)');
         return res.status(409).json({
@@ -793,7 +793,7 @@ app.post('/start-test', (req, res) => {
  * POST /abort
  * Aborts an active session.
  */
-app.post('/abort', (req, res) => {
+app.post('/abort', (_, res) => {
     if (triggerAbort('API')) {
         // If triggerAbort returned true, it handled the state change
         res.json({ status: currentState === 'ready' ? 'ready' : 'aborted' });
@@ -810,7 +810,7 @@ app.post('/abort', (req, res) => {
  * POST /debug/button-press
  * Simulates a physical button press via HTTP (for testing without keyboard).
  */
-app.post('/debug/button-press', (req, res) => {
+app.post('/debug/button-press', (_, res) => {
     log('API: /debug/button-press received.');
     handlePhysicalButtonLongPress();
     res.json({ message: 'Button press simulated' });
@@ -820,7 +820,7 @@ app.post('/debug/button-press', (req, res) => {
  * POST /factory-reset (Replaces /forget)
  * Simulates the device forgetting credentials and rebooting.
  */
-app.post('/factory-reset', (req, res) => {
+app.post('/factory-reset', (_, res) => {
     if (currentState !== 'ready' && currentState !== 'completed') {
         log('API: /factory-reset FAILED (session active)');
         return res.status(409).json({
@@ -843,7 +843,7 @@ app.post('/factory-reset', (req, res) => {
  * The main endpoint polled by the UI.
  * Returns camelCase SessionStatusResponse
  */
-app.get('/status', (req, res) => {
+app.get('/status', (_, res) => {
     const response: SessionStatus = {
         status: currentState,
         // Send strategy context only if ARMED
