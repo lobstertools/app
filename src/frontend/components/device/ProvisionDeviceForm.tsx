@@ -224,24 +224,24 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
                 {/* Dependent Configuration: Inset Style */}
                 {enablePaybackTime && (
                     <div style={dependentConfigStyle}>
-                        <Form.Item
-                            name="paybackTimeMinutes"
-                            label="Payback Penalty (Minutes)"
-                            style={{ marginBottom: 0 }}
-                            rules={[
-                                {
-                                    required: true,
-                                    message: 'Please set the payback time',
-                                },
-                            ]}
-                        >
-                            <InputNumber
-                                min={10}
-                                max={120}
-                                style={{ width: 200 }}
-                                addonAfter="min"
-                                placeholder="e.g. 15"
-                            />
+                        <Form.Item label="Payback Penalty (Minutes)" style={{ marginBottom: 0 }} required={true}>
+                            <Space.Compact>
+                                <Form.Item
+                                    name="paybackTimeMinutes"
+                                    noStyle
+                                    rules={[
+                                        {
+                                            required: true,
+                                            message: 'Please set the payback time',
+                                        },
+                                    ]}
+                                >
+                                    <InputNumber min={10} max={120} style={{ width: 200 }} placeholder="e.g. 15" />
+                                </Form.Item>
+                                <Button disabled style={{ pointerEvents: 'none' }}>
+                                    min
+                                </Button>
+                            </Space.Compact>
                         </Form.Item>
                         <Text type="secondary" style={{ fontSize: '0.85em', marginTop: 4, display: 'block' }}>
                             This duration is added to your next session for every abort.

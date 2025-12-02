@@ -460,16 +460,19 @@ export const SessionConfiguration = () => {
 
                             if (type === 'fixed') {
                                 return (
-                                    <Form.Item
-                                        name="duration"
-                                        label={`Fixed Duration (${minLockUnit}-${maxLockUnit} ${unitLabel})`}
-                                    >
-                                        <InputNumber
-                                            min={minLockUnit}
-                                            max={maxLockUnit}
-                                            addonAfter={unitLabel}
-                                            style={{ width: 200 }}
-                                        />
+                                    <Form.Item label={`Fixed Duration (${minLockUnit}-${maxLockUnit} ${unitLabel})`}>
+                                        <Space.Compact>
+                                            <Form.Item name="duration" noStyle>
+                                                <InputNumber
+                                                    min={minLockUnit}
+                                                    max={maxLockUnit}
+                                                    style={{ width: 200 }}
+                                                />
+                                            </Form.Item>
+                                            <Button disabled style={{ pointerEvents: 'none' }}>
+                                                {unitLabel}
+                                            </Button>
+                                        </Space.Compact>
                                     </Form.Item>
                                 );
                             }
@@ -477,11 +480,25 @@ export const SessionConfiguration = () => {
                             if (type === 'random') {
                                 return (
                                     <Space align="start">
-                                        <Form.Item name="rangeMin" label={`Minimum (${unitLabel})`}>
-                                            <InputNumber min={minLockUnit} max={maxLockUnit} />
+                                        <Form.Item label={`Minimum (${unitLabel})`}>
+                                            <Space.Compact>
+                                                <Form.Item name="rangeMin" noStyle>
+                                                    <InputNumber min={minLockUnit} max={maxLockUnit} />
+                                                </Form.Item>
+                                                <Button disabled style={{ pointerEvents: 'none' }}>
+                                                    {unitLabel}
+                                                </Button>
+                                            </Space.Compact>
                                         </Form.Item>
-                                        <Form.Item name="rangeMax" label={`Maximum (${unitLabel})`}>
-                                            <InputNumber min={minLockUnit} max={maxLockUnit} />
+                                        <Form.Item label={`Maximum (${unitLabel})`}>
+                                            <Space.Compact>
+                                                <Form.Item name="rangeMax" noStyle>
+                                                    <InputNumber min={minLockUnit} max={maxLockUnit} />
+                                                </Form.Item>
+                                                <Button disabled style={{ pointerEvents: 'none' }}>
+                                                    {unitLabel}
+                                                </Button>
+                                            </Space.Compact>
                                         </Form.Item>
                                     </Space>
                                 );
@@ -576,12 +593,15 @@ export const SessionConfiguration = () => {
                             {/* Single delay inputs (binds to delayCh1) */}
                             {!useMultiDelay && (
                                 <>
-                                    <Form.Item
-                                        name="delayCh1"
-                                        label="Countdown Duration (sec)"
-                                        style={{ marginBottom: 4 }}
-                                    >
-                                        <InputNumber min={0} max={120} addonAfter="sec" style={{ width: 200 }} />
+                                    <Form.Item label="Countdown Duration (sec)" style={{ marginBottom: 4 }}>
+                                        <Space.Compact>
+                                            <Form.Item name="delayCh1" noStyle>
+                                                <InputNumber min={0} max={120} style={{ width: 200 }} />
+                                            </Form.Item>
+                                            <Button disabled style={{ pointerEvents: 'none' }}>
+                                                sec
+                                            </Button>
+                                        </Space.Compact>
                                     </Form.Item>
                                     <Text type="secondary" style={{ fontSize: '0.85em' }}>
                                         {canUseMultiChannel
@@ -598,16 +618,21 @@ export const SessionConfiguration = () => {
                                         {enabledChannels.map((ch) => (
                                             <Col xs={24} sm={12} key={ch.key}>
                                                 <Form.Item
-                                                    name={ch.key} // Binds to delayCh1, delayCh2...
                                                     label={`${ch.label} Timer (sec)`}
                                                     style={{ marginBottom: 12 }}
                                                 >
-                                                    <InputNumber
-                                                        min={0}
-                                                        max={120}
-                                                        addonAfter="sec"
-                                                        style={{ width: '100%' }}
-                                                    />
+                                                    <Space.Compact style={{ width: '100%' }}>
+                                                        <Form.Item name={ch.key} noStyle>
+                                                            <InputNumber
+                                                                min={0}
+                                                                max={120}
+                                                                style={{ width: 'calc(100% - 46px)' }}
+                                                            />
+                                                        </Form.Item>
+                                                        <Button disabled style={{ pointerEvents: 'none' }}>
+                                                            sec
+                                                        </Button>
+                                                    </Space.Compact>
                                                 </Form.Item>
                                             </Col>
                                         ))}
@@ -633,16 +658,17 @@ export const SessionConfiguration = () => {
                             </Text>
 
                             <Form.Item
-                                name="penaltyDuration"
                                 label={`Abort Penalty (${minPenaltyUnit}-${maxPenaltyUnit} ${unitLabel})`}
                                 style={{ marginTop: 8 }}
                             >
-                                <InputNumber
-                                    min={minPenaltyUnit}
-                                    max={maxPenaltyUnit}
-                                    addonAfter={unitLabel}
-                                    style={{ width: 200 }}
-                                />
+                                <Space.Compact>
+                                    <Form.Item name="penaltyDuration" noStyle>
+                                        <InputNumber min={minPenaltyUnit} max={maxPenaltyUnit} style={{ width: 200 }} />
+                                    </Form.Item>
+                                    <Button disabled style={{ pointerEvents: 'none' }}>
+                                        {unitLabel}
+                                    </Button>
+                                </Space.Compact>
                             </Form.Item>
                             <Text type="secondary" style={{ marginTop: -16, display: 'block' }}>
                                 When aborted, the reward code will remain hidden for this duration.
