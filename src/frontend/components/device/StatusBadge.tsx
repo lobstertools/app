@@ -1,5 +1,5 @@
 import { useSession } from '../../context/useSessionContext';
-import { red, blue, grey } from '@ant-design/colors';
+import { red, blue, grey, purple } from '@ant-design/colors';
 import { Typography, Space } from 'antd';
 import { formatSeconds } from '../../utils/time';
 
@@ -31,16 +31,16 @@ export const StatusBadge = () => {
                 text = 'ABORTED (Penalty Active)';
                 break;
             case 'completed':
-                color = '#52c41a';
-                text = 'COMPLETED';
+                color = purple[5];
+                text = 'COMPLETED (Waiting for Reboot)';
                 break;
             case 'ready':
                 color = '#52c41a';
-                text = 'READY';
+                text = 'READY (Waiting for Session)';
                 break;
             case 'armed':
                 color = blue[5];
-                text = 'ARMED...';
+                text = 'ARMED (Waiting for Trigger)';
                 break;
             case 'testing':
                 color = blue[5];
