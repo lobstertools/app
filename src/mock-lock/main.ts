@@ -26,29 +26,73 @@ const PORT = 3003;
 app.use(cors());
 app.use(express.json());
 
-// --- Mock Static Device Config (from provisioning) ---
-const DEVICE_ID = 'Mock-LobsterLock';
-const DEVICE_VERSION = 'v1.4-mock';
-const NUMBER_OF_CHANNELS = 4;
+// ============================================================================
+// 1. CENTRALIZED MOCK CONFIGURATION
+// ============================================================================
+// Mirrors the C++ SystemConfig structure.
+// Implements "Developer Friendly" defaults (Debug Mode).
 
-const FEATURES: DeviceFeature[] = ['footPedal', 'startCountdown', 'statusLed'];
+const MOCK_CONFIGURATION = {
+    // Device Identity
+    identity: {
+        id: 'Mock-LobsterLock',
+        version: 'v1.4-mock-debug', // Explicitly marked as debug
+        buildType: 'mock' as const, // 'mock' | 'debug' | 'release'
+        mac: '00:1A:2B:3C:4D:5E',
+        port: PORT,
+    },
 
-const TEST_DURATION_SECONDS = 240; // 4 minute test
-const ARMED_TIMEOUT_SECONDS = 600; // 10 minutes to press button
+    // Hardware Capabilities
+    hardware: {
+        numberOfChannels: 4,
+        features: ['footPedal', 'startCountdown', 'statusLed'] as DeviceFeature[],
+        channels: { ch1: true, ch2: true, ch3: true, ch4: true },
+    },
+
+    // System Limits & Timers
+    limits: {
+        longPressSeconds: 1, // 1s for quick triggering
+        minLockSeconds: 10, // 10s minimum for quick lock cycles
+        maxLockSeconds: 3600, // 1 hour
+        minPenaltySeconds: 10, // 10s penalty
+        maxPenaltySeconds: 3600, // 1 hour
+        minPaybackTimeSeconds: 10, // 10s min debt
+        maxPaybackTimeSeconds: 600, // 10 min cap
+        testModeDurationSeconds: 30, // 30s hardware test
+        armedTimeoutSeconds: 300, // 5 min idle timeout
+        failsafeMaxLockSeconds: 600, // 10 min failsafe
+    },
+
+    // Initial "Boot" State
+    initialState: {
+        enableStreaks: true,
+        enablePaybackTime: true,
+        enableRewardCode: true,
+        paybackDurationSeconds: 0, // Configured payback per session
+
+        // Mock Data for "Story Mode"
+        startingStreaks: 5,
+        startingTotalTime: 50000,
+        startingCompleted: 12,
+        startingAborted: 2,
+        startingPendingPayback: 10,
+    },
+};
 
 // --- Mutable Settings (Simulating Flash Storage) ---
-const enableStreaks = true;
-const enablePaybackTime = true;
-const enableRewardCode = true;
-const paybackDurationSeconds = 0;
-const channelConfig = { ch1: true, ch2: true, ch3: true, ch4: true };
+// Initialized from Config
+const enableStreaks = MOCK_CONFIGURATION.initialState.enableStreaks;
+const enablePaybackTime = MOCK_CONFIGURATION.initialState.enablePaybackTime;
+const enableRewardCode = MOCK_CONFIGURATION.initialState.enableRewardCode;
+const paybackDurationSeconds = MOCK_CONFIGURATION.initialState.paybackDurationSeconds;
+const channelConfig = { ...MOCK_CONFIGURATION.hardware.channels };
 
 // --- Dynamic Session State ---
-let streaks = 0;
-let totalTimeLockedSeconds = 0;
-let completed = 0;
-let aborted = 0;
-let pendingPaybackSeconds = 0;
+let streaks = MOCK_CONFIGURATION.initialState.startingStreaks;
+let totalTimeLockedSeconds = MOCK_CONFIGURATION.initialState.startingTotalTime;
+let completed = MOCK_CONFIGURATION.initialState.startingCompleted;
+let aborted = MOCK_CONFIGURATION.initialState.startingAborted;
+let pendingPaybackSeconds = MOCK_CONFIGURATION.initialState.startingPendingPayback;
 
 // State Machine
 let currentState: 'ready' | 'armed' | 'locked' | 'aborted' | 'completed' | 'testing' = 'ready';
@@ -198,10 +242,11 @@ const stopAllTimers = () => {
  */
 const initializeState = () => {
     log('Initializing state (simulating device boot).');
-    log(`   -> Device: ${DEVICE_ID} ${DEVICE_VERSION}`);
-    log(`   -> Channels: ${NUMBER_OF_CHANNELS}`);
-    log(`   -> Features: ${FEATURES.join(', ')}`);
-    log(`   -> Config: Payback ${paybackDurationSeconds}s, Streaks ${enableStreaks}, Code ${enableRewardCode}`);
+    log(`   -> Device: ${MOCK_CONFIGURATION.identity.id} ${MOCK_CONFIGURATION.identity.version}`);
+    log(`   -> Build Type: ${MOCK_CONFIGURATION.identity.buildType.toUpperCase()}`);
+    log(
+        `   -> Limits: MinLock=${MOCK_CONFIGURATION.limits.minLockSeconds}s, TestMode=${MOCK_CONFIGURATION.limits.testModeDurationSeconds}s`
+    );
 
     stopAllTimers();
 
@@ -225,11 +270,12 @@ const initializeState = () => {
         log(`Generated new reward code for this session: ${newReward.code} (${newReward.checksum})`);
     }
 
-    streaks = 5;
-    totalTimeLockedSeconds = 50000;
-    completed = 12;
-    aborted = 2;
-    pendingPaybackSeconds = 10;
+    // Reset stats to config starting values
+    streaks = MOCK_CONFIGURATION.initialState.startingStreaks;
+    totalTimeLockedSeconds = MOCK_CONFIGURATION.initialState.startingTotalTime;
+    completed = MOCK_CONFIGURATION.initialState.startingCompleted;
+    aborted = MOCK_CONFIGURATION.initialState.startingAborted;
+    pendingPaybackSeconds = MOCK_CONFIGURATION.initialState.startingPendingPayback;
 
     currentState = 'ready';
     currentStrategy = 'autoCountdown';
@@ -406,9 +452,12 @@ const stopTestMode = () => {
  * Starts the 1-second test mode interval.
  */
 const startTestInterval = () => {
-    log(`Starting test mode timer for ${TEST_DURATION_SECONDS} seconds.`);
+    // Use the limit from Config
+    const duration = MOCK_CONFIGURATION.limits.testModeDurationSeconds;
+    log(`Starting test mode timer for ${duration} seconds.`);
+
     stopAllTimers();
-    testSecondsRemaining = TEST_DURATION_SECONDS;
+    testSecondsRemaining = duration;
     // NOTE: Watchdog is NOT armed here
 
     testInterval = setInterval(() => {
@@ -463,7 +512,7 @@ const formatTime = (totalSeconds: number): string => {
 const startMDNS = () => {
     log(`Starting mDNS advertisement...`);
     const service = bonjour().publish({
-        name: DEVICE_ID,
+        name: MOCK_CONFIGURATION.identity.id,
         type: 'lobster-lock',
         port: PORT,
         protocol: 'tcp',
@@ -544,7 +593,7 @@ const handlePhysicalButtonLongPress = () => {
  * Simple info endpoint.
  */
 app.get('/', (_, res) => {
-    res.type('text/plain').send(`Mock Lobster-Lock API ${DEVICE_VERSION} (Reboot to Reset)
+    res.type('text/plain').send(`Mock Lobster-Lock API ${MOCK_CONFIGURATION.identity.version} (Reboot to Reset)
 Endpoints:
 - GET /status
 - GET /details
@@ -617,29 +666,32 @@ app.post('/update-wifi', (req, res) => {
 app.get('/details', (_, res) => {
     log('API: /details requested.');
     const response: DeviceDetails = {
-        id: DEVICE_ID,
-        name: DEVICE_ID,
+        id: MOCK_CONFIGURATION.identity.id,
+        name: MOCK_CONFIGURATION.identity.id,
         address: '127.0.0.1',
         port: PORT,
-        mac: '00:1A:2B:3C:4D:5E',
-        version: DEVICE_VERSION,
-        features: FEATURES,
-        buildType: 'mock',
+        mac: MOCK_CONFIGURATION.identity.mac,
+        version: MOCK_CONFIGURATION.identity.version,
+        features: MOCK_CONFIGURATION.hardware.features,
+        buildType: MOCK_CONFIGURATION.identity.buildType,
         channels: { ...channelConfig },
+
+        // System Limits (Mapped from Config)
+        longPressMs: MOCK_CONFIGURATION.limits.longPressSeconds * 1000,
+        minLockSeconds: MOCK_CONFIGURATION.limits.minLockSeconds,
+        maxLockSeconds: MOCK_CONFIGURATION.limits.maxLockSeconds,
+        minPenaltySeconds: MOCK_CONFIGURATION.limits.minPenaltySeconds,
+        maxPenaltySeconds: MOCK_CONFIGURATION.limits.maxPenaltySeconds,
+        testModeDurationSeconds: MOCK_CONFIGURATION.limits.testModeDurationSeconds,
+
         deterrents: {
             enableStreaks: enableStreaks,
             enablePaybackTime: enablePaybackTime,
             paybackDurationSeconds: paybackDurationSeconds,
             enableRewardCode: enableRewardCode,
-            minPaybackTimeSeconds: 300,
-            maxPaybackTimeSeconds: 2700,
+            minPaybackTimeSeconds: MOCK_CONFIGURATION.limits.minPaybackTimeSeconds,
+            maxPaybackTimeSeconds: MOCK_CONFIGURATION.limits.maxPaybackTimeSeconds,
         },
-        longPressMs: 3000,
-        minLockSeconds: 120,
-        maxLockSeconds: 600,
-        minPenaltySeconds: 60,
-        maxPenaltySeconds: 300,
-        testModeDurationSeconds: 240,
     };
     res.json(response);
 });
@@ -750,7 +802,7 @@ app.post('/arm', (req, res) => {
 
     if (currentStrategy === 'buttonTrigger') {
         // Manual Mode: Set timeout and wait
-        triggerTimeoutRemaining = ARMED_TIMEOUT_SECONDS;
+        triggerTimeoutRemaining = MOCK_CONFIGURATION.limits.armedTimeoutSeconds;
         log('   -> Waiting for Button Trigger...');
     } else {
         // Auto Mode: Logs
@@ -779,7 +831,7 @@ app.post('/start-test', (_, res) => {
         });
     }
 
-    log(`🔬 /start-test request. Engaging relays for ${TEST_DURATION_SECONDS}s.`);
+    log(`🔬 /start-test request. Engaging relays for ${MOCK_CONFIGURATION.limits.testModeDurationSeconds}s.`);
     currentState = 'testing';
     startTestInterval(); // Watchdog is NOT armed
 

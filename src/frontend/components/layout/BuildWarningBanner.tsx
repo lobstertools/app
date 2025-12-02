@@ -44,6 +44,8 @@ export const BuildWarningBanner: React.FC = () => {
         warnings.push('beta firmware');
     } else if (firmwareBuild === 'debug') {
         warnings.push('debug firmware');
+    } else if (firmwareBuild === 'local_release') {
+        warnings.push('debug firmware');
     } else if (firmwareBuild === 'mock') {
         warnings.push('mock firmware');
     }

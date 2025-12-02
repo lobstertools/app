@@ -72,24 +72,73 @@ export const SessionConfiguration = () => {
     // Check deterrent configuration
     const enableRewardCode = activeDevice?.deterrents?.enableRewardCode ?? true;
 
-    // Dynamic System Limits
-    const minLockMin = useMemo(
-        () => Math.ceil((activeDevice?.minLockSeconds || 900) / 60),
-        [activeDevice?.minLockSeconds]
+    // ------------------------------------------------------------------------
+    // 1. ADAPTIVE TIME SCALING
+    // ------------------------------------------------------------------------
+
+    // Detect if we are in a developer mode where seconds are preferred over minutes
+    const isDebugMode = useMemo(() => {
+        return activeDevice?.buildType === 'debug' || activeDevice?.buildType === 'mock';
+    }, [activeDevice?.buildType]);
+
+    // Define the Time Scale:
+    // Debug/Mock -> 1 (Values are in seconds)
+    // Release    -> 60 (Values are in minutes)
+    const timeScale = isDebugMode ? 1 : 60;
+    const unitLabel = isDebugMode ? 'sec' : 'min';
+
+    // ------------------------------------------------------------------------
+    // 2. DYNAMIC SYSTEM LIMITS (Scaled to UI Units)
+    // ------------------------------------------------------------------------
+
+    const minLockUnit = useMemo(
+        () => Math.ceil((activeDevice?.minLockSeconds || 900) / timeScale),
+        [activeDevice?.minLockSeconds, timeScale]
     );
-    const maxLockMin = useMemo(
-        () => Math.floor((activeDevice?.maxLockSeconds || 10800) / 60),
-        [activeDevice?.maxLockSeconds]
+    const maxLockUnit = useMemo(
+        () => Math.floor((activeDevice?.maxLockSeconds || 10800) / timeScale),
+        [activeDevice?.maxLockSeconds, timeScale]
     );
 
-    const minPenaltyMin = useMemo(
-        () => Math.ceil((activeDevice?.minPenaltySeconds || 900) / 60),
-        [activeDevice?.minPenaltySeconds]
+    const minPenaltyUnit = useMemo(
+        () => Math.ceil((activeDevice?.minPenaltySeconds || 900) / timeScale),
+        [activeDevice?.minPenaltySeconds, timeScale]
     );
-    const maxPenaltyMin = useMemo(
-        () => Math.floor((activeDevice?.maxPenaltySeconds || 10800) / 60),
-        [activeDevice?.maxPenaltySeconds]
+    const maxPenaltyUnit = useMemo(
+        () => Math.floor((activeDevice?.maxPenaltySeconds || 10800) / timeScale),
+        [activeDevice?.maxPenaltySeconds, timeScale]
     );
+
+    /**
+     * Helper to ensure value is within device limits
+     */
+    const clamp = (val: number, min: number, max: number) => {
+        return Math.max(min, Math.min(val, max));
+    };
+
+    // ------------------------------------------------------------------------
+    // 3. SMART DEFAULTS
+    // ------------------------------------------------------------------------
+
+    const defaultValues = useMemo(() => {
+        // Ideal targets based on Build Type
+        // Debug: 15 seconds. Release: 30 minutes.
+        const targetDuration = isDebugMode ? 15 : 30;
+
+        // Ranges
+        const targetRangeMin = isDebugMode ? 10 : 20;
+        const targetRangeMax = isDebugMode ? 60 : 60; // 60s (debug) or 60m (release)
+
+        // Penalty: 15s (debug) or 15m (release)
+        const targetPenalty = 15;
+
+        return {
+            duration: clamp(targetDuration, minLockUnit, maxLockUnit),
+            rangeMin: clamp(targetRangeMin, minLockUnit, maxLockUnit),
+            rangeMax: clamp(targetRangeMax, minLockUnit, maxLockUnit),
+            penalty: clamp(targetPenalty, minPenaltyUnit, maxPenaltyUnit),
+        };
+    }, [isDebugMode, minLockUnit, maxLockUnit, minPenaltyUnit, maxPenaltyUnit]);
 
     // Calculate enabled channels for the UI based on the new API structure
     const enabledChannels = useMemo(() => {
@@ -144,54 +193,49 @@ export const SessionConfiguration = () => {
     }, [currentState, setupStep, openDeviceModal, registerStartConfigAction, notification]);
 
     /**
-     * Helper to ensure value is within device limits
-     */
-    const clamp = (val: number, min: number, max: number) => {
-        return Math.max(min, Math.min(val, max));
-    };
-
-    /**
      * Handles the form submission.
-     * Converts User Friendly Units (Minutes) -> API Units (Seconds)
+     * Converts User Friendly Units (Minutes OR Seconds) -> API Units (Seconds)
      */
     const handleFinish = (values: SessionFormData) => {
-        // 1. Convert Duration (Minutes -> Seconds)
-        let finalDurationMinutes: number;
+        // 1. Determine Duration in UI Units
+        let finalDurationUnits: number;
 
         if (values.type === 'fixed') {
-            finalDurationMinutes = values.duration || 30; // Default to 30 if undefined
+            finalDurationUnits = values.duration || defaultValues.duration;
         } else if (values.type === 'random') {
-            const min = values.rangeMin || minLockMin;
-            const max = values.rangeMax || maxLockMin;
-            finalDurationMinutes = Math.floor(Math.random() * (max - min + 1) + min);
+            const min = values.rangeMin || minLockUnit;
+            const max = values.rangeMax || maxLockUnit;
+            finalDurationUnits = Math.floor(Math.random() * (max - min + 1) + min);
         } else {
             // Default to 'time-range' logic
+            // The numbers below represent UNITS (Minutes in Release, Seconds in Debug)
             switch (values.timeRangeSelection) {
                 case 'short':
-                    finalDurationMinutes = Math.floor(Math.random() * (45 - 20 + 1) + 20); // 20-45 min
+                    finalDurationUnits = Math.floor(Math.random() * (45 - 20 + 1) + 20); // 20-45 units
                     break;
                 case 'medium':
-                    finalDurationMinutes = Math.floor(Math.random() * (90 - 60 + 1) + 60); // 60-90 min
+                    finalDurationUnits = Math.floor(Math.random() * (90 - 60 + 1) + 60); // 60-90 units
                     break;
                 case 'long':
-                    finalDurationMinutes = Math.floor(Math.random() * (180 - 120 + 1) + 120); // 120-180 min
+                    finalDurationUnits = Math.floor(Math.random() * (180 - 120 + 1) + 120); // 120-180 units
                     break;
                 default:
-                    finalDurationMinutes = 30; // Fallback
+                    finalDurationUnits = defaultValues.duration;
             }
         }
 
-        // Clamp duration to system limits
-        finalDurationMinutes = clamp(finalDurationMinutes, minLockMin, maxLockMin);
-        const lockDurationSeconds = finalDurationMinutes * 60;
+        // Clamp duration to system limits (in units)
+        finalDurationUnits = clamp(finalDurationUnits, minLockUnit, maxLockUnit);
 
-        // 2. Convert Penalty (Minutes -> Seconds)
-        let penaltyMinutes = values.penaltyDuration || 15;
-        // Clamp penalty
-        penaltyMinutes = clamp(penaltyMinutes, minPenaltyMin, maxPenaltyMin);
-        const penaltyDurationSeconds = penaltyMinutes * 60;
+        // Convert to API Seconds
+        const lockDurationSeconds = finalDurationUnits * timeScale;
 
-        // 3. Map Delays (Already Seconds in Form) to Channel Object
+        // 2. Convert Penalty (UI Units -> API Seconds)
+        let penaltyUnits = values.penaltyDuration || defaultValues.penalty;
+        penaltyUnits = clamp(penaltyUnits, minPenaltyUnit, maxPenaltyUnit);
+        const penaltyDurationSeconds = penaltyUnits * timeScale;
+
+        // 3. Map Delays (Always Seconds in Form) to Channel Object
         const channelDelaysSeconds = {
             ch1: values.delayCh1 || 0,
             ch2: values.useMultiChannelDelay ? values.delayCh2 || 0 : values.delayCh1 || 0,
@@ -353,8 +397,8 @@ export const SessionConfiguration = () => {
         const pendingPaybackSeconds = status?.stats?.pendingPaybackSeconds || 0;
         const paybackTimeEnabled = activeDevice?.deterrents?.enablePaybackTime || false;
 
-        const paybackDurationSeconds = activeDevice?.deterrents?.paybackDurationSeconds || 0;
-        const paybackTimeMinutesDisplay = Math.floor(paybackDurationSeconds / 60);
+        // Calculate display for payback (Units depend on scale)
+        const paybackDisplayVal = Math.floor(pendingPaybackSeconds / timeScale);
 
         return (
             <Form
@@ -365,10 +409,13 @@ export const SessionConfiguration = () => {
                     triggerStrategy: 'buttonTrigger',
                     type: 'time-range',
                     timeRangeSelection: 'short',
-                    duration: clamp(30, minLockMin, maxLockMin),
-                    rangeMin: clamp(15, minLockMin, maxLockMin),
-                    rangeMax: clamp(180, minLockMin, maxLockMin),
-                    penaltyDuration: clamp(120, minPenaltyMin, maxPenaltyMin),
+
+                    // Use the Calculated Defaults
+                    duration: defaultValues.duration,
+                    rangeMin: defaultValues.rangeMin,
+                    rangeMax: defaultValues.rangeMax,
+                    penaltyDuration: defaultValues.penalty,
+
                     hideTimer: false,
                     useMultiChannelDelay: false,
                     delayCh1: 10,
@@ -381,7 +428,9 @@ export const SessionConfiguration = () => {
                 <Space direction="vertical" style={{ width: '100%' }}>
                     <Title level={5}>1. Session Duration</Title>
                     <Text type="secondary" style={{ marginTop: -8 }}>
-                        Choose how long the device stays locked.
+                        {isDebugMode
+                            ? 'Development Mode: Times are in SECONDS.'
+                            : 'Choose how long the device stays locked.'}
                     </Text>
 
                     <Form.Item name="type" label="Duration Mode" style={{ marginBottom: 8 }}>
@@ -401,9 +450,9 @@ export const SessionConfiguration = () => {
                                 return (
                                     <Form.Item name="timeRangeSelection" label="Select a Range">
                                         <Radio.Group buttonStyle="solid">
-                                            <Radio.Button value="short">Short: 20-45 min</Radio.Button>
-                                            <Radio.Button value="medium">Medium: 60-90 min</Radio.Button>
-                                            <Radio.Button value="long">Long: 2-3 hours</Radio.Button>
+                                            <Radio.Button value="short">Short: 20-45 {unitLabel}</Radio.Button>
+                                            <Radio.Button value="medium">Medium: 60-90 {unitLabel}</Radio.Button>
+                                            <Radio.Button value="long">Long: 120-180 {unitLabel}</Radio.Button>
                                         </Radio.Group>
                                     </Form.Item>
                                 );
@@ -413,12 +462,12 @@ export const SessionConfiguration = () => {
                                 return (
                                     <Form.Item
                                         name="duration"
-                                        label={`Fixed Duration (${minLockMin}-${maxLockMin} min)`}
+                                        label={`Fixed Duration (${minLockUnit}-${maxLockUnit} ${unitLabel})`}
                                     >
                                         <InputNumber
-                                            min={minLockMin}
-                                            max={maxLockMin}
-                                            addonAfter="min"
+                                            min={minLockUnit}
+                                            max={maxLockUnit}
+                                            addonAfter={unitLabel}
                                             style={{ width: 200 }}
                                         />
                                     </Form.Item>
@@ -428,11 +477,11 @@ export const SessionConfiguration = () => {
                             if (type === 'random') {
                                 return (
                                     <Space align="start">
-                                        <Form.Item name="rangeMin" label="Minimum (min)">
-                                            <InputNumber min={minLockMin} max={maxLockMin} />
+                                        <Form.Item name="rangeMin" label={`Minimum (${unitLabel})`}>
+                                            <InputNumber min={minLockUnit} max={maxLockUnit} />
                                         </Form.Item>
-                                        <Form.Item name="rangeMax" label="Maximum (min)">
-                                            <InputNumber min={minLockMin} max={maxLockMin} />
+                                        <Form.Item name="rangeMax" label={`Maximum (${unitLabel})`}>
+                                            <InputNumber min={minLockUnit} max={maxLockUnit} />
                                         </Form.Item>
                                     </Space>
                                 );
@@ -585,13 +634,13 @@ export const SessionConfiguration = () => {
 
                             <Form.Item
                                 name="penaltyDuration"
-                                label={`Abort Penalty (${minPenaltyMin}-${maxPenaltyMin} min)`}
+                                label={`Abort Penalty (${minPenaltyUnit}-${maxPenaltyUnit} ${unitLabel})`}
                                 style={{ marginTop: 8 }}
                             >
                                 <InputNumber
-                                    min={minPenaltyMin}
-                                    max={maxPenaltyMin}
-                                    addonAfter="min"
+                                    min={minPenaltyUnit}
+                                    max={maxPenaltyUnit}
+                                    addonAfter={unitLabel}
                                     style={{ width: 200 }}
                                 />
                             </Form.Item>
@@ -632,8 +681,7 @@ export const SessionConfiguration = () => {
                                     <Text type="secondary">
                                         Aborting will add{' '}
                                         <Text strong>
-                                            {paybackTimeMinutesDisplay}{' '}
-                                            {paybackTimeMinutesDisplay > 1 ? 'minutes' : 'minute'}
+                                            {paybackDisplayVal} {paybackDisplayVal > 1 ? unitLabel + 's' : unitLabel}
                                         </Text>{' '}
                                         to your next session.
                                     </Text>
@@ -641,7 +689,8 @@ export const SessionConfiguration = () => {
                             </Col>
                             <Col span={6} style={{ textAlign: 'right' }}>
                                 <Text strong type="warning" style={{ fontSize: '1.2em' }}>
-                                    +{paybackTimeMinutesDisplay}m
+                                    +{paybackDisplayVal}
+                                    {unitLabel}
                                 </Text>
                             </Col>
                         </Row>

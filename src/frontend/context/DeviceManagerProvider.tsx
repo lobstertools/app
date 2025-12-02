@@ -174,7 +174,7 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
         } else if (fwVersion.includes('debug')) {
             fullDevice.buildType = 'debug';
         } else if (fwVersion.includes('local')) {
-            fullDevice.buildType = 'debug';
+            fullDevice.buildType = 'local_release';
         } else if (fwVersion.includes('beta')) {
             fullDevice.buildType = 'beta';
         } else {

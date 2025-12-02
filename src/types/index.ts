@@ -34,7 +34,7 @@ export type TriggerStrategy =
     | 'autoCountdown' // Device is actively ticking down channel delays
     | 'buttonTrigger'; // Device is waiting for physical button input
 
-export type BuildType = 'beta' | 'debug' | 'mock' | 'release';
+export type BuildType = 'beta' | 'debug' | 'mock' | 'local_release' | 'release';
 
 // ============================================================================
 // 2. Connectivity & Discovery
