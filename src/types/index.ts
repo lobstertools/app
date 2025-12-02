@@ -9,7 +9,7 @@ import { Peripheral } from '@abandonware/noble';
  * UI uses these to infer interaction logic (e.g. "Hold for 3s").
  */
 export const DEVICE_FEATURES = [
-    'footPedal', // For long press and double click support
+    'footPedal', // For long-press and double click support
     'startCountdown', // Supports auto-sequence
     'statusLed', // Supports a status LED
 ] as const;
@@ -189,7 +189,7 @@ export interface SessionStatus {
      */
     triggerStrategy?: TriggerStrategy;
 
-    /** * Timeout waiting for the long press session start
+    /** * Timeout waiting for the double-click session start
      */
     triggerTimeoutRemainingSeconds?: number;
 

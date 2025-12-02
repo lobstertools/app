@@ -84,7 +84,7 @@ export const SessionLockModal = () => {
                 {hasFootPedal && (
                     <Space style={{ marginTop: 16, color: 'rgba(255, 255, 255, 0.65)' }}>
                         <ThunderboltOutlined />
-                        <Text style={{ color: 'inherit' }}>Double-click foot pedal to abort</Text>
+                        <Text style={{ color: 'inherit' }}>Long-press foot pedal to abort</Text>
                     </Space>
                 )}
             </div>

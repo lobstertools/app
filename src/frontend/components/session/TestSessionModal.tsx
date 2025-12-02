@@ -169,7 +169,7 @@ export const TestSessionModal = () => {
                             Stop Hardware Test
                         </Button>
                         <Text type="secondary" style={{ fontSize: '12px', textAlign: 'center', display: 'block' }}>
-                            Or double-click foot pedal to abort
+                            Or long-press foot pedal to abort
                         </Text>
                     </Space>
                 </Col>

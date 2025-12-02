@@ -536,10 +536,16 @@ process.stdin.on('keypress', (_, key) => {
     // CTRL+C to exit
     if (key.ctrl && key.name === 'c') process.exit();
 
-    // 'L' for Long Press (Simulate Button)
+    // 'L' for Long-Press (Simulate Button)
     if (key.name === 'l') {
-        log('⌨️  KEYPRESS: Simulated Long Press (Button).');
+        log('⌨️  KEYPRESS: Simulated Long-Press (Button).');
         handlePhysicalButtonLongPress();
+    }
+
+    // 'D' for Double-Click (Simulate Button)
+    if (key.name === 'd') {
+        log('⌨️  KEYPRESS: Simulated Double-Click (Button).');
+        handlePhysicalButtonDoubleClick();
     }
 
     // Up/Down arrows to adjust timers
@@ -562,23 +568,30 @@ process.stdin.on('keypress', (_, key) => {
 });
 
 /**
- * Simulates the logic within the C++ handleLongPress function.
+ * Long-press = abort
  */
 const handlePhysicalButtonLongPress = () => {
-    if (currentState === 'armed') {
-        // In ARMED state, long press triggers lock if strategy is buttonTrigger
-        if (currentStrategy === 'buttonTrigger') {
-            log('Button Trigger Received! Locking session.');
-            startLockInterval();
-        } else {
-            log('Button Press ignored (Auto mode active).');
-        }
-    } else if (currentState === 'locked') {
-        // In LOCKED state, long press triggers abort
+    if (currentState === 'locked') {
+        // In LOCKED state, long-press triggers abort
         log('Button Abort Triggered (Emergency Stop).');
         triggerAbort('Physical Button');
     } else {
-        log(`Button Press ignored in state: ${currentState}`);
+        log(`Long-Press ignored in state: ${currentState}`);
+    }
+};
+
+/**
+ * Double-click = start
+ */
+const handlePhysicalButtonDoubleClick = () => {
+    if (currentState === 'armed') {
+        // In ARMED state, double-click triggers lock if strategy is buttonTrigger
+        if (currentStrategy === 'buttonTrigger') {
+            log('Double-Click Trigger Received! Locking session.');
+            startLockInterval();
+        } else {
+            log('Double-Click ignored (Auto mode active).');
+        }
     }
 };
 
@@ -945,6 +958,7 @@ app.listen(PORT, '0.0.0.0', () => {
     initializeState();
     startMDNS();
     log(`⌨️  KEYBINDINGS ENABLED: Use UP/DOWN arrow keys in this terminal to adjust the timer.`);
-    log(`   Use 'L' key to simulate LONG PRESS (Start/Abort).`);
+    log(`   Use 'L' key to simulate LONG PRESS (Abort).`);
+    log(`   Use 'D' key to simulate DOUBLE-CLICK (Start).`);
     log(`   Use CTRL+C to exit.`);
 });
