@@ -21,6 +21,7 @@ import { DeviceSettingsModal } from '../device/DeviceSettingsModal';
 import { BuildWarningBanner } from './BuildWarningBanner';
 import { AboutAppModal } from '../app/AboutModal';
 import { TestSessionModal } from '../session/TestSessionModal';
+import { ReadinessModal } from '../device/ReadinessModal';
 
 /**
  * Inner component to hold the main layout and logic.
@@ -119,6 +120,7 @@ export const AppContent = ({ theme, toggleTheme }: { theme: 'light' | 'dark'; to
                 <DeviceManagerModal />
                 <DeviceLogModal />
                 <WelcomeScreen />
+                <ReadinessModal />
                 <ApplicationSettingsModal />
                 <DeviceSettingsModal />
                 <AboutAppModal />

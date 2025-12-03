@@ -216,7 +216,6 @@ export const RewardDisplay = () => {
     return (
         <div style={placeholderStyles}>
             <Space direction="vertical" align="center" size="middle">
-                <Spin size="large" />
                 <Text>Waiting for device to generate new reward code...</Text>
             </Space>
         </div>

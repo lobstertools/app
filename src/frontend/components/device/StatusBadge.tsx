@@ -21,6 +21,10 @@ export const StatusBadge = () => {
         let timerValue = '';
 
         switch (currentState) {
+            case 'validating':
+                color = '#8c8c8c';
+                text = 'VALIDATING (System Checks)';
+                break;
             // --- Session States ---
             case 'locked':
                 color = '#faad14';

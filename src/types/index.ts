@@ -20,6 +20,7 @@ export type DeviceFeature = (typeof DEVICE_FEATURES)[number];
  * Describes the internal logic state of the device.
  */
 export type DeviceState =
+    | 'validating' // Validating hardware
     | 'ready' // Idle, waiting for command
     | 'armed' // Safety off, waiting for Trigger (Auto or Button)
     | 'locked' // Point of no return, session active
@@ -95,7 +96,6 @@ export interface DiscoveredDevice {
 export interface DeviceDetails {
     id: string;
     name: string;
-    longPressMs: number;
     address: string;
     port: number;
     mac: string;
@@ -104,6 +104,7 @@ export interface DeviceDetails {
     features: DeviceFeature[];
 
     // --- System Limits ---
+    longPressMs: number;
     minLockSeconds: number;
     maxLockSeconds: number;
     minPenaltySeconds: number;
