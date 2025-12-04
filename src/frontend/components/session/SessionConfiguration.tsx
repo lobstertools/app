@@ -399,7 +399,7 @@ export const SessionConfiguration = () => {
         const paybackTimeEnabled = activeDevice?.deterrents?.enablePaybackTime || false;
 
         // Calculate display for payback (Units depend on scale)
-        const paybackDisplayVal = Math.floor(paybackDurationSeconds / 60);
+        const paybackDisplayVal = Math.floor(paybackDurationSeconds / timeScale);
 
         return (
             <Form

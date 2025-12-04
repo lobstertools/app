@@ -68,7 +68,7 @@ const MOCK_CONFIGURATION = {
         enableStreaks: true,
         enablePaybackTime: true,
         enableRewardCode: true,
-        paybackDurationSeconds: 0, // Configured payback per session
+        paybackDurationSeconds: 20,
 
         // Mock Data for "Story Mode"
         startingStreaks: 5,
