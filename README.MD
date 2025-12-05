@@ -56,7 +56,7 @@ This runs the full stack inside the Electron wrapper, which is necessary for tes
 
 ```bash
 # Runs frontend, backend, mock-lock, and electron app
-yarn dev:electron
+yarn dev
 ```
 
 **2. Standard Web Development**
@@ -65,7 +65,7 @@ This runs the React frontend, the Node.js backend, and the mock device server. T
 
 ```bash
 # Runs frontend, backend, and mock-lock concurrently
-yarn dev
+yarn dev:web
 ```
 
   * **Frontend UI:** `http://localhost:5173`
