@@ -1,8 +1,9 @@
 import { EyeInvisibleOutlined, StopOutlined, ThunderboltOutlined } from '@ant-design/icons';
-import { Typography, Button, Modal, Statistic, Space } from 'antd';
+import { Typography, Button, Modal, Statistic, Space, Card } from 'antd';
 import { formatSeconds } from '../../utils/time';
 import { useSession } from '../../context/useSessionContext';
 import { useDeviceManager } from '../../context/useDeviceManager';
+import { PressProgressBar } from '../device/PressProgress';
 
 const { Title, Text } = Typography;
 
@@ -23,6 +24,12 @@ export const SessionLockModal = () => {
 
     // Calculate time locally
     const timeRemaining = status?.timers?.lockRemaining || 0;
+
+    // --- Abort Progress Logic ---
+    const hw = status?.hardware;
+    const isPressed = hw?.buttonPressed || false;
+    const currentPressMs = hw?.currentPressDurationMs || 0;
+    const thresholdMs = activeDevice?.longPressMs || 3000;
 
     const modalBodyStyle: React.CSSProperties = {
         minHeight: '80vh',
@@ -77,12 +84,17 @@ export const SessionLockModal = () => {
                     Abort Session
                 </Button>
 
-                {/* Show hardware shortcut hint if supported */}
+                {/* Show hardware shortcut hint/progress if supported */}
                 {hasFootPedal && (
-                    <Space style={{ marginTop: 16, color: 'rgba(255, 255, 255, 0.65)' }}>
-                        <ThunderboltOutlined />
-                        <Text style={{ color: 'inherit' }}>Long-press foot pedal to abort</Text>
-                    </Space>
+                    <div style={{ marginTop: 24, width: '300px' }}>
+                        <Card size="small">
+                            <Space style={{ marginBottom: 4 }}>
+                                <ThunderboltOutlined />
+                                <Text style={{ fontSize: '12px' }}>Long-press pedal to abort</Text>
+                            </Space>
+                            <PressProgressBar currentMs={currentPressMs} thresholdMs={thresholdMs} isPressed={isPressed} />
+                        </Card>
+                    </div>
                 )}
             </div>
         </Modal>

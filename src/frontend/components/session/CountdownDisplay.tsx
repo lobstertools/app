@@ -4,6 +4,7 @@ import { Typography, Button, Card, Spin, Divider, Row, Col, Statistic, Descripti
 import { ThunderboltOutlined, FieldTimeOutlined, EyeInvisibleOutlined, HistoryOutlined } from '@ant-design/icons';
 import { formatSeconds } from '../../utils/time';
 import { useMemo } from 'react';
+import { PressProgressBar } from '../device/PressProgress';
 
 const { Title, Text } = Typography;
 
@@ -32,6 +33,12 @@ export const CountdownDisplay = () => {
 
     // --- Early Return ---
     if (!status || !activeDevice) return <Spin />;
+
+    // --- Abort Progress Data ---
+    const hw = status?.hardware;
+    const isPressed = hw?.buttonPressed || false;
+    const currentPressMs = hw?.currentPressDurationMs || 0;
+    const thresholdMs = activeDevice?.longPressMs || 3000;
 
     // Use the strategy from the active config (or fallback to status for robustness)
     const isManualTrigger = activeConfig?.triggerStrategy === 'buttonTrigger';
@@ -176,6 +183,11 @@ export const CountdownDisplay = () => {
 
                 {renderConfigSummary()}
 
+                {/* Progress Bar for Manual Abort */}
+                <div style={{ marginBottom: 12, textAlign: 'left' }}>
+                    <PressProgressBar currentMs={currentPressMs} thresholdMs={thresholdMs} isPressed={isPressed} />
+                </div>
+
                 <Button danger onClick={abortSession} size="large" style={{ width: '100%' }}>
                     Cancel Arming
                 </Button>
@@ -228,6 +240,11 @@ export const CountdownDisplay = () => {
             </Row>
 
             {renderConfigSummary()}
+
+            {/* Progress Bar for Manual Abort */}
+            <div style={{ marginBottom: 12, textAlign: 'left' }}>
+                <PressProgressBar currentMs={currentPressMs} thresholdMs={thresholdMs} isPressed={isPressed} />
+            </div>
 
             <Button danger onClick={abortSession} size="large" style={{ width: '100%' }}>
                 Cancel Start
