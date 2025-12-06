@@ -57,12 +57,7 @@ export const FlasherScreen = ({ port, onSuccess, onCancel }: FlasherScreenProps)
     };
 
     // Helper to render a file selection row
-    const renderFileSelector = (
-        label: string,
-        path: string | null,
-        setter: (p: string | null) => void,
-        placeholder: string
-    ) => {
+    const renderFileSelector = (label: string, path: string | null, setter: (p: string | null) => void, placeholder: string) => {
         const displayPath = path ? '...' + path.substring(Math.max(0, path.length - 40)) : placeholder;
 
         return (
@@ -119,26 +114,11 @@ export const FlasherScreen = ({ port, onSuccess, onCancel }: FlasherScreenProps)
                 }}
             >
                 <Space direction="vertical" style={{ width: '100%' }}>
-                    {renderFileSelector(
-                        '1. Bootloader (bootloader.bin)',
-                        bootloaderPath,
-                        setBootloaderPath,
-                        'Select bootloader.bin...'
-                    )}
+                    {renderFileSelector('1. Bootloader (bootloader.bin)', bootloaderPath, setBootloaderPath, 'Select bootloader.bin...')}
 
-                    {renderFileSelector(
-                        '2. Partitions (partitions.bin)',
-                        partitionsPath,
-                        setPartitionsPath,
-                        'Select partitions.bin...'
-                    )}
+                    {renderFileSelector('2. Partitions (partitions.bin)', partitionsPath, setPartitionsPath, 'Select partitions.bin...')}
 
-                    {renderFileSelector(
-                        '3. Firmware (firmware.bin)',
-                        firmwarePath,
-                        setFirmwarePath,
-                        'Select firmware.bin...'
-                    )}
+                    {renderFileSelector('3. Firmware (firmware.bin)', firmwarePath, setFirmwarePath, 'Select firmware.bin...')}
 
                     <Divider style={{ margin: '12px 0' }} />
 

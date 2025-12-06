@@ -119,9 +119,7 @@ export const ApplicationSettingsModal = () => {
         const defaultOption = allOptions.find((opt) => opt.value === '');
 
         // Get all other options and sort them by label
-        const otherOptions = allOptions
-            .filter((opt) => opt.value !== '')
-            .sort((a, b) => a.label.localeCompare(b.label));
+        const otherOptions = allOptions.filter((opt) => opt.value !== '').sort((a, b) => a.label.localeCompare(b.label));
 
         // Return the final list with "Default" at the top
         return defaultOption ? [defaultOption, ...otherOptions] : otherOptions;
@@ -167,24 +165,13 @@ export const ApplicationSettingsModal = () => {
                     marginTop: 12,
                 }}
             >
-                <Form
-                    form={form}
-                    layout="vertical"
-                    onValuesChange={handleValuesChange}
-                    initialValues={{ locale: locale }}
-                >
-                    <Form.Item
-                        name="locale"
-                        label="Regional Settings"
-                        tooltip="Determines the formatting for dates and numbers."
-                    >
+                <Form form={form} layout="vertical" onValuesChange={handleValuesChange} initialValues={{ locale: locale }}>
+                    <Form.Item name="locale" label="Regional Settings" tooltip="Determines the formatting for dates and numbers.">
                         <Select
                             options={localeOptions}
                             showSearch
                             placeholder="Select a regional setting"
-                            filterOption={(input, option) =>
-                                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                            }
+                            filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
                         />
                     </Form.Item>
                 </Form>

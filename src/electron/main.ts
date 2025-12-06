@@ -148,9 +148,7 @@ function getEsptoolPath() {
         if (arch === 'x64') {
             toolSubPath = path.join('esptool-windows-amd64', 'esptool.exe');
         } else {
-            throw new Error(
-                `Unsupported Windows architecture: ${arch}. Please add the correct esptool binary to assets/bin.`
-            );
+            throw new Error(`Unsupported Windows architecture: ${arch}. Please add the correct esptool binary to assets/bin.`);
         }
     } else if (platform === 'darwin') {
         if (arch === 'arm64') {
@@ -170,9 +168,7 @@ function getEsptoolPath() {
             // Note: process.arch 'arm' typically maps to armv7
             toolSubPath = path.join('esptool-linux-armv7', binName);
         } else {
-            throw new Error(
-                `Unsupported Linux architecture: ${arch}. Please add esptool binaries for Linux to assets/bin.`
-            );
+            throw new Error(`Unsupported Linux architecture: ${arch}. Please add esptool binaries for Linux to assets/bin.`);
         }
     } else {
         throw new Error(`Unsupported platform for esptool: ${platform}`);

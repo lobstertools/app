@@ -166,11 +166,7 @@ export const RewardDisplay = () => {
                 <Card size="small" style={{ backgroundColor: token.colorFillAlter }}>
                     <Row justify="space-between" align="middle">
                         <Col>
-                            <Statistic
-                                value={currentReward.checksum}
-                                prefix={<IdcardOutlined />}
-                                valueStyle={{ fontSize: '1rem' }}
-                            />
+                            <Statistic value={currentReward.checksum} prefix={<IdcardOutlined />} valueStyle={{ fontSize: '1rem' }} />
                             <Text
                                 type="secondary"
                                 style={{

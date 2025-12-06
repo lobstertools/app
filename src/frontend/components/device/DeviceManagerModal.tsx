@@ -49,10 +49,7 @@ export const DeviceManagerModal = () => {
 
     // Filter devices
     const readyDevices = useMemo(() => discoveredDevices.filter((d) => d.state === 'ready'), [discoveredDevices]);
-    const newDevices = useMemo(
-        () => discoveredDevices.filter((d) => d.state === 'new_unprovisioned'),
-        [discoveredDevices]
-    );
+    const newDevices = useMemo(() => discoveredDevices.filter((d) => d.state === 'new_unprovisioned'), [discoveredDevices]);
 
     // Scan for all device types when modal opens
     useEffect(() => {
@@ -369,13 +366,7 @@ export const DeviceManagerModal = () => {
             return renderProvisioningScreen();
         }
         if (flashingPort) {
-            return (
-                <FlasherScreen
-                    port={flashingPort}
-                    onCancel={() => setFlashingPort(null)}
-                    onSuccess={handleFlashSuccess}
-                />
-            );
+            return <FlasherScreen port={flashingPort} onCancel={() => setFlashingPort(null)} onSuccess={handleFlashSuccess} />;
         }
         // Default: Show tabs
         return <Tabs defaultActiveKey="ready" items={tabItems} />;

@@ -47,12 +47,12 @@ const WelcomeStep = () => {
                 This system is "strict" because it's designed to remove loopholes. Cheating is not an option.
                 <ul>
                     <li>
-                        <strong>Reboot-as-Abort:</strong> If the device loses power (e.g., you unplug it) while a
-                        session is active, it's treated as an <strong>abort</strong>.
+                        <strong>Reboot-as-Abort:</strong> If the device loses power (e.g., you unplug it) while a session is active, it's
+                        treated as an <strong>abort</strong>.
                     </li>
                     <li>
-                        <strong>Strict Abort Logic:</strong> Aborting resets session streak, tracks the abort, and can
-                        apply a<strong> "time payback" penalty</strong> to your
+                        <strong>Strict Abort Logic:</strong> Aborting resets session streak, tracks the abort, and can apply a
+                        <strong> "time payback" penalty</strong> to your
                         <i> next</i> session.
                     </li>
                     <li>
@@ -148,8 +148,8 @@ const HardwareStep = () => {
                         <Paragraph type="secondary">
                             Plug your built controller into this computer via USB.
                             <br />
-                            Open the <strong>Device Manager</strong> (⚙️ icon) &gt; <strong>Device Flasher</strong> tab
-                            to upload the firmware.
+                            Open the <strong>Device Manager</strong> (⚙️ icon) &gt; <strong>Device Flasher</strong> tab to upload the
+                            firmware.
                         </Paragraph>
                     </Space>
                 </Col>
@@ -174,8 +174,7 @@ const RewardStep = () => {
                         <strong> Reward Lock</strong>.
                     </Paragraph>
                     <Paragraph>
-                        You lock away something you <strong>want</strong> (like keys or a treat) in a separate box using
-                        this specific
+                        You lock away something you <strong>want</strong> (like keys or a treat) in a separate box using this specific
                         <strong> Master Lock 1500iD Speed Dial™</strong>.
                     </Paragraph>
 
@@ -197,8 +196,7 @@ const RewardStep = () => {
                             </Text>
                         </Col>
                         <Col flex="auto">
-                            <Text strong>Generate Code:</Text> The <strong>controller</strong> generates a new, random
-                            directional code.
+                            <Text strong>Generate Code:</Text> The <strong>controller</strong> generates a new, random directional code.
                         </Col>
                     </Row>
 
@@ -216,8 +214,8 @@ const RewardStep = () => {
                             </Text>
                         </Col>
                         <Col flex="auto">
-                            <Text strong>Program Lock:</Text> You manually <strong>program this code</strong> into your
-                            Master Lock and use it to lock away your reward.
+                            <Text strong>Program Lock:</Text> You manually <strong>program this code</strong> into your Master Lock and use
+                            it to lock away your reward.
                         </Col>
                     </Row>
 
@@ -313,13 +311,11 @@ const SafetyStep = () => {
                         Your Safety: The Abort Pedal
                     </Title>
                     <Paragraph>
-                        Despite its strictness, your safety is the #1 priority. The hardware instructions include
-                        building a physical
+                        Despite its strictness, your safety is the #1 priority. The hardware instructions include building a physical
                         <strong> "Abort Pedal"</strong> (a foot pedal or large button).
                     </Paragraph>
                     <Paragraph>
-                        This pedal is your <strong>emergency safety release</strong>. It connects directly to the
-                        controller and will
+                        This pedal is your <strong>emergency safety release</strong>. It connects directly to the controller and will
                         <strong> immediately</strong> cut power to the MagLock, even if your Wi-Fi or computer fails.
                     </Paragraph>
 
@@ -339,8 +335,7 @@ const SafetyStep = () => {
                         <Col flex="auto">
                             <Text strong>This is still an Abort</Text>
                             <Paragraph style={{ margin: 0 }} type="secondary">
-                                Using the pedal follows the same strict logic (your reward will be delayed), but it
-                                guarantees you can
+                                Using the pedal follows the same strict logic (your reward will be delayed), but it guarantees you can
                                 <strong> always</strong> get out in an emergency.
                             </Paragraph>
                         </Col>

@@ -60,8 +60,8 @@ export const BuildWarningBanner: React.FC = () => {
 
     const description = (
         <span>
-            You are using a <strong>{versionString}</strong>. This is unfinished software currently in testing and not
-            officially released. Please use with caution.
+            You are using a <strong>{versionString}</strong>. This is unfinished software currently in testing and not officially released.
+            Please use with caution.
         </span>
     );
 

@@ -534,8 +534,16 @@ readline.emitKeypressEvents(process.stdin);
 if (process.stdin.isTTY) process.stdin.setRawMode(true);
 
 process.stdin.on('keypress', (_, key) => {
-    // CTRL+C to exit
-    if (key.ctrl && key.name === 'c') process.exit();
+    // Safety check: ensure key is defined
+    if (!key) return;
+
+    // CTRL+C to exit (Standard convention)
+    if (key.ctrl && key.name === 'c') {
+        process.exit();
+    }
+
+    // IGNORE other Control/Meta combinations to prevent accidental EOF (Ctrl+D) or shell signals
+    if (key.ctrl || key.meta) return;
 
     // 'L' for Long-Press (Simulate Button)
     if (key.name === 'l') {
@@ -545,8 +553,14 @@ process.stdin.on('keypress', (_, key) => {
 
     // 'D' for Double-Click (Simulate Button)
     if (key.name === 'd') {
-        log('⌨️  KEYPRESS: Simulated Double-Click (Button).');
-        handlePhysicalButtonDoubleClick();
+        // Debounce / State Check: Only allow if we are strictly in ARMED state
+        if (currentState === 'armed') {
+            log('⌨️  KEYPRESS: Simulated Double-Click (Button).');
+            handlePhysicalButtonDoubleClick();
+        } else {
+            // Optional: Log ignore to verify it's not "restarting"
+            // log(`⌨️  Ignored 'd' press in state: ${currentState}`);
+        }
     }
 
     // Up/Down arrows to adjust timers
@@ -560,10 +574,6 @@ process.stdin.on('keypress', (_, key) => {
         } else if (currentState === 'aborted') {
             rewardRemaining = Math.max(0, rewardRemaining + adjustment);
             log(`🔼🔽 ${action} penalty time. New remaining: ${formatTime(rewardRemaining)}`);
-        } else if (currentState === 'armed') {
-            log(`🔼🔽 Timer adjustment disabled during arming.`);
-        } else if (currentState === 'testing') {
-            log(`🔼🔽 Timer adjustment disabled during test mode.`);
         }
     }
 });

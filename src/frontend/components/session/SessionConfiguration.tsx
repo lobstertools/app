@@ -743,7 +743,7 @@ export const SessionConfiguration = () => {
      * Content for Step 4: Session completed.
      */
     const renderSessionCompletedContent = () => (
-        <Card bordered={false}>
+        <Card variant="borderless">
             <div style={{ textAlign: 'center', padding: '24px 0' }}>
                 <UnlockOutlined style={{ fontSize: 48, color: '#52c41a' }} />
                 <Title level={3} style={{ marginTop: 16 }}>

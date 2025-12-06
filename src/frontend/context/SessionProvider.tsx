@@ -210,7 +210,6 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         else setRewardHistory([]);
     }, [currentState, fetchRewardHistory]);
 
-
     const contextValue: SessionContextState = {
         status,
         currentState,

@@ -59,13 +59,7 @@ export const AboutAppModal = () => {
 
                 {/* Links */}
                 <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                    <Button
-                        href="https://lobstertools.github.io"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        icon={<GlobalOutlined />}
-                        block
-                    >
+                    <Button href="https://lobstertools.github.io" target="_blank" rel="noopener noreferrer" icon={<GlobalOutlined />} block>
                         Project Website
                     </Button>
                     <Button

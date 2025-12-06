@@ -1,11 +1,4 @@
-import {
-    MoonOutlined,
-    SunOutlined,
-    QuestionCircleOutlined,
-    SettingOutlined,
-    BugOutlined,
-    InfoCircleOutlined,
-} from '@ant-design/icons';
+import { MoonOutlined, SunOutlined, QuestionCircleOutlined, SettingOutlined, BugOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { Button, Dropdown, MenuProps, Modal, Tooltip } from 'antd';
 import { useAppRuntime } from '../../context/useAppRuntime';
 import { InternalDebugView } from '../debug/InternalDebugView';
