@@ -1,9 +1,9 @@
 import { EyeInvisibleOutlined, StopOutlined, ThunderboltOutlined } from '@ant-design/icons';
-import { Typography, Button, Modal, Statistic, Space, Card } from 'antd';
+import { Typography, Button, Modal, Statistic, Space } from 'antd';
 import { formatSeconds } from '../../utils/time';
 import { useSession } from '../../context/useSessionContext';
 import { useDeviceManager } from '../../context/useDeviceManager';
-import { PressProgressBar } from '../device/PressProgress';
+import { PressProgressBar } from '../device/PressProgressBar';
 
 const { Title, Text } = Typography;
 
@@ -25,12 +25,6 @@ export const SessionLockModal = () => {
     // Calculate time locally
     const timeRemaining = status?.timers?.lockRemaining || 0;
 
-    // --- Abort Progress Logic ---
-    const hw = status?.hardware;
-    const isPressed = hw?.buttonPressed || false;
-    const currentPressMs = hw?.currentPressDurationMs || 0;
-    const thresholdMs = activeDevice?.longPressMs || 3000;
-
     const modalBodyStyle: React.CSSProperties = {
         minHeight: '80vh',
         display: 'flex',
@@ -38,6 +32,20 @@ export const SessionLockModal = () => {
         justifyContent: 'center',
         alignItems: 'center',
         padding: '48px',
+    };
+
+    // Styling for the unified abort control group
+    const abortControlStyle: React.CSSProperties = {
+        marginTop: 64,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        padding: '24px',
+        background: 'rgba(255, 255, 255, 0.05)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        borderRadius: '16px',
+        width: '100%',
+        maxWidth: '600px',
     };
 
     return (
@@ -79,21 +87,37 @@ export const SessionLockModal = () => {
                 )}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 64 }}>
-                <Button type="primary" danger icon={<StopOutlined />} onClick={abortSession} size="large" style={{ minWidth: '300px' }}>
+            {/* Unified Abort Controls */}
+            <div style={abortControlStyle}>
+                <Button
+                    type="primary"
+                    danger
+                    icon={<StopOutlined />}
+                    onClick={abortSession}
+                    size="large"
+                    block
+                    style={{ height: '50px', fontSize: '16px' }}
+                >
                     Abort Session
                 </Button>
 
                 {/* Show hardware shortcut hint/progress if supported */}
                 {hasFootPedal && (
-                    <div style={{ marginTop: 24, width: '300px' }}>
-                        <Card size="small">
-                            <Space style={{ marginBottom: 4 }}>
+                    <div style={{ width: '100%', marginTop: 20 }}>
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                marginBottom: 8,
+                            }}
+                        >
+                            <Space size="small">
                                 <ThunderboltOutlined />
-                                <Text style={{ fontSize: '12px' }}>Long-press pedal to abort</Text>
+                                <Text style={{ color: 'inherit', fontSize: '12px' }}>Long-press pedal to abort</Text>
                             </Space>
-                            <PressProgressBar currentMs={currentPressMs} thresholdMs={thresholdMs} isPressed={isPressed} />
-                        </Card>
+                        </div>
+                        <PressProgressBar />
                     </div>
                 )}
             </div>

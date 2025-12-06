@@ -3,7 +3,7 @@ import { ThunderboltOutlined, WifiOutlined, DashboardOutlined, SafetyCertificate
 import { useSession } from '../../context/useSessionContext';
 import { useDeviceManager } from '../../context/useDeviceManager';
 import { formatSeconds } from '../../utils/time';
-import { PressProgressBar } from '../device/PressProgress';
+import { PressProgressBar } from '../device/PressProgressBar';
 
 const { Text } = Typography;
 
@@ -100,7 +100,7 @@ export const TestSessionModal = () => {
                                     <div style={{ fontSize: '14px', padding: '4px 0' }}>{getButtonTag()}</div>
                                 </div>
 
-                                <PressProgressBar currentMs={currentPressMs} thresholdMs={longPressThresholdMs} isPressed={isPressed} />
+                                <PressProgressBar />
 
                                 <Divider style={{ margin: '8px 0' }} />
 

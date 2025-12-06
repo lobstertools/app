@@ -1,27 +1,47 @@
+import { useDeviceManager } from '../../context/useDeviceManager';
+import { useSession } from '../../context/useSessionContext';
+
 import { Progress, Typography } from 'antd';
+
 const { Text } = Typography;
 
-interface PressProgressProps {
-    currentMs: number;
-    thresholdMs: number;
-    isPressed: boolean;
-}
+export const PressProgressBar = () => {
+    // 1. Access Global State
+    const { status } = useSession();
+    const { activeDevice } = useDeviceManager();
 
-export const PressProgressBar = ({ currentMs, thresholdMs, isPressed }: PressProgressProps) => {
-    // Calculate percentage (capped at 100%)
+    // 2. Feature Check: Only render if the device supports the foot pedal
+    // The 'features' array is part of the DeviceDetails interface
+    const hasFootPedal = activeDevice?.features?.includes('footPedal');
+
+    if (!hasFootPedal) {
+        return null;
+    }
+
+    // 3. Derive specific values
+    const isPressed = status?.hardware?.buttonPressed ?? false; //
+    const currentMs = status?.hardware?.currentPressDurationMs ?? 0; //
+
+    // Default to 0 if device settings aren't loaded yet
+    const thresholdMs = activeDevice?.longPressMs ?? 0; //
+
+    // 4. Calculate percentage (capped at 100%)
     const rawPercent = thresholdMs > 0 ? (currentMs / thresholdMs) * 100 : 0;
     const percent = Math.min(rawPercent, 100);
 
-    // Visual Logic
+    // 5. Visual Logic
     const isComplete = percent >= 100;
     const strokeColor = isComplete ? '#52c41a' : '#1890ff'; // Green if complete, Blue if holding
     const formatTime = (ms: number) => (ms / 1000).toFixed(1) + 's';
+
+    // Safety: If threshold is 0 (config error or not loaded), don't render
+    if (!thresholdMs) return null;
 
     return (
         <div style={{ marginTop: 8 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
                 <Text type="secondary" style={{ fontSize: '12px' }}>
-                    Hold Duration
+                    Hold to abort
                 </Text>
                 <Text style={{ fontSize: '12px', fontFamily: 'monospace' }}>
                     {formatTime(isPressed ? currentMs : 0)} / {formatTime(thresholdMs)}
