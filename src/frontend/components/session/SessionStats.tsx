@@ -1,14 +1,6 @@
-// src/components/session/SessionStats.tsx
-
 import { useSession } from '../../context/useSessionContext';
 import { Space, Tag, Tooltip } from 'antd';
-import {
-    FireOutlined,
-    CheckCircleOutlined,
-    CloseCircleOutlined,
-    ClockCircleOutlined,
-    WarningOutlined,
-} from '@ant-design/icons';
+import { FireOutlined, CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined, WarningOutlined } from '@ant-design/icons';
 import { formatSeconds } from '../../utils/time';
 import { useDeviceManager } from '../../context/useDeviceManager';
 
@@ -19,7 +11,7 @@ export const SessionStats = () => {
     const { activeDevice } = useDeviceManager();
     const { status } = useSession();
 
-    if (activeDevice?.deterrents.enableStreaks == false) {
+    if (activeDevice?.deterrents.enableStreaks === false) {
         return <></>;
     }
 
@@ -28,14 +20,7 @@ export const SessionStats = () => {
         return null;
     }
 
-    // Extract stats from the nested 'stats' object.
-    const {
-        streaks = 0,
-        totalTimeLockedSeconds = 0,
-        completed = 0,
-        aborted = 0,
-        pendingPaybackSeconds = 0,
-    } = status.stats;
+    const { streaks = 0, totalTimeLocked = 0, completed = 0, aborted = 0, pendingPayback = 0 } = status.stats;
 
     // Standard spacing style for icons inside tags
     const iconStyle = { marginRight: 4 };
@@ -49,7 +34,7 @@ export const SessionStats = () => {
             </Tooltip>
             <Tooltip title="Total Time Locked">
                 <Tag icon={<ClockCircleOutlined style={iconStyle} />} color="blue" style={{ margin: 0 }}>
-                    {formatSeconds(totalTimeLockedSeconds)}
+                    {formatSeconds(totalTimeLocked)}
                 </Tag>
             </Tooltip>
             <Tooltip title="Total Sessions Completed">
@@ -62,10 +47,10 @@ export const SessionStats = () => {
                     {aborted}
                 </Tag>
             </Tooltip>
-            {pendingPaybackSeconds > 0 && (
+            {pendingPayback > 0 && (
                 <Tooltip title="Accumulated Payback Debt">
                     <Tag icon={<WarningOutlined style={iconStyle} />} color="volcano" style={{ margin: 0 }}>
-                        {formatSeconds(pendingPaybackSeconds)}
+                        {formatSeconds(pendingPayback)}
                     </Tag>
                 </Tooltip>
             )}

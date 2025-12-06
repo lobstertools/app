@@ -53,8 +53,8 @@ export const DeviceMenu = () => {
     const streaksEnabled = deterrents?.enableStreaks || false;
     const rewardCodeEnabled = deterrents?.enableRewardCode || false;
 
-    const paybackDurationSeconds = deterrents?.paybackDurationSeconds || 0;
-    const paybackTimeMinutes = Math.floor(paybackDurationSeconds / 60);
+    const paybackDuration = deterrents?.paybackDuration || 0;
+    const paybackTimeMinutes = Math.floor(paybackDuration / 60);
 
     const appVersion = activeDevice?.version || 'N/A';
     const appBuildType = activeDevice?.buildType || 'N/A';
@@ -176,7 +176,7 @@ export const DeviceMenu = () => {
                     icon: <ClockCircleOutlined style={{ color: green[5] }} />,
                     description: 'Supports automatic start after a configurable delay.',
                 };
-            case 'statusLed' as any: // Cast for robust handling if types lag behind backend
+            case 'statusLed':
                 return {
                     label: 'Status LED',
                     icon: <BulbOutlined style={{ color: green[5] }} />,
@@ -311,9 +311,7 @@ export const DeviceMenu = () => {
                     children: [
                         {
                             key: 'payback',
-                            label: paybackTimeEnabled
-                                ? `Payback Time: ${paybackTimeMinutes} min`
-                                : 'Payback Time: Disabled',
+                            label: paybackTimeEnabled ? `Payback Time: ${paybackTimeMinutes} min` : 'Payback Time: Disabled',
                             icon: <FieldTimeOutlined />,
                             disabled: true,
                         },

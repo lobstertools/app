@@ -92,6 +92,7 @@ export interface DiscoveredDevice {
 /**
  * Represents the fully loaded, selected device and its static properties.
  * This is created when a DiscoveredDevice is selected and details are fetched.
+ * Durations are given in seconds.
  */
 export interface DeviceDetails {
     id: string;
@@ -105,11 +106,9 @@ export interface DeviceDetails {
 
     // --- System Limits ---
     longPressMs: number;
-    minLockSeconds: number;
-    maxLockSeconds: number;
-    minPenaltySeconds: number;
-    maxPenaltySeconds: number;
-    testModeDurationSeconds: number;
+    minLockDuration: number;
+    maxLockDuration: number;
+    testModeDuration: number;
 
     channels: {
         ch1: boolean;
@@ -121,12 +120,14 @@ export interface DeviceDetails {
     // Deterrent Configuration
     deterrents: {
         enableStreaks: boolean;
-        enablePaybackTime: boolean;
-        paybackDurationSeconds: number;
-        // Payback Limits
-        minPaybackTimeSeconds: number;
-        maxPaybackTimeSeconds: number;
         enableRewardCode: boolean;
+        rewardPenaltyDuration: number;
+
+        // Payback Time
+        enablePaybackTime: boolean;
+        paybackDuration: number;
+        minPaybackDuration: number;
+        maxPaybackDuration: number;
     };
 }
 
@@ -135,19 +136,14 @@ export interface DeviceDetails {
 // ============================================================================
 
 /**
- * The unified payload to Arm/Start a session.
- * Merges the execution logic (strategy) with the session parameters.
+ * Represents the complete configuration of a session.
+ * Used for both the Arm Request (Input) and the Status Report (Output).
  */
-export interface SessionArmRequest {
+export interface SessionConfig {
     /**
      * Determines how the device transitions from 'armed' to 'locked'.
      */
     triggerStrategy: TriggerStrategy;
-
-    /**
-     * The total duration of the locked phase (in seconds).
-     */
-    lockDurationSeconds: number;
 
     /**
      * If true, the device display remains dark/obscured during the session.
@@ -155,16 +151,17 @@ export interface SessionArmRequest {
     hideTimer: boolean;
 
     /**
-     * Time added to duration if a violation occurs (in seconds).
+     * Intent Metadata.
      */
-    penaltyDurationSeconds: number;
+    durationType: 'fixed' | 'random' | 'short' | 'medium' | 'long';
+    duration: number;
+    durationMin?: number;
+    durationMax?: number;
 
     /**
      * The start delays for each channel (in seconds).
-     * - If strategy is 'autoCountdown': These are the countdown timers.
-     * - If strategy is 'buttonTrigger': These are applied AFTER the button press.
      */
-    channelDelaysSeconds: {
+    channelDelays: {
         ch1: number;
         ch2: number;
         ch3: number;
@@ -173,62 +170,97 @@ export interface SessionArmRequest {
 }
 
 /**
+ * Group of dynamic timers indicating the current progress of the session.
+ * All time units are seconds.
+ */
+export interface SessionTimers {
+    /**
+     * Lock Time remaining.
+     */
+    lockRemaining: number;
+
+    /**
+     * Time remaining before showing the Reward.
+     */
+    rewardRemaining: number;
+
+    /**
+     * Test Session Time remaining.
+     */
+    testRemaining: number;
+
+    /**
+     * Timeout waiting for the double-click session start.
+     */
+    triggerTimeout?: number;
+}
+
+/**
  * The live status response from an *active* device's API.
  * This contains all dynamic data, both live timers and accumulated stats.
  */
 export interface SessionStatus {
+    /**
+     * Overall status
+     */
     status: DeviceState;
-    message?: string;
-
-    lockSecondsRemaining: number;
-    penaltySecondsRemaining: number;
-    testSecondsRemaining: number;
 
     /**
-     * Context for the 'armed' state.
-     * Populated when status is 'armed' or 'locked'.
+     * The total duration of the locked phase (in seconds).
      */
-    triggerStrategy?: TriggerStrategy;
+    lockDuration: number;
 
-    /** * Timeout waiting for the double-click session start
+    /**
+     * Dynamic timers indicating the remaining time for various states.
      */
-    triggerTimeoutRemainingSeconds?: number;
+    timers: SessionTimers;
+
+    /**
+     * The Active Configuration.
+     * Returned by the device so the UI knows exactly what parameters are running.
+     * This replaces the loose top-level config fields.
+     */
+    config?: SessionConfig;
 
     /**
      * Live countdowns.
      * In 'autoCountdown', these tick down.
      * In 'buttonTrigger', these are static until locked.
      */
-    channelDelaysRemainingSeconds: {
+    channelDelaysRemaining: {
         ch1?: number;
         ch2?: number;
         ch3?: number;
         ch4?: number;
     };
 
-    hideTimer?: boolean;
-
+    /**
+     * Accumulated session statistics
+     */
     stats: {
         streaks: number;
         aborted: number;
         completed: number;
-        totalTimeLockedSeconds: number;
-        pendingPaybackSeconds: number;
+        totalTimeLocked: number;
+        pendingPayback: number;
     };
 
     /**
      * Real-time hardware telemetry.
      */
-    hardwareStatus: {
+    hardware: {
         buttonPressed: boolean;
         currentPressDurationMs: number;
         rssi: number;
         freeHeap: number;
-        uptimeSeconds: number;
+        uptime: number;
         internalTempC: number | 'N/A';
     };
 }
 
+/**
+ * Reward directional unlock code
+ */
 export interface Reward {
     code: string;
     checksum: string;
@@ -238,14 +270,18 @@ export interface Reward {
 // 5. Provisioning
 // ============================================================================
 
-/** Input data required to provision a new device. */
+/**
+ * Input data required to provision a new device.
+ * Durations are giving in seconds
+ */
 export interface DeviceProvisioningData {
     ssid: string;
     pass: string;
     enableStreaks: boolean;
     enablePaybackTime: boolean;
-    paybackDurationSeconds: number;
+    paybackDuration: number;
     enableRewardCode: boolean;
+    rewardPenaltyDuration: number;
     ch1Enabled: boolean;
     ch2Enabled: boolean;
     ch3Enabled: boolean;

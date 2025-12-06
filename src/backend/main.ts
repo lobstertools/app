@@ -47,11 +47,12 @@ const PROV_ENABLE_REWARD_CODE_CHAR_UUID = '5a160003-8334-469b-a316-c340cf29188f'
 const PROV_ENABLE_STREAKS_CHAR_UUID = '5a160004-8334-469b-a316-c340cf29188f';
 const PROV_ENABLE_PAYBACK_TIME_CHAR_UUID = '5a160005-8334-469b-a316-c340cf29188f';
 const PROV_PAYBACK_TIME_CHAR_UUID = '5a160006-8334-469b-a316-c340cf29188f';
+const PROV_REWARD_PENALTY_CHAR_UUID = '5a160007-8334-469b-a316-c340cf29188f';
 
-const PROV_CH1_ENABLE_UUID = '5a16000A-8334-469b-a316-c340cf29188f';
-const PROV_CH2_ENABLE_UUID = '5a16000B-8334-469b-a316-c340cf29188f';
-const PROV_CH3_ENABLE_UUID = '5a16000C-8334-469b-a316-c340cf29188f';
-const PROV_CH4_ENABLE_UUID = '5a16000D-8334-469b-a316-c340cf29188f';
+const PROV_CH1_ENABLE_UUID = '5a16000a-8334-469b-a316-c340cf29188f';
+const PROV_CH2_ENABLE_UUID = '5a16000b-8334-469b-a316-c340cf29188f';
+const PROV_CH3_ENABLE_UUID = '5a16000c-8334-469b-a316-c340cf29188f';
+const PROV_CH4_ENABLE_UUID = '5a16000d-8334-469b-a316-c340cf29188f';
 
 // mDNS Service Type
 const MDNS_SERVICE_TYPE = 'lobster-lock';
@@ -341,8 +342,9 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         pass,
         enableStreaks,
         enablePaybackTime,
-        paybackDurationSeconds,
+        paybackDuration,
         enableRewardCode,
+        rewardPenaltyDuration,
         ch1Enabled,
         ch2Enabled,
         ch3Enabled,
@@ -355,8 +357,9 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         { key: 'pass', val: pass },
         { key: 'enableStreaks', val: enableStreaks },
         { key: 'enablePaybackTime', val: enablePaybackTime },
-        { key: 'paybackDurationSeconds', val: paybackDurationSeconds },
+        { key: 'paybackDuration', val: paybackDuration },
         { key: 'enableRewardCode', val: enableRewardCode },
+        { key: 'rewardPenaltyDuration', val: rewardPenaltyDuration },
         { key: 'ch1Enabled', val: ch1Enabled },
         { key: 'ch2Enabled', val: ch2Enabled },
         { key: 'ch3Enabled', val: ch3Enabled },
@@ -401,26 +404,21 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         await peripheral.connectAsync();
         log(`[Provision] Connected. Discovering services...`);
 
-        // Discover services and characteristics
-        const { characteristics } = await peripheral.discoverSomeServicesAndCharacteristicsAsync(
-            [PROV_SERVICE_UUID],
-            []
-        );
+        const { characteristics } = await peripheral.discoverSomeServicesAndCharacteristicsAsync([PROV_SERVICE_UUID], []);
 
         const normalize = (uuid: string) => uuid.toLowerCase().replace(/-/g, '');
+        const findChar = (targetUuid: string) => characteristics.find((c) => normalize(c.uuid) === normalize(targetUuid));
 
-        // Helper to find char
-        const findChar = (targetUuid: string) =>
-            characteristics.find((c) => normalize(c.uuid) === normalize(targetUuid));
-
+        // Find standard chars
         const ssidChar = findChar(PROV_SSID_CHAR_UUID);
         const passChar = findChar(PROV_PASS_CHAR_UUID);
         const enableStreaksChar = findChar(PROV_ENABLE_STREAKS_CHAR_UUID);
         const enablePaybackTimeChar = findChar(PROV_ENABLE_PAYBACK_TIME_CHAR_UUID);
         const paybackTimeChar = findChar(PROV_PAYBACK_TIME_CHAR_UUID);
         const enableRewardCodeChar = findChar(PROV_ENABLE_REWARD_CODE_CHAR_UUID);
+        const rewardPenaltyChar = findChar(PROV_REWARD_PENALTY_CHAR_UUID);
 
-        // Channel Config Characteristics
+        // Find channel chars
         const ch1Char = findChar(PROV_CH1_ENABLE_UUID);
         const ch2Char = findChar(PROV_CH2_ENABLE_UUID);
         const ch3Char = findChar(PROV_CH3_ENABLE_UUID);
@@ -434,6 +432,7 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
             { name: 'EnablePayback', value: enablePaybackTimeChar },
             { name: 'PaybackTime', value: paybackTimeChar },
             { name: 'EnableRewardCode', value: enableRewardCodeChar },
+            { name: 'RewardPenalty', value: rewardPenaltyChar },
             { name: 'Ch1', value: ch1Char },
             { name: 'Ch2', value: ch2Char },
             { name: 'Ch3', value: ch3Char },
@@ -450,36 +449,29 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         }
 
         // --- DATA CONVERSION ---
-        // LE = Little-Endian, BE = Big-Endian.
-
-        // enableStreaks (boolean) -> 1-byte Buffer
-        const enableStreaksBuf = Buffer.alloc(1);
-        enableStreaksBuf.writeUInt8(enableStreaks ? 1 : 0, 0);
-
-        // enablePaybackTime (boolean) -> 1-byte Buffer
-        const enablePaybackTimeBuf = Buffer.alloc(1);
-        enablePaybackTimeBuf.writeUInt8(enablePaybackTime ? 1 : 0, 0);
-
-        // enableRewardCode (boolean) -> 1-byte Buffer
-        const enableRewardCodeBuf = Buffer.alloc(1);
-        enableRewardCodeBuf.writeUInt8(enableRewardCode ? 1 : 0, 0);
-
-        // paybackDurationSeconds (number) -> 4-byte Buffer (UInt32 LE)
-        const paybackTimeBuf = Buffer.alloc(4);
-        paybackTimeBuf.writeUInt32LE(paybackDurationSeconds, 0);
-
         const getBoolBuf = (val: boolean | undefined) => {
             const b = Buffer.alloc(1);
             b.writeUInt8(val ? 1 : 0, 0);
             return b;
         };
-        // --- END DATA CONVERSION ---
+
+        const enableStreaksBuf = getBoolBuf(enableStreaks);
+        const enablePaybackTimeBuf = getBoolBuf(enablePaybackTime);
+        const enableRewardCodeBuf = getBoolBuf(enableRewardCode);
+
+        const paybackTimeBuf = Buffer.alloc(4);
+        paybackTimeBuf.writeUInt32LE(paybackDuration, 0);
+
+        const rewardPenaltyBuf = Buffer.alloc(4);
+        rewardPenaltyBuf.writeUInt32LE(rewardPenaltyDuration, 0);
 
         log(`[Provision] Writing configuration settings...`);
         await enableStreaksChar!.writeAsync(enableStreaksBuf, false);
         await enablePaybackTimeChar!.writeAsync(enablePaybackTimeBuf, false);
         await paybackTimeChar!.writeAsync(paybackTimeBuf, false);
+
         await enableRewardCodeChar!.writeAsync(enableRewardCodeBuf, false);
+        await rewardPenaltyChar!.writeAsync(rewardPenaltyBuf, false);
 
         await ch1Char!.writeAsync(getBoolBuf(ch1Enabled || false), false);
         await ch2Char!.writeAsync(getBoolBuf(ch2Enabled || false), false);
@@ -755,13 +747,21 @@ app.get('/api/devices/:id/session/status', async (req: Request, res: Response) =
     const errorResponse = {
         status: 'ready',
         message: 'Device not found or not ready.',
-        triggerStrategy: 'autoCountdown',
-        triggerTimeoutRemainingSeconds: 0,
-        lockSecondsRemaining: 0,
-        penaltySecondsRemaining: 0,
-        testSecondsRemaining: 0,
-        hideTimer: false,
-        channelDelaysRemainingSeconds: {
+        lockDuration: 0,
+        timers: {
+            lockRemaining: 0,
+            rewardRemaining: 0,
+            testRemaining: 0,
+            triggerTimeout: 0,
+        },
+        config: {
+            triggerStrategy: 'autoCountdown',
+            hideTimer: false,
+            durationType: 'fixed',
+            duration: 0,
+            channelDelays: { ch1: 0, ch2: 0, ch3: 0, ch4: 0 },
+        },
+        channelDelaysRemaining: {
             ch1: 0,
             ch2: 0,
             ch3: 0,
@@ -771,8 +771,16 @@ app.get('/api/devices/:id/session/status', async (req: Request, res: Response) =
             streaks: 0,
             aborted: 0,
             completed: 0,
-            totalTimeLockedSeconds: 0,
-            pendingPaybackSeconds: 0,
+            totalTimeLocked: 0,
+            pendingPayback: 0,
+        },
+        hardware: {
+            buttonPressed: false,
+            currentPressDurationMs: 0,
+            rssi: 0,
+            freeHeap: 0,
+            uptime: 0,
+            internalTempC: 'N/A',
         },
     };
 

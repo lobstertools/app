@@ -37,10 +37,27 @@ import { useEffect, useMemo, useState } from 'react';
 import { formatSeconds } from '../../utils/time';
 import { CountdownDisplay } from './CountdownDisplay';
 import { useDeviceManager } from '../../context/useDeviceManager';
-import { useSession, SessionFormData } from '../../context/useSessionContext';
 import { useKeyboard } from '../../context/useKeyboardContext';
+import { useSession } from '../../context/useSessionContext';
+import { SessionConfig, TriggerStrategy } from '../../../types';
 
 const { Title, Text } = Typography;
+
+// Define the interface for the Form values (UI state)
+interface SessionFormData {
+    triggerStrategy: TriggerStrategy;
+    type: 'fixed' | 'random' | 'time-range';
+    timeRangeSelection?: 'short' | 'medium' | 'long';
+    duration?: number;
+    rangeMin?: number;
+    rangeMax?: number;
+    hideTimer: boolean;
+    useMultiChannelDelay: boolean;
+    delayCh1: number;
+    delayCh2?: number;
+    delayCh3?: number;
+    delayCh4?: number;
+}
 
 /**
  * Renders the multi-step wizard for configuring and starting a new session.
@@ -48,7 +65,7 @@ const { Title, Text } = Typography;
  */
 export const SessionConfiguration = () => {
     // Destructure status here so it's available for the render function
-    const { currentState, startSession, isLocking, sessionTimeRemaining, status } = useSession();
+    const { currentState, startSession, status } = useSession();
     const { activeDevice, openDeviceModal } = useDeviceManager();
     const { registerStartConfigAction } = useKeyboard();
 
@@ -57,6 +74,7 @@ export const SessionConfiguration = () => {
     const [form] = Form.useForm<SessionFormData>();
     const [setupStep, setSetupStep] = useState(0);
     const [useMultiDelay, setUseMultiDelay] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Watch the strategy to update UI text dynamically
     const selectedStrategy = Form.useWatch('triggerStrategy', form);
@@ -92,22 +110,16 @@ export const SessionConfiguration = () => {
     // ------------------------------------------------------------------------
 
     const minLockUnit = useMemo(
-        () => Math.ceil((activeDevice?.minLockSeconds || 900) / timeScale),
-        [activeDevice?.minLockSeconds, timeScale]
+        () => Math.ceil((activeDevice?.minLockDuration || 900) / timeScale),
+        [activeDevice?.minLockDuration, timeScale]
     );
     const maxLockUnit = useMemo(
-        () => Math.floor((activeDevice?.maxLockSeconds || 10800) / timeScale),
-        [activeDevice?.maxLockSeconds, timeScale]
+        () => Math.floor((activeDevice?.maxLockDuration || 10800) / timeScale),
+        [activeDevice?.maxLockDuration, timeScale]
     );
 
-    const minPenaltyUnit = useMemo(
-        () => Math.ceil((activeDevice?.minPenaltySeconds || 900) / timeScale),
-        [activeDevice?.minPenaltySeconds, timeScale]
-    );
-    const maxPenaltyUnit = useMemo(
-        () => Math.floor((activeDevice?.maxPenaltySeconds || 10800) / timeScale),
-        [activeDevice?.maxPenaltySeconds, timeScale]
-    );
+    const minPenaltyUnit = 1;
+    const maxPenaltyUnit = 1000;
 
     /**
      * Helper to ensure value is within device limits
@@ -153,12 +165,21 @@ export const SessionConfiguration = () => {
 
     const canUseMultiChannel = enabledChannels.length > 1;
 
+    // --- Compute Timer Values ---
+    const penaltyTimeRemaining = useMemo(() => {
+        if (status?.status === 'aborted') {
+            return status.timers.rewardRemaining || 0;
+        }
+        return 0;
+    }, [status]);
+
     // Reset form when returning to 'ready' state
     useEffect(() => {
         if (currentState === 'ready') {
             setSetupStep(0);
             setUseMultiDelay(false);
             form.resetFields();
+            setIsSubmitting(false);
         }
     }, [currentState, form]);
 
@@ -194,80 +215,90 @@ export const SessionConfiguration = () => {
 
     /**
      * Handles the form submission.
-     * Converts User Friendly Units (Minutes OR Seconds) -> API Units (Seconds)
      */
-    const handleFinish = (values: SessionFormData) => {
-        // 1. Determine Duration in UI Units
-        let finalDurationUnits: number;
+    const handleFinish = async (values: SessionFormData) => {
+        setIsSubmitting(true);
 
-        if (values.type === 'fixed') {
-            finalDurationUnits = values.duration || defaultValues.duration;
-        } else if (values.type === 'random') {
-            const min = values.rangeMin || minLockUnit;
-            const max = values.rangeMax || maxLockUnit;
-            finalDurationUnits = Math.floor(Math.random() * (max - min + 1) + min);
-        } else {
-            // Default to 'time-range' logic
-            // The numbers below represent UNITS (Minutes in Release, Seconds in Debug)
-            switch (values.timeRangeSelection) {
-                case 'short':
-                    finalDurationUnits = Math.floor(Math.random() * (45 - 20 + 1) + 20); // 20-45 units
-                    break;
-                case 'medium':
-                    finalDurationUnits = Math.floor(Math.random() * (90 - 60 + 1) + 60); // 60-90 units
-                    break;
-                case 'long':
-                    finalDurationUnits = Math.floor(Math.random() * (180 - 120 + 1) + 120); // 120-180 units
-                    break;
-                default:
-                    finalDurationUnits = defaultValues.duration;
+        try {
+            // 1. Determine Duration in UI Units
+            let finalDurationUnits: number;
+            let calculatedMin = values.rangeMin || minLockUnit;
+            let calculatedMax = values.rangeMax || maxLockUnit;
+            let durationType: 'fixed' | 'random' | 'short' | 'medium' | 'long' = 'fixed';
+
+            // Determine Duration Type string for API
+            if (values.type === 'fixed') {
+                durationType = 'fixed';
+                finalDurationUnits = values.duration || defaultValues.duration;
+                // Min/Max are same as duration for fixed
+                calculatedMin = finalDurationUnits;
+                calculatedMax = finalDurationUnits;
+            } else if (values.type === 'random') {
+                durationType = 'random';
+                // calculatedMin/Max already set from inputs
+                finalDurationUnits = 0; // Backend handles random
+            } else {
+                // Time Range
+                durationType = values.timeRangeSelection || 'short';
+
+                switch (values.timeRangeSelection) {
+                    case 'short':
+                        calculatedMin = 20;
+                        calculatedMax = 45;
+                        break;
+                    case 'medium':
+                        calculatedMin = 60;
+                        calculatedMax = 90;
+                        break;
+                    case 'long':
+                        calculatedMin = 120;
+                        calculatedMax = 180;
+                        break;
+                    default:
+                        calculatedMin = defaultValues.rangeMin;
+                        calculatedMax = defaultValues.rangeMax;
+                }
+                finalDurationUnits = 0; // Backend handles ranges
             }
+
+            // Clamp duration to system limits (in units) for fixed values
+            if (durationType === 'fixed') {
+                finalDurationUnits = clamp(finalDurationUnits, minLockUnit, maxLockUnit);
+            }
+
+            // 2. Map Delays (Always Seconds in Form) to Channel Object
+            const channelDelays = {
+                ch1: values.delayCh1 || 0,
+                ch2: values.useMultiChannelDelay ? values.delayCh2 || 0 : values.delayCh1 || 0,
+                ch3: values.useMultiChannelDelay ? values.delayCh3 || 0 : values.delayCh1 || 0,
+                ch4: values.useMultiChannelDelay ? values.delayCh4 || 0 : values.delayCh1 || 0,
+            };
+
+            // 3. Construct Payload
+            const payload: SessionConfig = {
+                triggerStrategy: values.triggerStrategy,
+                hideTimer: !!values.hideTimer,
+                durationType: durationType,
+                duration: finalDurationUnits * timeScale, // Convert to seconds
+                durationMin: calculatedMin * timeScale, // Convert to seconds
+                durationMax: calculatedMax * timeScale, // Convert to seconds
+                channelDelays: channelDelays,
+            };
+
+            // 4. Call Context Action
+            await startSession(payload);
+        } catch (e) {
+            console.error(e);
+            setIsSubmitting(false);
         }
-
-        // Clamp duration to system limits (in units)
-        finalDurationUnits = clamp(finalDurationUnits, minLockUnit, maxLockUnit);
-
-        // Convert to API Seconds
-        const lockDurationSeconds = finalDurationUnits * timeScale;
-
-        // 2. Convert Penalty (UI Units -> API Seconds)
-        let penaltyUnits = values.penaltyDuration || defaultValues.penalty;
-        penaltyUnits = clamp(penaltyUnits, minPenaltyUnit, maxPenaltyUnit);
-        const penaltyDurationSeconds = penaltyUnits * timeScale;
-
-        // 3. Map Delays (Always Seconds in Form) to Channel Object
-        const channelDelaysSeconds = {
-            ch1: values.delayCh1 || 0,
-            ch2: values.useMultiChannelDelay ? values.delayCh2 || 0 : values.delayCh1 || 0,
-            ch3: values.useMultiChannelDelay ? values.delayCh3 || 0 : values.delayCh1 || 0,
-            ch4: values.useMultiChannelDelay ? values.delayCh4 || 0 : values.delayCh1 || 0,
-        };
-
-        // 4. Construct Payload
-        const payload = {
-            triggerStrategy: values.triggerStrategy,
-            lockDurationSeconds,
-            hideTimer: !!values.hideTimer,
-            penaltyDurationSeconds,
-            channelDelaysSeconds,
-        };
-
-        // 5. Call Context Action
-        startSession(payload);
     };
 
     // Determines which step the <Steps> component highlights
     const currentStep = useMemo(() => {
         if (currentState === 'no_device_selected') return 0;
-        if (
-            currentState === 'server_unreachable' ||
-            currentState === 'device_unreachable' ||
-            currentState === 'connecting'
-        )
-            return 0;
+        if (currentState === 'server_unreachable' || currentState === 'device_unreachable' || currentState === 'connecting') return 0;
 
         if (currentState === 'ready' || currentState === 'testing') return setupStep;
-        // ARMED maps to "Countdown" step (index 2) visually, regardless of strategy
         if (currentState === 'armed') return 2;
         if (currentState === 'locked' || currentState === 'aborted') return 3;
         if (currentState === 'completed') return 4;
@@ -279,7 +310,7 @@ export const SessionConfiguration = () => {
         { title: 'Configure' },
         { title: 'Arming' },
         { title: 'Lock' },
-        { title: enableRewardCode ? 'Reward' : 'Complete' }, // Dynamic Title
+        { title: enableRewardCode ? 'Reward' : 'Complete' },
     ];
 
     /**
@@ -338,8 +369,7 @@ export const SessionConfiguration = () => {
                     <div>
                         <Title level={5}>Prepare Your Reward Lock</Title>
                         <Text type="secondary">
-                            Before continuing, program your physical lock using the combination pattern shown on the
-                            right.
+                            Before continuing, program your physical lock using the combination pattern shown on the right.
                         </Text>
                         <List
                             size="small"
@@ -394,12 +424,10 @@ export const SessionConfiguration = () => {
      * Content for Step 1: The main configuration form.
      */
     const renderConfigurationForm = () => {
-        const pendingPaybackSeconds = status?.stats?.pendingPaybackSeconds || 0;
-        const paybackDurationSeconds = activeDevice?.deterrents?.paybackDurationSeconds || 0;
+        const pendingPaybackSeconds = status?.stats?.pendingPayback || 0;
+        const paybackDuration = activeDevice?.deterrents?.paybackDuration || 0;
         const paybackTimeEnabled = activeDevice?.deterrents?.enablePaybackTime || false;
-
-        // Calculate display for payback (Units depend on scale)
-        const paybackDisplayVal = Math.floor(paybackDurationSeconds / timeScale);
+        const paybackDisplayVal = Math.floor(paybackDuration / timeScale);
 
         return (
             <Form
@@ -410,13 +438,9 @@ export const SessionConfiguration = () => {
                     triggerStrategy: 'buttonTrigger',
                     type: 'time-range',
                     timeRangeSelection: 'short',
-
-                    // Use the Calculated Defaults
                     duration: defaultValues.duration,
                     rangeMin: defaultValues.rangeMin,
                     rangeMax: defaultValues.rangeMax,
-                    penaltyDuration: defaultValues.penalty,
-
                     hideTimer: false,
                     useMultiChannelDelay: false,
                     delayCh1: 10,
@@ -429,9 +453,7 @@ export const SessionConfiguration = () => {
                 <Space direction="vertical" style={{ width: '100%' }}>
                     <Title level={5}>1. Session Duration</Title>
                     <Text type="secondary" style={{ marginTop: -8 }}>
-                        {isDebugMode
-                            ? 'Development Mode: Times are in SECONDS.'
-                            : 'Choose how long the device stays locked.'}
+                        {isDebugMode ? 'Development Mode: Times are in SECONDS.' : 'Choose how long the device stays locked.'}
                     </Text>
 
                     <Form.Item name="type" label="Duration Mode" style={{ marginBottom: 8 }}>
@@ -442,7 +464,6 @@ export const SessionConfiguration = () => {
                         </Radio.Group>
                     </Form.Item>
 
-                    {/* Conditional fields based on "type" */}
                     <Form.Item noStyle dependencies={['type']}>
                         {({ getFieldValue }) => {
                             const type = getFieldValue('type');
@@ -464,11 +485,7 @@ export const SessionConfiguration = () => {
                                     <Form.Item label={`Fixed Duration (${minLockUnit}-${maxLockUnit} ${unitLabel})`}>
                                         <Space.Compact>
                                             <Form.Item name="duration" noStyle>
-                                                <InputNumber
-                                                    min={minLockUnit}
-                                                    max={maxLockUnit}
-                                                    style={{ width: 200 }}
-                                                />
+                                                <InputNumber min={minLockUnit} max={maxLockUnit} style={{ width: 200 }} />
                                             </Form.Item>
                                             <Button disabled style={{ pointerEvents: 'none' }}>
                                                 {unitLabel}
@@ -504,7 +521,6 @@ export const SessionConfiguration = () => {
                                     </Space>
                                 );
                             }
-
                             return null;
                         }}
                     </Form.Item>
@@ -518,9 +534,7 @@ export const SessionConfiguration = () => {
                                             <FieldTimeOutlined style={{ marginRight: 8 }} />
                                             Pending Payback
                                         </Text>
-                                        <Text type="secondary">
-                                            You have accrued time debt which will be added to this session.
-                                        </Text>
+                                        <Text type="secondary">You have accrued time debt which will be added to this session.</Text>
                                     </Space>
                                 </Col>
                                 <Col span={6} style={{ textAlign: 'right' }}>
@@ -535,7 +549,7 @@ export const SessionConfiguration = () => {
 
                 <Divider />
 
-                {/* --- 2. START CONFIGURATION (Combined Strategy & Delay) --- */}
+                {/* --- 2. TRIGGER --- */}
                 <Space direction="vertical" style={{ width: '100%' }}>
                     <Title level={5}>2. Start Configuration</Title>
                     <Text type="secondary" style={{ marginTop: -8 }}>
@@ -544,36 +558,21 @@ export const SessionConfiguration = () => {
                             : 'Configure the countdown before the session starts automatically.'}
                     </Text>
 
-                    {/* Start Method Strategy Selector */}
                     {supportsManualTrigger && (
                         <Form.Item name="triggerStrategy" style={{ marginBottom: 12, marginTop: 8 }}>
                             <Radio.Group buttonStyle="solid" block>
-                                <Radio.Button
-                                    value="buttonTrigger"
-                                    style={{
-                                        width: '50%',
-                                        textAlign: 'center',
-                                    }}
-                                >
+                                <Radio.Button value="buttonTrigger" style={{ width: '50%', textAlign: 'center' }}>
                                     <ThunderboltOutlined /> Device Button
                                 </Radio.Button>
-                                <Radio.Button
-                                    value="autoCountdown"
-                                    style={{
-                                        width: '50%',
-                                        textAlign: 'center',
-                                    }}
-                                >
+                                <Radio.Button value="autoCountdown" style={{ width: '50%', textAlign: 'center' }}>
                                     <TimerIcon /> Automatic Timer
                                 </Radio.Button>
                             </Radio.Group>
                         </Form.Item>
                     )}
 
-                    {/* Delay inputs (HIDDEN if Manual Trigger is selected) */}
                     {!isManualTrigger && (
                         <div style={{ paddingLeft: 12, borderLeft: `2px solid ${token.colorBorderSecondary}` }}>
-                            {/* Show toggle only if device has multiple enabled channels */}
                             {canUseMultiChannel && (
                                 <Form.Item
                                     name="useMultiChannelDelay"
@@ -581,17 +580,10 @@ export const SessionConfiguration = () => {
                                     valuePropName="checked"
                                     style={{ marginBottom: 8 }}
                                 >
-                                    <Switch
-                                        checkedChildren="Per-MagLock"
-                                        unCheckedChildren="Unified"
-                                        onChange={(checked) => {
-                                            setUseMultiDelay(checked);
-                                        }}
-                                    />
+                                    <Switch checkedChildren="Per-MagLock" unCheckedChildren="Unified" onChange={setUseMultiDelay} />
                                 </Form.Item>
                             )}
 
-                            {/* Single delay inputs (binds to delayCh1) */}
                             {!useMultiDelay && (
                                 <>
                                     <Form.Item label="Countdown Duration (sec)" style={{ marginBottom: 4 }}>
@@ -612,23 +604,15 @@ export const SessionConfiguration = () => {
                                 </>
                             )}
 
-                            {/* Multi-channel delay inputs */}
                             {useMultiDelay && (
                                 <>
                                     <Row gutter={[16, 0]}>
                                         {enabledChannels.map((ch) => (
                                             <Col xs={24} sm={12} key={ch.key}>
-                                                <Form.Item
-                                                    label={`${ch.label} Timer (sec)`}
-                                                    style={{ marginBottom: 12 }}
-                                                >
+                                                <Form.Item label={`${ch.label} Timer (sec)`} style={{ marginBottom: 12 }}>
                                                     <Space.Compact style={{ width: '100%' }}>
                                                         <Form.Item name={ch.key} noStyle>
-                                                            <InputNumber
-                                                                min={0}
-                                                                max={120}
-                                                                style={{ width: 'calc(100% - 46px)' }}
-                                                            />
+                                                            <InputNumber min={0} max={120} style={{ width: 'calc(100% - 46px)' }} />
                                                         </Form.Item>
                                                         <Button disabled style={{ pointerEvents: 'none' }}>
                                                             sec
@@ -649,49 +633,14 @@ export const SessionConfiguration = () => {
 
                 <Divider />
 
-                {/* --- 3. PENALTY (CONDITIONAL) --- */}
-                {enableRewardCode && (
-                    <>
-                        <Space direction="vertical" style={{ width: '100%' }}>
-                            <Title level={5}>3. Abort Penalty</Title>
-                            <Text type="secondary" style={{ marginTop: -8 }}>
-                                Set the cooldown duration if the session is aborted early.
-                            </Text>
-
-                            <Form.Item
-                                label={`Abort Penalty (${minPenaltyUnit}-${maxPenaltyUnit} ${unitLabel})`}
-                                style={{ marginTop: 8 }}
-                            >
-                                <Space.Compact>
-                                    <Form.Item name="penaltyDuration" noStyle>
-                                        <InputNumber min={minPenaltyUnit} max={maxPenaltyUnit} style={{ width: 200 }} />
-                                    </Form.Item>
-                                    <Button disabled style={{ pointerEvents: 'none' }}>
-                                        {unitLabel}
-                                    </Button>
-                                </Space.Compact>
-                            </Form.Item>
-                            <Text type="secondary" style={{ marginTop: -16, display: 'block' }}>
-                                When aborted, the reward code will remain hidden for this duration.
-                            </Text>
-                        </Space>
-                        <Divider />
-                    </>
-                )}
-
-                {/* --- 4. TENSION --- */}
+                {/* --- 3. TENSION --- */}
                 <Space direction="vertical" style={{ width: '100%' }}>
-                    <Title level={5}>{enableRewardCode ? '4.' : '3.'} Tension Mode</Title>
+                    <Title level={5}>3. Tension Mode</Title>
                     <Text type="secondary" style={{ marginTop: -8 }}>
                         Hides the session timer for an extra challenge.
                     </Text>
 
-                    <Form.Item
-                        name="hideTimer"
-                        label="Enable Tension Mode"
-                        valuePropName="checked"
-                        style={{ marginTop: 8 }}
-                    >
+                    <Form.Item name="hideTimer" label="Enable Tension Mode" valuePropName="checked" style={{ marginTop: 8 }}>
                         <Switch checkedChildren="On" unCheckedChildren="Off" />
                     </Form.Item>
                 </Space>
@@ -724,17 +673,16 @@ export const SessionConfiguration = () => {
                     </Card>
                 )}
 
-                {/* Submit button */}
                 <Button
                     type="primary"
                     icon={isManualTrigger ? <ThunderboltOutlined /> : <LockOutlined />}
                     htmlType="submit"
                     size="large"
-                    loading={isLocking || currentState === 'testing'}
+                    loading={isSubmitting || currentState === 'testing'}
                     disabled={currentState !== 'ready'}
                     style={{ width: '100%' }}
                 >
-                    {isLocking
+                    {isSubmitting
                         ? 'Arming Device...'
                         : currentState === 'ready'
                           ? isManualTrigger
@@ -760,7 +708,6 @@ export const SessionConfiguration = () => {
                 ? 'The MagLock is engaged. Wait for the timer to end to get the code for the reward lock.'
                 : 'The MagLock is engaged. Wait for the timer to end to complete the session.';
         } else {
-            // Aborted
             description = enableRewardCode
                 ? 'The MagLock has disengaged. The code for the reward lock remains hidden until the penalty cooldown ends.'
                 : 'The MagLock has disengaged. The session will remain in penalty state until the cooldown ends.';
@@ -779,7 +726,7 @@ export const SessionConfiguration = () => {
                     <div style={{ textAlign: 'center', padding: '24px 0' }}>
                         <Statistic
                             title="Penalty Time Remaining"
-                            value={formatSeconds(sessionTimeRemaining)}
+                            value={formatSeconds(penaltyTimeRemaining)}
                             valueStyle={{
                                 fontSize: '2.5rem',
                                 fontFamily: 'monospace',
@@ -803,9 +750,7 @@ export const SessionConfiguration = () => {
                     Session Complete!
                 </Title>
                 <Text type="secondary">
-                    {enableRewardCode
-                        ? 'The code for your reward lock is now visible.'
-                        : 'You may now access your reward.'}
+                    {enableRewardCode ? 'The code for your reward lock is now visible.' : 'You may now access your reward.'}
                 </Text>
                 <Alert
                     message="Reboot Required for Next Session"
@@ -831,9 +776,7 @@ export const SessionConfiguration = () => {
         if (
             currentState === 'no_device_selected' ||
             (currentStep === 0 &&
-                (currentState === 'connecting' ||
-                    currentState === 'device_unreachable' ||
-                    currentState === 'server_unreachable'))
+                (currentState === 'connecting' || currentState === 'device_unreachable' || currentState === 'server_unreachable'))
         ) {
             return renderPreparationInstructions();
         }
@@ -860,12 +803,10 @@ export const SessionConfiguration = () => {
             case 0:
                 return renderPreparationInstructions();
             case 1:
-                return renderConfigurationForm(); // Called as function, not <Component />
+                return renderConfigurationForm();
             case 2:
-                // ARMED State (Countdown or Wait for Button)
                 return <CountdownDisplay />;
             case 3:
-                // This state can only be 'locked' or 'aborted'
                 return renderSessionActiveContent();
             case 4:
                 return renderSessionCompletedContent();
@@ -874,7 +815,6 @@ export const SessionConfiguration = () => {
         }
     };
 
-    // Main component layout
     return (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
             <Steps current={currentStep} items={stepItems} />

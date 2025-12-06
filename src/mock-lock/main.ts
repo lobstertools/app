@@ -19,7 +19,7 @@ import cors from 'cors';
 import readline from 'readline';
 import bonjour from 'bonjour';
 
-import { DeviceDetails, DeviceFeature, Reward, SessionStatus, TriggerStrategy } from '../types/';
+import { DeviceDetails, DeviceFeature, Reward, SessionStatus, SessionConfig, DeviceState } from '../types/';
 
 const app = express();
 const PORT = 3003;
@@ -51,7 +51,7 @@ const MOCK_CONFIGURATION = {
 
     // System Limits & Timers
     limits: {
-        longPressSeconds: 1, // 1s for quick triggering
+        longPressMs: 1000, // 1s for quick triggering
         minLockSeconds: 10, // 10s minimum for quick lock cycles
         maxLockSeconds: 3600, // 1 hour
         minPenaltySeconds: 10, // 10s penalty
@@ -60,7 +60,6 @@ const MOCK_CONFIGURATION = {
         maxPaybackTimeSeconds: 600, // 10 min cap
         testModeDurationSeconds: 30, // 30s hardware test
         armedTimeoutSeconds: 300, // 5 min idle timeout
-        failsafeMaxLockSeconds: 600, // 10 min failsafe
     },
 
     // Initial "Boot" State
@@ -69,6 +68,7 @@ const MOCK_CONFIGURATION = {
         enablePaybackTime: true,
         enableRewardCode: true,
         paybackDurationSeconds: 20,
+        rewardPenaltyDuration: 10,
 
         // Mock Data for "Story Mode"
         startingStreaks: 5,
@@ -84,34 +84,38 @@ const MOCK_CONFIGURATION = {
 const enableStreaks = MOCK_CONFIGURATION.initialState.enableStreaks;
 const enablePaybackTime = MOCK_CONFIGURATION.initialState.enablePaybackTime;
 const enableRewardCode = MOCK_CONFIGURATION.initialState.enableRewardCode;
-const paybackDurationSeconds = MOCK_CONFIGURATION.initialState.paybackDurationSeconds;
+const paybackDuration = MOCK_CONFIGURATION.initialState.paybackDurationSeconds;
+const rewardPenaltyDuration = MOCK_CONFIGURATION.initialState.rewardPenaltyDuration;
 const channelConfig = { ...MOCK_CONFIGURATION.hardware.channels };
 
 // --- Dynamic Session State ---
 let streaks = MOCK_CONFIGURATION.initialState.startingStreaks;
-let totalTimeLockedSeconds = MOCK_CONFIGURATION.initialState.startingTotalTime;
+let totalTimeLocked = MOCK_CONFIGURATION.initialState.startingTotalTime;
 let completed = MOCK_CONFIGURATION.initialState.startingCompleted;
 let aborted = MOCK_CONFIGURATION.initialState.startingAborted;
-let pendingPaybackSeconds = MOCK_CONFIGURATION.initialState.startingPendingPayback;
+let pendingPayback = MOCK_CONFIGURATION.initialState.startingPendingPayback;
 
 // State Machine
-let currentState: 'ready' | 'armed' | 'locked' | 'aborted' | 'completed' | 'testing' = 'ready';
-let currentStrategy: TriggerStrategy = 'autoCountdown';
+let currentState: DeviceState = 'ready';
+
+// Current Active Config
+let currentSessionConfig: SessionConfig | undefined;
 
 // Timers
-let lockSecondsRemaining = 0;
-let penaltySecondsRemaining = 0;
-let testSecondsRemaining = 0;
-let triggerTimeoutRemaining = 0;
+let lockRemaining = 0;
+let rewardRemaining = 0; // Was penaltySecondsRemaining
+let testRemaining = 0;
+let triggerTimeout = 0;
 
+// Dynamic channel delays
 let currentDelays = { ch1: 0, ch2: 0, ch3: 0, ch4: 0 };
-let hideTimer = false;
 
-let lockSecondsConfig = 0;
-let penaltySecondsConfig = 0;
+// Internal tracking variables
+let lockDurationTotal = 0; // Total duration of current/last session
+let penaltyDurationConfig = 0; // Loaded from system config on arm
 let rewardHistory: Reward[] = [];
 
-// --- Keep-Alive Watchdog (LOCKED state only) ---
+// --- Keep-Alive Session Watchdog ---
 const KEEP_ALIVE_TIMEOUT_MS = 120 * 1000; // 2 minutes
 let lastKeepAliveTime = 0; // 0 = disarmed
 
@@ -242,11 +246,9 @@ const stopAllTimers = () => {
  */
 const initializeState = () => {
     log('Initializing state (simulating device boot).');
-    log(`   -> Device: ${MOCK_CONFIGURATION.identity.id} ${MOCK_CONFIGURATION.identity.version}`);
-    log(`   -> Build Type: ${MOCK_CONFIGURATION.identity.buildType.toUpperCase()}`);
-    log(
-        `   -> Limits: MinLock=${MOCK_CONFIGURATION.limits.minLockSeconds}s, TestMode=${MOCK_CONFIGURATION.limits.testModeDurationSeconds}s`
-    );
+    log(` -> Device: ${MOCK_CONFIGURATION.identity.id} ${MOCK_CONFIGURATION.identity.version}`);
+    log(` -> Build Type: ${MOCK_CONFIGURATION.identity.buildType.toUpperCase()}`);
+    log(` -> Limits: MinLock=${MOCK_CONFIGURATION.limits.minLockSeconds}s, TestMode=${MOCK_CONFIGURATION.limits.testModeDurationSeconds}s`);
 
     stopAllTimers();
 
@@ -272,24 +274,23 @@ const initializeState = () => {
 
     // Reset stats to config starting values
     streaks = MOCK_CONFIGURATION.initialState.startingStreaks;
-    totalTimeLockedSeconds = MOCK_CONFIGURATION.initialState.startingTotalTime;
+    totalTimeLocked = MOCK_CONFIGURATION.initialState.startingTotalTime;
     completed = MOCK_CONFIGURATION.initialState.startingCompleted;
     aborted = MOCK_CONFIGURATION.initialState.startingAborted;
-    pendingPaybackSeconds = MOCK_CONFIGURATION.initialState.startingPendingPayback;
+    pendingPayback = MOCK_CONFIGURATION.initialState.startingPendingPayback;
 
     currentState = 'ready';
-    currentStrategy = 'autoCountdown';
+    currentSessionConfig = undefined;
 
-    lockSecondsRemaining = 0;
-    penaltySecondsRemaining = 0;
-    testSecondsRemaining = 0;
-    triggerTimeoutRemaining = 0;
+    lockRemaining = 0;
+    rewardRemaining = 0;
+    testRemaining = 0;
+    triggerTimeout = 0;
     lastKeepAliveTime = 0;
 
     currentDelays = { ch1: 0, ch2: 0, ch3: 0, ch4: 0 };
-    hideTimer = false;
-    lockSecondsConfig = 0;
-    penaltySecondsConfig = 0;
+    lockDurationTotal = 0;
+    penaltyDurationConfig = 0;
 };
 
 /**
@@ -330,9 +331,9 @@ const triggerAbort = (source: string): boolean => {
 
     // Add to debt bank if enabled
     if (enablePaybackTime) {
-        const paybackToAdd = paybackDurationSeconds;
-        pendingPaybackSeconds += paybackToAdd;
-        log(`   -> Added ${paybackToAdd}s to payback bank. Total: ${pendingPaybackSeconds}s`);
+        const paybackToAdd = paybackDuration;
+        pendingPayback += paybackToAdd;
+        log(`   -> Added ${paybackToAdd}s to payback bank. Total: ${pendingPayback}s`);
     }
     if (enableStreaks) {
         log(`   -> Streak reset to 0.`);
@@ -349,12 +350,12 @@ const triggerAbort = (source: string): boolean => {
     // Reward Code Enabled: Enforce Penalty
     log(`   -> Penalty timer started.`);
     currentState = 'aborted';
-    lockSecondsRemaining = 0;
-    penaltySecondsRemaining = penaltySecondsConfig;
+    lockRemaining = 0;
+    rewardRemaining = penaltyDurationConfig;
 
     // Start penalty timer
     penaltyInterval = setInterval(() => {
-        if (penaltySecondsRemaining > 0) penaltySecondsRemaining--;
+        if (rewardRemaining > 0) rewardRemaining--;
         else completeSession();
     }, 1000);
 
@@ -365,11 +366,11 @@ const triggerAbort = (source: string): boolean => {
  * Starts the main 1-second lock interval.
  */
 const startLockInterval = () => {
-    log(`Starting main lock timer for ${lockSecondsConfig} seconds.`);
+    log(`Starting main lock timer for ${lockDurationTotal} seconds.`);
     stopAllTimers();
 
     currentState = 'locked';
-    lockSecondsRemaining = lockSecondsConfig;
+    lockRemaining = lockDurationTotal;
     lastKeepAliveTime = Date.now(); // <-- ARM WATCHDOG
 
     lockInterval = setInterval(() => {
@@ -380,9 +381,9 @@ const startLockInterval = () => {
             return; // Stop processing
         }
 
-        if (lockSecondsRemaining > 0) {
-            lockSecondsRemaining--;
-            totalTimeLockedSeconds++;
+        if (lockRemaining > 0) {
+            lockRemaining--;
+            totalTimeLocked++;
         } else {
             completeSession();
         }
@@ -394,11 +395,11 @@ const startLockInterval = () => {
  * Handles both Auto-Countdown and Button Wait logic.
  */
 const startArmedInterval = () => {
-    log(`Device ARMED. Strategy: ${currentStrategy}`);
+    log(`Device ARMED. Strategy: ${currentSessionConfig?.triggerStrategy}`);
     stopAllTimers();
 
     armedInterval = setInterval(() => {
-        if (currentStrategy === 'autoCountdown') {
+        if (currentSessionConfig?.triggerStrategy === 'autoCountdown') {
             // --- AUTO MODE ---
             // Tick down channels immediately
             let allZero = true;
@@ -427,8 +428,8 @@ const startArmedInterval = () => {
             // --- BUTTON MODE ---
             // Waiting for user input (Simulated via 'L' key or /debug/button-press)
             // Decrement the timeout
-            if (triggerTimeoutRemaining > 0) {
-                triggerTimeoutRemaining--;
+            if (triggerTimeout > 0) {
+                triggerTimeout--;
             } else {
                 log('Button Trigger Timeout! Cancelling arming.');
                 triggerAbort('Timeout');
@@ -444,7 +445,7 @@ const stopTestMode = () => {
     if (testInterval) clearInterval(testInterval);
     testInterval = null;
     currentState = 'ready';
-    testSecondsRemaining = 0;
+    testRemaining = 0;
     lastKeepAliveTime = 0; // Disarm watchdog
 };
 
@@ -457,12 +458,12 @@ const startTestInterval = () => {
     log(`Starting test mode timer for ${duration} seconds.`);
 
     stopAllTimers();
-    testSecondsRemaining = duration;
+    testRemaining = duration;
     // NOTE: Watchdog is NOT armed here
 
     testInterval = setInterval(() => {
-        if (testSecondsRemaining > 0) {
-            testSecondsRemaining--;
+        if (testRemaining > 0) {
+            testRemaining--;
         } else {
             log('Test mode auto-stopped.');
             stopTestMode();
@@ -478,10 +479,10 @@ const completeSession = () => {
     stopAllTimers();
     currentState = 'completed';
     lastKeepAliveTime = 0; // Disarm watchdog
-    lockSecondsRemaining = 0;
-    penaltySecondsRemaining = 0;
-    testSecondsRemaining = 0;
-    triggerTimeoutRemaining = 0;
+    lockRemaining = 0;
+    rewardRemaining = 0;
+    testRemaining = 0;
+    triggerTimeout = 0;
     currentDelays = { ch1: 0, ch2: 0, ch3: 0, ch4: 0 };
 
     completed++; // Increment stat
@@ -554,11 +555,11 @@ process.stdin.on('keypress', (_, key) => {
         const action = key.name === 'up' ? 'Increased' : 'Decreased';
 
         if (currentState === 'locked') {
-            lockSecondsRemaining = Math.max(0, lockSecondsRemaining + adjustment);
-            log(`🔼🔽 ${action} lock time. New remaining: ${formatTime(lockSecondsRemaining)}`);
+            lockRemaining = Math.max(0, lockRemaining + adjustment);
+            log(`🔼🔽 ${action} lock time. New remaining: ${formatTime(lockRemaining)}`);
         } else if (currentState === 'aborted') {
-            penaltySecondsRemaining = Math.max(0, penaltySecondsRemaining + adjustment);
-            log(`🔼🔽 ${action} penalty time. New remaining: ${formatTime(penaltySecondsRemaining)}`);
+            rewardRemaining = Math.max(0, rewardRemaining + adjustment);
+            log(`🔼🔽 ${action} penalty time. New remaining: ${formatTime(rewardRemaining)}`);
         } else if (currentState === 'armed') {
             log(`🔼🔽 Timer adjustment disabled during arming.`);
         } else if (currentState === 'testing') {
@@ -586,7 +587,7 @@ const handlePhysicalButtonLongPress = () => {
 const handlePhysicalButtonDoubleClick = () => {
     if (currentState === 'armed') {
         // In ARMED state, double-click triggers lock if strategy is buttonTrigger
-        if (currentStrategy === 'buttonTrigger') {
+        if (currentSessionConfig?.triggerStrategy === 'buttonTrigger') {
             log('Double-Click Trigger Received! Locking session.');
             startLockInterval();
         } else {
@@ -594,8 +595,6 @@ const handlePhysicalButtonDoubleClick = () => {
         }
     }
 };
-
-// -----------------------------
 
 // =================================================================
 // --- API Endpoints ---
@@ -690,20 +689,19 @@ app.get('/details', (_, res) => {
         channels: { ...channelConfig },
 
         // System Limits (Mapped from Config)
-        longPressMs: MOCK_CONFIGURATION.limits.longPressSeconds * 1000,
-        minLockSeconds: MOCK_CONFIGURATION.limits.minLockSeconds,
-        maxLockSeconds: MOCK_CONFIGURATION.limits.maxLockSeconds,
-        minPenaltySeconds: MOCK_CONFIGURATION.limits.minPenaltySeconds,
-        maxPenaltySeconds: MOCK_CONFIGURATION.limits.maxPenaltySeconds,
-        testModeDurationSeconds: MOCK_CONFIGURATION.limits.testModeDurationSeconds,
+        longPressMs: MOCK_CONFIGURATION.limits.longPressMs,
+        minLockDuration: MOCK_CONFIGURATION.limits.minLockSeconds,
+        maxLockDuration: MOCK_CONFIGURATION.limits.maxLockSeconds,
+        testModeDuration: MOCK_CONFIGURATION.limits.testModeDurationSeconds,
 
         deterrents: {
             enableStreaks: enableStreaks,
-            enablePaybackTime: enablePaybackTime,
-            paybackDurationSeconds: paybackDurationSeconds,
             enableRewardCode: enableRewardCode,
-            minPaybackTimeSeconds: MOCK_CONFIGURATION.limits.minPaybackTimeSeconds,
-            maxPaybackTimeSeconds: MOCK_CONFIGURATION.limits.maxPaybackTimeSeconds,
+            rewardPenaltyDuration: rewardPenaltyDuration,
+            enablePaybackTime: enablePaybackTime,
+            paybackDuration: paybackDuration,
+            minPaybackDuration: MOCK_CONFIGURATION.limits.minPaybackTimeSeconds,
+            maxPaybackDuration: MOCK_CONFIGURATION.limits.maxPaybackTimeSeconds,
         },
     };
     res.json(response);
@@ -729,11 +727,11 @@ app.get('/reward', (_, res) => {
     }
 
     // 2. ABORTED: Hidden ONLY if penalty is still ticking
-    if (currentState === 'aborted' && penaltySecondsRemaining > 0) {
-        log(`API: /reward DENIED (Penalty Active: ${penaltySecondsRemaining}s)`);
+    if (currentState === 'aborted' && rewardRemaining > 0) {
+        log(`API: /reward DENIED (Penalty Active: ${rewardRemaining}s)`);
         return res.status(403).json({
             status: 'forbidden',
-            message: `Reward locked for penalty duration (${penaltySecondsRemaining}s).`,
+            message: `Reward locked for penalty duration (${rewardRemaining}s).`,
         });
     }
 
@@ -755,67 +753,89 @@ app.post('/arm', (req, res) => {
         });
     }
 
-    // Read from JSON payload (req.body)
-    const {
-        triggerStrategy, // 'autoCountdown' | 'buttonTrigger'
-        lockDurationSeconds,
-        penaltyDurationSeconds,
-        hideTimer: shouldHideTimer,
-        channelDelaysSeconds, // nested object { ch1: x, ... }
-    } = req.body;
+    const config = req.body as SessionConfig;
 
-    const durationSec = Number(lockDurationSeconds);
-    const penaltySec = Number(penaltyDurationSeconds);
-
-    if (isNaN(durationSec) || durationSec < 1) {
-        log(`API: /arm FAILED (invalid duration: ${durationSec})`);
+    // Basic Validation
+    if (!config.triggerStrategy || !config.channelDelays) {
+        log('API: /arm FAILED (Missing required SessionConfig fields)');
         return res.status(400).json({
             status: 'error',
-            message: 'Invalid duration.',
+            message: 'Invalid SessionConfig payload.',
         });
     }
 
-    if (isNaN(penaltySec) || penaltySec < 1) {
-        log(`API: /arm FAILED (invalid penalty duration: ${penaltySec})`);
-        return res.status(400).json({
-            status: 'error',
-            message: 'Invalid penalty duration.',
-        });
-    }
+    // --- REWORKED DURATION LOGIC ---
+    let resolvedDuration = 0;
+    let min = 0;
+    let max = 0;
 
-    if (!channelDelaysSeconds || typeof channelDelaysSeconds !== 'object') {
-        log(`API: /arm FAILED (invalid delays object)`);
-        return res.status(400).json({
-            status: 'error',
-            message: `Invalid 'channelDelaysSeconds' object.`,
-        });
-    }
+    // Default lower bound if not specified
+    const defaultMin = MOCK_CONFIGURATION.limits.minLockSeconds;
 
-    // Clear any old intervals
-    stopAllTimers();
+    if (config.durationType === 'fixed') {
+        // Use the explicit 'duration' field for fixed
+        resolvedDuration = config.duration || defaultMin;
+        log(`   -> Fixed Duration Resolved: ${resolvedDuration}s`);
+    } else {
+        // Range Logic: Calculate boundaries
+        switch (config.durationType) {
+            case 'short':
+                min = 20;
+                max = 45;
+                break;
+            case 'medium':
+                min = 60;
+                max = 90;
+                break;
+            case 'long':
+                min = 120;
+                max = 180;
+                break;
+            case 'random':
+                // For 'random', use the explicit min/max fields
+                min = config.durationMin || defaultMin;
+                max = config.durationMax || min + 60;
+                break;
+            default:
+                // Fallback
+                min = defaultMin;
+                max = defaultMin + 60;
+                break;
+        }
+
+        // Ensure max >= min to avoid negative range
+        const effectiveMax = Math.max(min, max);
+        resolvedDuration = Math.floor(Math.random() * (effectiveMax - min + 1)) + min;
+        log(`   -> ${config.durationType.toUpperCase()} Duration Resolved: ${resolvedDuration}s (Range: ${min}-${effectiveMax}s)`);
+    }
 
     // Store config for this session
-    lockSecondsConfig = durationSec + pendingPaybackSeconds;
-    penaltySecondsConfig = penaltySec;
-    hideTimer = shouldHideTimer || false;
+    currentSessionConfig = config;
 
-    // Determine Strategy
-    currentStrategy = triggerStrategy === 'buttonTrigger' ? 'buttonTrigger' : 'autoCountdown';
+    // Apply Payback logic
+    lockDurationTotal = resolvedDuration + pendingPayback;
+    if (pendingPayback > 0) {
+        log(`   -> Added ${pendingPayback}s payback time. Total: ${lockDurationTotal}s`);
+    }
+
+    penaltyDurationConfig = rewardPenaltyDuration; // From static config
 
     // Parse channel delays from object
-    currentDelays.ch1 = Number(channelDelaysSeconds.ch1 || 0);
-    currentDelays.ch2 = Number(channelDelaysSeconds.ch2 || 0);
-    currentDelays.ch3 = Number(channelDelaysSeconds.ch3 || 0);
-    currentDelays.ch4 = Number(channelDelaysSeconds.ch4 || 0);
+    currentDelays.ch1 = Number(config.channelDelays.ch1 || 0);
+    currentDelays.ch2 = Number(config.channelDelays.ch2 || 0);
+    currentDelays.ch3 = Number(config.channelDelays.ch3 || 0);
+    currentDelays.ch4 = Number(config.channelDelays.ch4 || 0);
 
-    log(`🔒 /arm request. Strategy: ${currentStrategy}. Duration: ${durationSec}s.`);
+    log(`🔒 /arm request. Strategy: ${currentSessionConfig?.triggerStrategy}. Total Lock Duration: ${lockDurationTotal}s.`);
 
     // Transition to ARMED
     currentState = 'armed';
 
-    if (currentStrategy === 'buttonTrigger') {
+    stopAllTimers();
+
+    if (currentSessionConfig?.triggerStrategy === 'buttonTrigger') {
         // Manual Mode: Set timeout and wait
-        triggerTimeoutRemaining = MOCK_CONFIGURATION.limits.armedTimeoutSeconds;
+        triggerTimeout = MOCK_CONFIGURATION.limits.armedTimeoutSeconds;
         log('   -> Waiting for Button Trigger...');
     } else {
         // Auto Mode: Logs
@@ -827,7 +847,6 @@ app.post('/arm', (req, res) => {
 
     res.json({
         status: 'armed',
-        triggerStrategy: currentStrategy,
     });
 });
 
@@ -850,7 +869,7 @@ app.post('/start-test', (_, res) => {
 
     res.json({
         status: 'testing',
-        testSecondsRemaining: testSecondsRemaining,
+        testSecondsRemaining: testRemaining,
     });
 });
 
@@ -906,44 +925,43 @@ app.post('/factory-reset', (_, res) => {
 /**
  * GET /status
  * The main endpoint polled by the UI.
- * Returns camelCase SessionStatusResponse
  */
 app.get('/status', (_, res) => {
     const response: SessionStatus = {
         status: currentState,
-        // Send strategy context only if ARMED
-        triggerStrategy: currentState === 'armed' ? currentStrategy : undefined,
-        triggerTimeoutRemainingSeconds:
-            currentState === 'armed' && currentStrategy === 'buttonTrigger' ? triggerTimeoutRemaining : undefined,
+        lockDuration: lockDurationTotal,
 
-        lockSecondsRemaining,
-        penaltySecondsRemaining,
-        testSecondsRemaining,
-        hideTimer: hideTimer,
+        timers: {
+            lockRemaining: lockRemaining,
+            rewardRemaining: rewardRemaining,
+            testRemaining: testRemaining,
+            triggerTimeout:
+                currentState === 'armed' && currentSessionConfig?.triggerStrategy === 'buttonTrigger' ? triggerTimeout : undefined,
+        },
 
-        // Nested Delays Object
-        channelDelaysRemainingSeconds: {
+        config: currentSessionConfig,
+
+        channelDelaysRemaining: {
             ch1: currentDelays.ch1,
             ch2: currentDelays.ch2,
             ch3: currentDelays.ch3,
             ch4: currentDelays.ch4,
         },
 
-        // Nested Stats Object
         stats: {
             streaks,
             aborted,
             completed,
-            totalTimeLockedSeconds: totalTimeLockedSeconds,
-            pendingPaybackSeconds,
+            totalTimeLocked: totalTimeLocked,
+            pendingPayback,
         },
 
-        hardwareStatus: {
+        hardware: {
             buttonPressed: false,
             currentPressDurationMs: 0,
-            rssi: 90,
+            rssi: -40,
             freeHeap: 1000000,
-            uptimeSeconds: 10000,
+            uptime: 10000,
             internalTempC: 30,
         },
     };

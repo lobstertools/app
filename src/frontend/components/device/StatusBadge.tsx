@@ -1,7 +1,6 @@
 import { useSession } from '../../context/useSessionContext';
 import { red, blue, grey, purple } from '@ant-design/colors';
 import { Typography, Space } from 'antd';
-import { formatSeconds } from '../../utils/time';
 
 const { Text } = Typography;
 
@@ -9,7 +8,7 @@ const { Text } = Typography;
  * Displays the current status badge (Locked, Ready, etc.) in the header.
  */
 export const StatusBadge = () => {
-    const { currentState, sessionTimeRemaining } = useSession();
+    const { currentState } = useSession();
 
     /**
      * Renders the colored status badge based on the current session state.
@@ -17,8 +16,6 @@ export const StatusBadge = () => {
     const renderSessionStatusBadge = () => {
         let color: string;
         let text: string;
-        let showTimer = false;
-        let timerValue = '';
 
         switch (currentState) {
             case 'validating':
@@ -49,8 +46,6 @@ export const StatusBadge = () => {
             case 'testing':
                 color = blue[5];
                 text = 'TESTING';
-                showTimer = true;
-                timerValue = formatSeconds(sessionTimeRemaining) || '';
                 break;
 
             // --- Connection / App States ---
@@ -90,7 +85,6 @@ export const StatusBadge = () => {
                 <Text style={{ color: '#fff', margin: 0 }} strong>
                     {text}
                 </Text>
-                {showTimer && <Text style={{ color: '#fff', fontFamily: 'monospace' }}>({timerValue})</Text>}
             </Space>
         );
 

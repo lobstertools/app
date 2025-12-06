@@ -43,14 +43,8 @@ const { useModal } = Modal;
  * updating Wi-Fi or factory resetting.
  */
 export const DeviceSettingsModal = () => {
-    const {
-        isDeviceSettingsModalOpen,
-        closeDeviceSettingsModal,
-        activeDevice,
-        updateWifi,
-        isUpdatingWifi,
-        factoryResetDevice,
-    } = useDeviceManager();
+    const { isDeviceSettingsModalOpen, closeDeviceSettingsModal, activeDevice, updateWifi, isUpdatingWifi, factoryResetDevice } =
+        useDeviceManager();
     const { currentState, status } = useSession();
 
     const [form] = Form.useForm();
@@ -113,9 +107,8 @@ export const DeviceSettingsModal = () => {
     }, [activeDevice]);
 
     // --- Device Config Items ---
-
-    const paybackDurationSeconds = activeDevice?.deterrents?.paybackDurationSeconds || 0;
-    const paybackTimeMinutes = Math.floor(paybackDurationSeconds / 60);
+    const paybackDuration = activeDevice?.deterrents?.paybackDuration || 0;
+    const paybackTimeMinutes = Math.floor(paybackDuration / 60);
 
     const configItems = [
         {
@@ -147,7 +140,7 @@ export const DeviceSettingsModal = () => {
     ];
 
     // --- Session Stat Items  ---
-    const { streaks = 0, totalTimeLockedSeconds = 0, completed = 0, aborted = 0 } = status?.stats || {};
+    const { streaks = 0, totalTimeLocked = 0, completed = 0, aborted = 0 } = status?.stats || {};
 
     const sessionStatItems = [
         {
@@ -172,7 +165,7 @@ export const DeviceSettingsModal = () => {
                     </Space>
                 </Tooltip>
             ),
-            children: formatSeconds(totalTimeLockedSeconds),
+            children: formatSeconds(totalTimeLocked),
         },
         {
             key: 'completed',
@@ -247,11 +240,7 @@ export const DeviceSettingsModal = () => {
                                 style={{ marginBottom: 16 }}
                             />
                         )}
-                        <Form.Item
-                            name="ssid"
-                            label="New Wi-Fi Name (SSID)"
-                            rules={[{ required: true, message: 'SSID is required' }]}
-                        >
+                        <Form.Item name="ssid" label="New Wi-Fi Name (SSID)" rules={[{ required: true, message: 'SSID is required' }]}>
                             <Input placeholder="Your 2.4GHz Wi-Fi Network Name" />
                         </Form.Item>
                         <Form.Item
@@ -267,12 +256,7 @@ export const DeviceSettingsModal = () => {
                             <Input.Password placeholder="Your Wi-Fi Password" />
                         </Form.Item>
                         <Form.Item>
-                            <Button
-                                type="primary"
-                                htmlType="submit"
-                                loading={isUpdatingWifi}
-                                disabled={currentState !== 'ready'}
-                            >
+                            <Button type="primary" htmlType="submit" loading={isUpdatingWifi} disabled={currentState !== 'ready'}>
                                 Save Wi-Fi Credentials
                             </Button>
                         </Form.Item>
@@ -322,8 +306,8 @@ export const DeviceSettingsModal = () => {
                                 <Space direction="vertical" size={0}>
                                     <Text strong>Factory Reset Device</Text>
                                     <Text type="secondary">
-                                        Erase all settings (including Wi-Fi) and all session data (streaks, debt) from
-                                        the device and put it back into provisioning mode.
+                                        Erase all settings (including Wi-Fi) and all session data (streaks, debt) from the device and put it
+                                        back into provisioning mode.
                                     </Text>
                                 </Space>
                             </Col>

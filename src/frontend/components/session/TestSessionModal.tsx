@@ -1,24 +1,5 @@
-import {
-    Modal,
-    Button,
-    Typography,
-    Statistic,
-    Space,
-    Row,
-    Col,
-    Card,
-    Descriptions,
-    Tag,
-    Progress,
-    Divider,
-} from 'antd';
-import {
-    ThunderboltOutlined,
-    WifiOutlined,
-    DashboardOutlined,
-    SafetyCertificateOutlined,
-    InfoCircleOutlined,
-} from '@ant-design/icons';
+import { Modal, Button, Typography, Statistic, Space, Row, Col, Card, Descriptions, Tag, Progress, Divider } from 'antd';
+import { ThunderboltOutlined, WifiOutlined, DashboardOutlined, SafetyCertificateOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { useSession } from '../../context/useSessionContext';
 import { useDeviceManager } from '../../context/useDeviceManager';
 import { formatSeconds } from '../../utils/time';
@@ -26,12 +7,12 @@ import { formatSeconds } from '../../utils/time';
 const { Text } = Typography;
 
 export const TestSessionModal = () => {
-    const { currentState, sessionTimeRemaining, abortSession, status } = useSession();
+    const { currentState, abortSession, status } = useSession();
     const { activeDevice } = useDeviceManager();
 
     // The modal is only visible when the state is specifically 'testing'
     const isOpen = currentState === 'testing';
-    const hw = status?.hardwareStatus;
+    const hw = status?.hardware;
 
     // --- Logic for Button State ---
     // Use the static config from Device Details, defaulting to 3000ms if not yet loaded
@@ -71,6 +52,9 @@ export const TestSessionModal = () => {
         return <Tag color="processing">HOLDING...</Tag>;
     };
 
+    // Determine remaining test time from status.timers
+    const testRemaining = status?.timers?.testRemaining || 0;
+
     return (
         <Modal
             open={isOpen}
@@ -94,7 +78,7 @@ export const TestSessionModal = () => {
                         <Card size="small" style={{ textAlign: 'center' }}>
                             <Statistic
                                 title="Test Remaining"
-                                value={formatSeconds(sessionTimeRemaining)}
+                                value={formatSeconds(testRemaining)}
                                 valueStyle={{
                                     fontSize: '2.5rem',
                                     fontFamily: 'monospace',
@@ -117,8 +101,7 @@ export const TestSessionModal = () => {
                                 {isPressed && (
                                     <div style={{ textAlign: 'right' }}>
                                         <Text type="secondary" style={{ fontSize: '12px' }}>
-                                            Duration: {(currentPressMs / 1000).toFixed(1)}s /{' '}
-                                            {(longPressThresholdMs / 1000).toFixed(1)}s
+                                            Duration: {(currentPressMs / 1000).toFixed(1)}s / {(longPressThresholdMs / 1000).toFixed(1)}s
                                         </Text>
                                     </div>
                                 )}
@@ -154,11 +137,9 @@ export const TestSessionModal = () => {
                                     <Descriptions.Item label="Free Heap">
                                         <Text code>{((hw?.freeHeap || 0) / 1024).toFixed(1)} KB</Text>
                                     </Descriptions.Item>
-                                    <Descriptions.Item label="Uptime">
-                                        {formatSeconds(hw?.uptimeSeconds || 0)}
-                                    </Descriptions.Item>
+                                    <Descriptions.Item label="Uptime">{formatSeconds(hw?.uptime || 0)}</Descriptions.Item>
                                     <Descriptions.Item label="Internal Temp">
-                                        {hw?.internalTempC !== 'N/A' ? `${hw?.internalTempC}°C` : 'N/A'}
+                                        {hw?.internalTempC !== 'N/A' && hw?.internalTempC !== undefined ? `${hw?.internalTempC}°C` : 'N/A'}
                                     </Descriptions.Item>
                                 </Descriptions>
                             </Space>
@@ -234,9 +215,7 @@ export const TestSessionModal = () => {
                                     {activeDevice?.deterrents.enablePaybackTime && <Tag color="red">Payback Time</Tag>}
                                     {!activeDevice?.deterrents.enableRewardCode &&
                                         !activeDevice?.deterrents.enableStreaks &&
-                                        !activeDevice?.deterrents.enablePaybackTime && (
-                                            <Text type="secondary">None Enabled</Text>
-                                        )}
+                                        !activeDevice?.deterrents.enablePaybackTime && <Text type="secondary">None Enabled</Text>}
                                 </Space>
                             </Descriptions.Item>
 

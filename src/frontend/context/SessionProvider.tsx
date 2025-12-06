@@ -2,7 +2,7 @@ import { useMemo, ReactNode, useCallback, useEffect, useState } from 'react';
 import { App, Alert } from 'antd';
 import axios from 'axios';
 
-import { Reward, SessionStatus, ComputedAppStatus, SessionArmRequest } from '../../types';
+import { Reward, SessionStatus, ComputedAppStatus, SessionConfig } from '../../types';
 
 import { apiClient } from '../lib/apiClient';
 import { useDeviceManager } from './useDeviceManager';
@@ -14,7 +14,6 @@ import { SessionContext, SessionContextState } from './useSessionContext';
 export const SessionProvider = ({ children }: { children: ReactNode }) => {
     const [status, setStatus] = useState<SessionStatus | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [isLocking, setIsLocking] = useState(false);
     const [rewardHistory, setRewardHistory] = useState<Reward[]>([]);
 
     const { activeDevice, connectionHealth } = useDeviceManager();
@@ -67,10 +66,11 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     }, [activeDevice]);
 
     /**
-     * Sends the /arm command (formerly /start) to the device.
+     * Sends the /arm command to the device.
+     * Uses SessionConfig as the payload type.
      */
-    const sendArmCommand = useCallback(
-        async (payload: SessionArmRequest) => {
+    const startSession = useCallback(
+        async (payload: SessionConfig) => {
             if (!activeDevice) return;
             if (currentState !== 'ready') {
                 notification.error({
@@ -80,13 +80,11 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
                 return fetchSessionStatus();
             }
 
-            setIsLocking(true);
             try {
                 // Endpoint changed from /start to /arm
                 await apiClient.post(`/devices/${activeDevice.id}/session/arm`, payload);
 
-                const modeMsg =
-                    payload.triggerStrategy === 'buttonTrigger' ? 'Waiting for Button Press...' : 'Countdown Started';
+                const modeMsg = payload.triggerStrategy === 'buttonTrigger' ? 'Waiting for Button Press...' : 'Countdown Started';
 
                 notification.success({
                     message: 'Device Armed',
@@ -104,20 +102,10 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
                 setError(msg);
                 notification.error({ message: 'Arm Failed', description: msg });
                 await fetchSessionStatus();
-            } finally {
-                setIsLocking(false);
             }
         },
         [activeDevice, currentState, fetchSessionStatus, notification]
     );
-
-    /**
-     * Starts the session.
-     * The payload is now fully constructed in the UI component.
-     */
-    const startSession = (payload: SessionArmRequest) => {
-        sendArmCommand(payload);
-    };
 
     /**
      * Sends the /abort command to the device.
@@ -136,6 +124,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
             } else if (stateBeforeAbort === 'locked') {
                 let description = 'Reboot the device for your next session.';
 
+                // Check DeviceDetails deterrents configuration
                 if (activeDevice.deterrents.enableRewardCode) {
                     description = 'Penalty timer has started.';
                 }
@@ -221,51 +210,14 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         else setRewardHistory([]);
     }, [currentState, fetchRewardHistory]);
 
-    // --- Computed Values for UI ---
-
-    /**
-     * Determines the "Main Timer" to show in the UI.
-     */
-    const sessionTimeRemaining = useMemo(() => {
-        if (!status) return 0;
-
-        switch (status.status) {
-            case 'locked':
-                return status.lockSecondsRemaining || 0;
-            case 'aborted':
-                return status.penaltySecondsRemaining || 0;
-            case 'testing':
-                return status.testSecondsRemaining || 0;
-            case 'armed':
-                // If waiting for button, show the timeout.
-                return status.triggerStrategy === 'buttonTrigger' ? status.triggerTimeoutRemainingSeconds || 0 : 0;
-            default:
-                return 0;
-        }
-    }, [status]);
-
-    /**
-     * Maps the channel delays for the UI.
-     * Only relevant when status is 'armed'.
-     */
-    const channelDelaysRemaining = useMemo(() => {
-        // If we are armed and in auto-countdown mode, show the ticking delays.
-        if (!status || status.status !== 'armed') return [];
-
-        const d = status.channelDelaysRemainingSeconds || {};
-        return [d.ch1 ?? 0, d.ch2 ?? 0, d.ch3 ?? 0, d.ch4 ?? 0];
-    }, [status]);
 
     const contextValue: SessionContextState = {
         status,
         currentState,
         rewardHistory,
-        sessionTimeRemaining,
-        channelDelaysRemaining,
-        isLocking,
-        startSession,
         abortSession,
         startTestSession,
+        startSession,
     };
 
     return (

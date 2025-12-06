@@ -41,6 +41,7 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
 
     // Watchers for conditional rendering
     const enablePaybackTime = Form.useWatch('enablePaybackTime', form);
+    const enableRewardCode = Form.useWatch('enableRewardCode', form);
 
     // Use the context for provisioning and loading state
     const { provisionDevice, isProvisioning } = useDeviceManager();
@@ -77,9 +78,14 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
     const handleFinish = async (values: any) => {
         setError(null);
 
-        // 1. Calculate Seconds from Minutes Input
-        const minutesInput = values.enablePaybackTime ? values.paybackTimeMinutes : 0;
-        const paybackDurationSeconds = minutesInput * 60;
+        // 1. Calculate Seconds from Minutes/Seconds Input
+        const paybackMinutes = values.enablePaybackTime ? values.paybackTimeMinutes : 0;
+        const paybackDuration = paybackMinutes * 60;
+
+        // Reward Penalty is typically short (e.g., 30s to 10m), so we might keep it in seconds or minutes.
+        // Assuming the UI captures Minutes for consistency with Payback, we convert:
+        const rewardPenaltyMinutes = values.enableRewardCode ? values.rewardPenaltyMinutes : 0;
+        const rewardPenaltyDuration = rewardPenaltyMinutes * 60;
 
         // 2. Construct the strict payload matching DeviceProvisioningData interface
         // Note: Because we used display:none for steps, values.ssid etc are guaranteed to be here.
@@ -88,8 +94,9 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
             pass: values.pass,
             enableStreaks: !!values.enableStreaks,
             enablePaybackTime: !!values.enablePaybackTime,
-            paybackDurationSeconds: paybackDurationSeconds,
+            paybackDuration: paybackDuration,
             enableRewardCode: !!values.enableRewardCode,
+            rewardPenaltyDuration: rewardPenaltyDuration,
             ch1Enabled: !!values.ch1Enabled,
             ch2Enabled: !!values.ch2Enabled,
             ch3Enabled: !!values.ch3Enabled,
@@ -192,16 +199,14 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
     const renderDeterrentsStep = () => (
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             <Text type="secondary" style={{ marginBottom: 8, display: 'block' }}>
-                Configure behavioral deterrents to discourage aborting sessions early. These settings are stored on the
-                device.
+                Configure behavioral deterrents to discourage aborting sessions early. These settings are stored on the device.
             </Text>
 
             {/* 1. Streak Tracking */}
             <div>
                 <Title level={5}>1. Session Streaks</Title>
                 <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-                    Track consecutive successful sessions. This creates a "Streak" badge in the app to provide
-                    motivation.
+                    Track consecutive successful sessions. This creates a "Streak" badge in the app to provide motivation.
                 </Text>
                 <Form.Item name="enableStreaks" valuePropName="checked" style={{ marginBottom: 0 }}>
                     <Switch checkedChildren="Enabled" unCheckedChildren="Disabled" />
@@ -214,8 +219,8 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
             <div>
                 <Title level={5}>2. Time Payback</Title>
                 <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-                    Discourages bailing out. When a session is aborted (via pedal, UI, or power loss), a "time debt" is
-                    created and added to the start of your next session.
+                    Discourages bailing out. When a session is aborted (via pedal, UI, or power loss), a "time debt" is created and added to
+                    the start of your next session.
                 </Text>
                 <Form.Item name="enablePaybackTime" valuePropName="checked" style={{ marginBottom: 8 }}>
                     <Switch checkedChildren="Enabled" unCheckedChildren="Disabled" />
@@ -256,13 +261,41 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
             <div>
                 <Title level={5}>3. Reward Code</Title>
                 <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-                    Generates a random directional code (Up, Down, Left, Right) for a Master Lock 1500iD. This code is
-                    visible at the start to lock away your reward. When fully completing the session the code is shown
-                    again immediately. If aborted, it is shown only after the penalty time expires.
+                    Generates a random directional code (Up, Down, Left, Right) for a Master Lock 1500iD. This code is visible at the start
+                    to lock away your reward. When fully completing the session the code is shown again immediately. If aborted, it is shown
+                    only after the penalty time expires.
                 </Text>
-                <Form.Item name="enableRewardCode" valuePropName="checked" style={{ marginBottom: 0 }}>
+                <Form.Item name="enableRewardCode" valuePropName="checked" style={{ marginBottom: 8 }}>
                     <Switch checkedChildren="Enabled" unCheckedChildren="Disabled" />
                 </Form.Item>
+
+                {/* Dependent Configuration: Reward Penalty */}
+                {enableRewardCode && (
+                    <div style={dependentConfigStyle}>
+                        <Form.Item label="Abort Penalty (Minutes)" style={{ marginBottom: 0 }} required={true}>
+                            <Space.Compact>
+                                <Form.Item
+                                    name="rewardPenaltyMinutes"
+                                    noStyle
+                                    rules={[
+                                        {
+                                            required: true,
+                                            message: 'Please set the penalty time',
+                                        },
+                                    ]}
+                                >
+                                    <InputNumber min={1} max={60} style={{ width: 200 }} placeholder="e.g. 5" />
+                                </Form.Item>
+                                <Button disabled style={{ pointerEvents: 'none' }}>
+                                    min
+                                </Button>
+                            </Space.Compact>
+                        </Form.Item>
+                        <Text type="secondary" style={{ fontSize: '0.85em', marginTop: 4, display: 'block' }}>
+                            If the session is aborted, the reward code remains hidden for this duration.
+                        </Text>
+                    </div>
+                )}
             </div>
         </Space>
     );
@@ -283,6 +316,7 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
                         enablePaybackTime: true,
                         enableRewardCode: true,
                         paybackTimeMinutes: 15,
+                        rewardPenaltyMinutes: 5,
                         // Hardware Defaults
                         ch1Enabled: true,
                         ch2Enabled: true,
@@ -310,12 +344,7 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
                             </Button>
                         )}
                         {currentStep === 0 && (
-                            <Button
-                                type="primary"
-                                onClick={handleNext}
-                                icon={<RightOutlined />}
-                                style={{ marginLeft: 'auto' }}
-                            >
+                            <Button type="primary" onClick={handleNext} icon={<RightOutlined />} style={{ marginLeft: 'auto' }}>
                                 Next
                             </Button>
                         )}

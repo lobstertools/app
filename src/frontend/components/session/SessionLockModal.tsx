@@ -10,14 +10,19 @@ const { Title, Text } = Typography;
  * A full-screen modal that appears when a session is active.
  */
 export const SessionLockModal = () => {
-    const { status, abortSession, sessionTimeRemaining } = useSession();
+    const { status, abortSession } = useSession();
     const { activeDevice } = useDeviceManager();
 
     const isLocked = status?.status === 'locked';
-    const isTimerHidden = status?.hideTimer === true;
+
+    // Access hideTimer from config object
+    const isTimerHidden = status?.config?.hideTimer === true;
 
     // Check if the connected device supports the foot pedal feature
     const hasFootPedal = activeDevice?.features?.includes('footPedal');
+
+    // Calculate time locally
+    const timeRemaining = status?.timers?.lockRemaining || 0;
 
     const modalBodyStyle: React.CSSProperties = {
         minHeight: '80vh',
@@ -51,14 +56,13 @@ export const SessionLockModal = () => {
                         </Title>
                     </div>
                 ) : (
-                    // Show timer
                     <Statistic
                         title={
                             <Title level={4} style={{ color: '#ffffff99' }}>
                                 Time Remaining
                             </Title>
                         }
-                        value={status ? formatSeconds(sessionTimeRemaining) : '00:00:00'}
+                        value={status ? formatSeconds(timeRemaining) : '00:00:00'}
                         valueStyle={{
                             color: '#fff',
                             fontSize: 'clamp(3rem, 10vw, 7rem)',
@@ -69,14 +73,7 @@ export const SessionLockModal = () => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 64 }}>
-                <Button
-                    type="primary"
-                    danger
-                    icon={<StopOutlined />}
-                    onClick={abortSession}
-                    size="large"
-                    style={{ minWidth: '300px' }}
-                >
+                <Button type="primary" danger icon={<StopOutlined />} onClick={abortSession} size="large" style={{ minWidth: '300px' }}>
                     Abort Session
                 </Button>
 
