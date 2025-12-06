@@ -221,6 +221,31 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
     );
 
     /**
+     * Sends a reboot command to the specified device.
+     * @param deviceId The ID of the device to reboot.
+     */
+    const rebootDevice = useCallback(
+        async (deviceId: string) => {
+            try {
+                // Assumes backend has POST /devices/:id/reboot -> calls http://<ip>/reboot
+                await apiClient.post(`/devices/${deviceId}/reboot`);
+                notification.success({
+                    message: 'Rebooting Device',
+                    description: 'The device is restarting. It will be available shortly.',
+                });
+                // Note: We don't clear the active device here, as it will come back online.
+            } catch (err: any) {
+                const msg = err.response?.data?.message || 'Failed to send reboot command.';
+                notification.error({
+                    message: 'Reboot Failed',
+                    description: msg,
+                });
+            }
+        },
+        [notification]
+    );
+
+    /**
      * Sends a factory reset command to the specified device.
      * On success, clears the active device.
      * @param deviceId The ID of the device to reset (must be an active device).
@@ -546,6 +571,7 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
         clearDevice,
         openDeviceModal,
         closeDeviceModal,
+        rebootDevice,
         factoryResetDevice,
         openDeviceLogs,
         closeLogModal,

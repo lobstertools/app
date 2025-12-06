@@ -22,6 +22,7 @@ export interface DeviceManagerContextState {
     clearDevice: () => void;
     openDeviceModal: () => void;
     closeDeviceModal: () => void;
+    rebootDevice: (deviceId: string) => void;
     factoryResetDevice: (deviceId: string) => void;
     openDeviceLogs: () => void;
     closeLogModal: () => void;

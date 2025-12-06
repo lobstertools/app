@@ -32,6 +32,7 @@ import {
     FieldTimeOutlined,
     ThunderboltOutlined,
     FieldTimeOutlined as TimerIcon,
+    ReloadOutlined,
 } from '@ant-design/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { formatSeconds } from '../../utils/time';
@@ -66,7 +67,7 @@ interface SessionFormData {
 export const SessionConfiguration = () => {
     // Destructure status here so it's available for the render function
     const { currentState, startSession, status } = useSession();
-    const { activeDevice, openDeviceModal } = useDeviceManager();
+    const { activeDevice, openDeviceModal, rebootDevice } = useDeviceManager();
     const { registerStartConfigAction } = useKeyboard();
 
     const { notification } = App.useApp();
@@ -752,6 +753,7 @@ export const SessionConfiguration = () => {
                 <Text type="secondary">
                     {enableRewardCode ? 'The code for your reward lock is now visible.' : 'You may now access your reward.'}
                 </Text>
+
                 <Alert
                     message="Reboot Required for Next Session"
                     description={
@@ -763,6 +765,21 @@ export const SessionConfiguration = () => {
                     showIcon
                     icon={<PoweroffOutlined />}
                     style={{ marginTop: 24, textAlign: 'left' }}
+                    // Add the action button directly to the Alert for context
+                    action={
+                        <Button
+                            size="small"
+                            type="primary"
+                            icon={<ReloadOutlined />}
+                            onClick={() => {
+                                if (activeDevice?.id) {
+                                    rebootDevice(activeDevice.id);
+                                }
+                            }}
+                        >
+                            Reboot Now
+                        </Button>
+                    }
                 />
             </div>
         </Card>

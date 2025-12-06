@@ -113,7 +113,7 @@ let currentDelays = { ch1: 0, ch2: 0, ch3: 0, ch4: 0 };
 // Internal tracking variables
 let lockDurationTotal = 0; // Total duration of current/last session
 let penaltyDurationConfig = 0; // Loaded from system config on arm
-let rewardHistory: Reward[] = [];
+const rewardHistory: Reward[] = [];
 
 // --- Keep-Alive Session Watchdog ---
 const KEEP_ALIVE_TIMEOUT_MS = 120 * 1000; // 2 minutes
@@ -252,32 +252,40 @@ const initializeState = () => {
 
     stopAllTimers();
 
-    rewardHistory = [];
-
-    if (enableRewardCode) {
-        // Generate some fake historical codes
+    // If we're initializing from a reset (reboot), we want to preserve history
+    // but shift it for a new code. If it's fresh start, generate history.
+    if (rewardHistory.length === 0 && enableRewardCode) {
+        // Fresh start: Generate fake history
         const numberOfHistoricalCodes = 4;
         for (let i = 0; i < numberOfHistoricalCodes; i++) {
             rewardHistory.push(generateUniqueReward());
         }
-
-        // No real need to reverse since they are random, but mimicking structure
         rewardHistory.reverse();
         log(`   -> Generated ${numberOfHistoricalCodes} historical reward codes.`);
 
         // Generate the "Current" code (Index 0)
-        // This is the code the user sees in READY state to set their lock.
         const newReward = generateUniqueReward();
         rewardHistory.unshift(newReward);
         log(`Generated new reward code for this session: ${newReward.code} (${newReward.checksum})`);
+    } else if (enableRewardCode) {
+        // Reboot scenario: Shift history and generate new current code
+        log('   -> Shifting reward history for new session code.');
+        // Remove oldest if we exceed history size (mock size 5)
+        if (rewardHistory.length >= 5) {
+            rewardHistory.pop();
+        }
+        const newReward = generateUniqueReward();
+        rewardHistory.unshift(newReward);
+        log(`Generated new reward code: ${newReward.code} (${newReward.checksum})`);
     }
 
-    // Reset stats to config starting values
-    streaks = MOCK_CONFIGURATION.initialState.startingStreaks;
-    totalTimeLocked = MOCK_CONFIGURATION.initialState.startingTotalTime;
-    completed = MOCK_CONFIGURATION.initialState.startingCompleted;
-    aborted = MOCK_CONFIGURATION.initialState.startingAborted;
-    pendingPayback = MOCK_CONFIGURATION.initialState.startingPendingPayback;
+    // Reset stats to config starting values if first run, otherwise keep accumulating in memory
+    // (In mock, memory persistence = session persistence)
+    if (streaks === undefined) streaks = MOCK_CONFIGURATION.initialState.startingStreaks;
+    if (totalTimeLocked === undefined) totalTimeLocked = MOCK_CONFIGURATION.initialState.startingTotalTime;
+    if (completed === undefined) completed = MOCK_CONFIGURATION.initialState.startingCompleted;
+    if (aborted === undefined) aborted = MOCK_CONFIGURATION.initialState.startingAborted;
+    if (pendingPayback === undefined) pendingPayback = MOCK_CONFIGURATION.initialState.startingPendingPayback;
 
     currentState = 'ready';
     currentSessionConfig = undefined;
@@ -626,7 +634,8 @@ Endpoints:
 - GET /reward
 - GET /log
 - POST /update-wifi
-- POST /factory-reset`);
+- POST /factory-reset
+- POST /reboot`);
 });
 
 /**
@@ -908,6 +917,29 @@ app.post('/debug/button-press', (_, res) => {
     log('API: /debug/button-press received.');
     handlePhysicalButtonLongPress();
     res.json({ message: 'Button press simulated' });
+});
+
+/**
+ * POST /reboot
+ * Simulates a remote reboot.
+ * In production, this only works if currentState === 'completed' or 'ready'.
+ */
+app.post('/reboot', (_, res) => {
+    // Match Firmware: Only allow reboot if ready or completed
+    if (currentState !== 'ready' && currentState !== 'completed') {
+        log('API: /reboot FAILED (Device active)');
+        return res.status(403).json({
+            status: 'error',
+            message: 'Reboot denied. Device is active/locked. Use physical disconnect to abort.',
+        });
+    }
+
+    log('API: /reboot received. Simulating safe restart.');
+
+    res.json({ status: 'rebooting', message: 'Rebooting to clear memory session...' });
+
+    // Simulate reboot delay
+    setTimeout(initializeState, 2000);
 });
 
 /**
