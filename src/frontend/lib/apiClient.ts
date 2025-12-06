@@ -2,6 +2,7 @@ import axios, { InternalAxiosRequestConfig } from 'axios';
 
 // Use Vite's magic variable 'import.meta.env.DEV'
 // This is 'true' in development (Vite server) and 'false' in production (Electron build)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const API_BASE_URL = (import.meta as any).env?.DEV
     ? '/api' // In DEV, use the Vite proxy (defined in vite.config.ts)
     : 'http://localhost:3001/api'; // In PROD, talk directly to the backend server

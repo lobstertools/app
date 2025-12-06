@@ -133,6 +133,7 @@ function getEsptoolPath() {
         } else {
             console.log('[Electron] No system-installed esptool found, using bundled version.');
         }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
         console.error(`[Electron] Error checking for system-installed esptool: ${error.message}`);
         console.log('[Electron] Defaulting to bundled version.');
@@ -339,6 +340,7 @@ app.on('ready', () => {
             let esptoolPath: string;
             try {
                 esptoolPath = getEsptoolPath();
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (err: any) {
                 console.error('[Electron] Error getting esptool path:', err);
                 throw new Error(err.message);
@@ -406,6 +408,7 @@ app.on('ready', () => {
                     }
                 });
 
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 esptool.on('error', (err: any) => {
                     console.error('[Electron] Failed to start esptool.', err);
                     reject(new Error(`Failed to start esptool (${err.code}): ${err.message}`));

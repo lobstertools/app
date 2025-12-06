@@ -12,11 +12,13 @@ export const AppRuntimeProvider = ({ children }: { children: ReactNode }) => {
     const [isBackendReady, setIsBackendReady] = useState(false);
 
     // Is the app running in a dev environment (Vite)?
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const isDevelopmentMode = (import.meta as any).env?.DEV || false;
 
     // --- Application Version ---
     // VITE_APP_VERSION is injected by the build process (see .github/workflows/build-app.yml)
     // It defaults to '0.0.0-dev' if not provided (e.g., in local dev)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let version = (import.meta as any).env?.VITE_APP_VERSION || '0.0.0-debug';
     version = version.toLowerCase();
 

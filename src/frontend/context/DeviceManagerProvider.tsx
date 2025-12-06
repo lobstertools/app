@@ -96,6 +96,7 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
                 scanForDevices(); // Refresh the list
                 setIsProvisioning(false);
                 return true;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (err: any) {
                 const msg = err.response?.data?.message || 'Failed to provision device.';
                 notification.error({
@@ -126,6 +127,7 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
                 });
                 // Notification is handled by the modal on success
                 return true;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (err: any) {
                 const msg = err.response?.data?.message || 'Failed to send Wi-Fi update command.';
                 notification.error({
@@ -234,6 +236,7 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
                     description: 'The device is restarting. It will be available shortly.',
                 });
                 // Note: We don't clear the active device here, as it will come back online.
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (err: any) {
                 const msg = err.response?.data?.message || 'Failed to send reboot command.';
                 notification.error({
@@ -259,6 +262,7 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
                     description: 'The device is rebooting into provisioning mode.',
                 });
                 clearDevice(); // Device is no longer 'active'
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (err: any) {
                 const msg = err.response?.data?.message || 'Failed to send reset command.';
                 notification.error({
@@ -301,6 +305,7 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
         try {
             const response = await apiClient.get(`/devices/${activeDevice.id}/log`, { responseType: 'text' });
             setLogContent(response.data);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             const msg = axios.isAxiosError(err) ? err.response?.data : 'Failed to fetch logs.';
             setLogContent(`Error:\n${msg}`);
@@ -322,6 +327,7 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
             try {
                 const ports = await window.api.listSerialPorts(filterKnownDevices);
                 setSerialPorts(ports);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } catch (err: any) {
                 notification.error({
                     message: 'Failed to list serial ports',
@@ -342,6 +348,7 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
         if (!isElectron) return null;
         try {
             return await window.api.openFirmwareDialog();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             notification.error({
                 message: 'Failed to open file dialog',
@@ -424,6 +431,7 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
                     message: response.data.message,
                 },
             });
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             if (axios.isAxiosError(err)) {
                 if (err.response) {

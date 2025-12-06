@@ -29,6 +29,27 @@ interface ProvisionDeviceFormProps {
     onSuccess: () => void;
 }
 
+/**
+ * Represents the raw form values collected from the UI.
+ * Note: Times here are in minutes, whereas the domain type expects seconds.
+ */
+interface ProvisionFormValues {
+    // Step 1: Connection & Hardware
+    ssid: string;
+    pass: string;
+    ch1Enabled: boolean;
+    ch2Enabled: boolean;
+    ch3Enabled: boolean;
+    ch4Enabled: boolean;
+
+    // Step 2: Deterrents
+    enableStreaks: boolean;
+    enablePaybackTime: boolean;
+    paybackTimeMinutes: number;
+    enableRewardCode: boolean;
+    rewardPenaltyMinutes: number;
+}
+
 const { Text, Title } = Typography;
 
 export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormProps) => {
@@ -75,7 +96,7 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
     /**
      * Handles the form submission.
      */
-    const handleFinish = async (values: any) => {
+    const handleFinish = async (values: ProvisionFormValues) => {
         setError(null);
 
         // 1. Calculate Seconds from Minutes/Seconds Input

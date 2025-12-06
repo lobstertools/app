@@ -51,6 +51,7 @@ export const FlasherScreen = ({ port, onSuccess, onCancel }: FlasherScreenProps)
                 partitionsPath,
             });
             onSuccess();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             setFlashScreenError(err.message || 'An unknown flash error occurred.');
         }
