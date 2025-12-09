@@ -262,12 +262,15 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
                                         },
                                     ]}
                                 >
-                                    <InputNumber min={10} max={120} style={{ width: 200 }} placeholder="e.g. 15" />
+                                    <InputNumber min={5} max={45} style={{ width: 200 }} placeholder="e.g. 15" />
                                 </Form.Item>
                                 <Button disabled style={{ pointerEvents: 'none' }}>
                                     min
                                 </Button>
                             </Space.Compact>
+                            <Text type="secondary" style={{ fontSize: '12px', marginTop: 4, display: 'block' }}>
+                                Min: 5 minutes — Max: 45 minutes
+                            </Text>
                         </Form.Item>
                         <Text type="secondary" style={{ fontSize: '0.85em', marginTop: 4, display: 'block' }}>
                             This duration is added to your next session for every abort.
@@ -305,12 +308,15 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
                                         },
                                     ]}
                                 >
-                                    <InputNumber min={1} max={60} style={{ width: 200 }} placeholder="e.g. 5" />
+                                    <InputNumber min={15} max={180} style={{ width: 200 }} placeholder="e.g. 5" />
                                 </Form.Item>
                                 <Button disabled style={{ pointerEvents: 'none' }}>
                                     min
                                 </Button>
                             </Space.Compact>
+                            <Text type="secondary" style={{ fontSize: '12px', marginTop: 4, display: 'block' }}>
+                                Min: 15 minute — Max: 3 hour (180 mins)
+                            </Text>
                         </Form.Item>
                         <Text type="secondary" style={{ fontSize: '0.85em', marginTop: 4, display: 'block' }}>
                             If the session is aborted, the reward code remains hidden for this duration.
