@@ -702,6 +702,50 @@ app.get('/api/devices/:id/health', async (req: Request, res: Response) => {
 });
 
 /**
+ * Reboots a "ready" device (fire-and-forget).
+ */
+app.post('/api/devices/:id/reboot', (req: Request, res: Response) => {
+    const { id } = req.params;
+    const device = deviceCache.get(id);
+
+    if (!device || device.state !== 'ready') {
+        return res.status(404).json({
+            status: 'error',
+            message: 'Device not found or not ready.',
+        });
+    }
+
+    const targetUrl = buildTargetUrl(device.address, device.port, '/reboot');
+
+    log(`[Reboot] Triggering Fire-and-Forget reboot to ${targetUrl}`);
+
+    // 1. Send Command
+    // We set a very short timeout just to close the socket resource quickly on the server side.
+    axios
+        .post(targetUrl, {}, { timeout: 1000 })
+        .then(() => {
+            log(`[Reboot] Device ${id} surprisingly acknowledged the reboot.`);
+        })
+        .catch((e) => {
+            // This is the EXPECTED outcome if the device reboots instantly.
+            const msg = isAxiosError(e) ? e.message : 'Unknown error';
+            log(`[Reboot] Device ${id} connection closed (Expected): ${msg}`);
+        });
+
+    // 2. Immediate Cleanup
+    // We assume the device is gone.
+    deviceCache.delete(id);
+
+    // Trigger a fresh scan so we pick it up quickly when it comes back online
+    resetMDNSDiscovery();
+
+    // 3. Immediate Response to Client
+    return res.status(200).json({
+        status: 'success',
+        message: 'Reboot command sent. Device restarting...',
+    });
+});
+/**
  * Keep-alive endpoint.
  */
 app.post('/api/devices/:id/keepalive', async (req: Request, res: Response) => {
