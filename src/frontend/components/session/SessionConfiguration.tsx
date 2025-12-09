@@ -281,8 +281,8 @@ export const SessionConfiguration = () => {
                 hideTimer: !!values.hideTimer,
                 durationType: durationType,
                 duration: finalDurationUnits * timeScale, // Convert to seconds
-                durationMin: calculatedMin * timeScale, // Convert to seconds
-                durationMax: calculatedMax * timeScale, // Convert to seconds
+                minDuration: calculatedMin * timeScale, // Convert to seconds
+                maxDuration: calculatedMax * timeScale, // Convert to seconds
                 channelDelays: channelDelays,
             };
 

@@ -155,8 +155,8 @@ export interface SessionConfig {
      */
     durationType: 'fixed' | 'random' | 'short' | 'medium' | 'long';
     duration: number;
-    durationMin?: number;
-    durationMax?: number;
+    minDuration?: number;
+    maxDuration?: number;
 
     /**
      * The start delays for each channel (in seconds).

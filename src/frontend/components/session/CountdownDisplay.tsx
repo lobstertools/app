@@ -51,14 +51,14 @@ export const CountdownDisplay = () => {
         let durationLabel = 'Total Duration';
 
         if (activeConfig) {
-            const { durationType, durationMin, durationMax } = activeConfig;
+            const { durationType, minDuration, maxDuration } = activeConfig;
 
             if (durationType === 'fixed') {
                 durationDisplay = <Text strong>{formatSeconds(lockDurationTotal)}</Text>;
             } else {
                 durationLabel = 'Duration Range';
-                const minDisplay = isDebugMode ? durationMin : Math.floor((durationMin || 0) / 60);
-                const maxDisplay = isDebugMode ? durationMax : Math.floor((durationMax || 0) / 60);
+                const minDisplay = isDebugMode ? minDuration : Math.floor((minDuration || 0) / 60);
+                const maxDisplay = isDebugMode ? maxDuration : Math.floor((maxDuration || 0) / 60);
 
                 durationDisplay = (
                     <Space direction="vertical" size={0}>

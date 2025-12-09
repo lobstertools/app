@@ -812,8 +812,8 @@ app.post('/arm', (req, res) => {
                 break;
             case 'random':
                 // For 'random', use the explicit min/max fields
-                min = config.durationMin || defaultMin;
-                max = config.durationMax || min + 60;
+                min = config.minDuration || defaultMin;
+                max = config.maxDuration || min + 60;
                 break;
             default:
                 // Fallback
