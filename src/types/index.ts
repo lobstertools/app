@@ -278,13 +278,31 @@ export interface Reward {
 export interface DeviceProvisioningData {
     ssid: string;
     pass: string;
-    enableStreaks: boolean;
-    enablePaybackTime: boolean;
-    paybackDuration: number;
-    enableRewardCode: boolean;
-    rewardPenaltyDuration: number;
+
+    // --- Hardware Mapping ---
     ch1Enabled: boolean;
     ch2Enabled: boolean;
     ch3Enabled: boolean;
     ch4Enabled: boolean;
+
+    // --- Safety / Play Style Limits ---
+    minSessionDuration: number;
+    maxSessionDuration: number;
+
+    // --- Deterrents ---
+    enableStreaks: boolean;
+
+    // Payback
+    enablePaybackTime: boolean;
+    paybackStrategy: 'fixed' | 'random';
+    paybackDuration: number;
+    paybackMinDuration?: number;
+    paybackMaxDuration?: number;
+
+    // Reward
+    enableRewardCode: boolean;
+    rewardStrategy: 'fixed' | 'random';
+    rewardPenaltyDuration: number;
+    rewardPenaltyMinDuration?: number;
+    rewardPenaltyMaxDuration?: number;
 }
