@@ -18,10 +18,6 @@ export const StatusBadge = () => {
         let text: string;
 
         switch (currentState) {
-            case 'validating':
-                color = '#8c8c8c';
-                text = 'VALIDATING (System Checks)';
-                break;
             // --- Session States ---
             case 'locked':
                 color = '#faad14';
@@ -49,6 +45,10 @@ export const StatusBadge = () => {
                 break;
 
             // --- Connection / App States ---
+            case 'verifying_hardware':
+                color = '#8c8c8c';
+                text = 'VALIDATING HARDWARE';
+                break;
             case 'no_device_selected':
                 color = grey[5];
                 text = 'NO DEVICE SELECTED';

@@ -9,7 +9,7 @@ export const ReadinessModal = () => {
     const { token } = antdTheme.useToken();
 
     // Only visible during the validation phase
-    const isOpen = currentState === 'validating';
+    const isOpen = currentState === 'verifying_hardware';
 
     return (
         <Modal open={isOpen} footer={null} closable={false} maskClosable={false} centered width={600}>

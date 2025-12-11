@@ -32,6 +32,10 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
             return 'connecting';
         }
 
+        if (status?.hardware.verified == false) {
+            return 'verifying_hardware';
+        }
+
         // Trust device status (ready, armed, locked, aborted, etc.)
         return status?.status || 'connecting';
     }, [activeDevice, connectionHealth, status]);

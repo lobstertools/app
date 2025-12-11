@@ -19,7 +19,7 @@ import cors from 'cors';
 import readline from 'readline';
 import bonjour from 'bonjour';
 
-import { DeviceDetails, DeviceFeature, Reward, SessionStatus, SessionConfig, DeviceState } from '../types/';
+import { DeviceDetails, DeviceFeature, Reward, SessionStatus, SessionConfig, SessionState } from '../types/';
 
 const app = express();
 const PORT = 3003;
@@ -96,7 +96,7 @@ let aborted = MOCK_CONFIGURATION.initialState.startingAborted;
 let pendingPayback = MOCK_CONFIGURATION.initialState.startingPendingPayback;
 
 // State Machine
-let currentState: DeviceState = 'ready';
+let currentState: SessionState = 'ready';
 
 // Current Active Config
 let currentSessionConfig: SessionConfig | undefined;
@@ -999,6 +999,7 @@ app.get('/status', (_, res) => {
         },
 
         hardware: {
+            verified: true,
             buttonPressed: false,
             currentPressDurationMs: 0,
             rssi: -40,

@@ -19,8 +19,7 @@ export type DeviceFeature = (typeof DEVICE_FEATURES)[number];
 /**
  * Describes the internal logic state of the device.
  */
-export type DeviceState =
-    | 'validating' // Validating hardware
+export type SessionState =
     | 'ready' // Idle, waiting for command
     | 'armed' // Safety off, waiting for Trigger (Auto or Button)
     | 'locked' // Point of no return, session active
@@ -63,7 +62,8 @@ export interface ConnectionHealth {
  * Calculated in SessionContext by combining ConnectionHealth and DeviceSessionState.
  */
 export type ComputedAppStatus =
-    | DeviceState // 'ready', 'locked', 'testing', etc.
+    | SessionState // 'ready', 'locked', 'testing', etc.
+    | 'verifying_hardware'
     | 'no_device_selected'
     | 'device_unreachable'
     | 'server_unreachable'
@@ -203,7 +203,7 @@ export interface SessionStatus {
     /**
      * Overall status
      */
-    status: DeviceState;
+    status: SessionState;
 
     /**
      * The total duration of the locked phase (in seconds).
@@ -249,6 +249,7 @@ export interface SessionStatus {
      * Real-time hardware telemetry.
      */
     hardware: {
+        verified: boolean;
         buttonPressed: boolean;
         currentPressDurationMs: number;
         rssi: number;
