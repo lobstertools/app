@@ -53,6 +53,7 @@ interface SessionFormData {
     rangeMin?: number;
     rangeMax?: number;
     hideTimer: boolean;
+    disableLED: boolean;
     useMultiChannelDelay: boolean;
     delayCh1: number;
     delayCh2?: number;
@@ -279,6 +280,7 @@ export const SessionConfiguration = () => {
             const payload: SessionConfig = {
                 triggerStrategy: values.triggerStrategy,
                 hideTimer: !!values.hideTimer,
+                disableLED: !!values.disableLED,
                 durationType: durationType,
                 duration: finalDurationUnits * timeScale, // Convert to seconds
                 minDuration: calculatedMin * timeScale, // Convert to seconds
@@ -443,6 +445,7 @@ export const SessionConfiguration = () => {
                     rangeMin: defaultValues.rangeMin,
                     rangeMax: defaultValues.rangeMax,
                     hideTimer: false,
+                    disableLED: false,
                     useMultiChannelDelay: false,
                     delayCh1: 10,
                     delayCh2: 10,
@@ -638,12 +641,27 @@ export const SessionConfiguration = () => {
                 <Space direction="vertical" style={{ width: '100%' }}>
                     <Title level={5}>3. Tension Mode</Title>
                     <Text type="secondary" style={{ marginTop: -8 }}>
-                        Hides the session timer for an extra challenge.
+                        Restrict device feedback for an extra challenge.
                     </Text>
 
-                    <Form.Item name="hideTimer" label="Enable Tension Mode" valuePropName="checked" style={{ marginTop: 8 }}>
-                        <Switch checkedChildren="On" unCheckedChildren="Off" />
-                    </Form.Item>
+                    <Row gutter={24} style={{ marginTop: 8 }}>
+                        <Col span={12}>
+                            <Space>
+                                <Text>Hide Timer</Text>
+                                <Form.Item name="hideTimer" valuePropName="checked" noStyle>
+                                    <Switch />
+                                </Form.Item>
+                            </Space>
+                        </Col>
+                        <Col span={12}>
+                            <Space>
+                                <Text>Disable LED</Text>
+                                <Form.Item name="disableLED" valuePropName="checked" noStyle>
+                                    <Switch />
+                                </Form.Item>
+                            </Space>
+                        </Col>
+                    </Row>
                 </Space>
 
                 {paybackTimeEnabled && (

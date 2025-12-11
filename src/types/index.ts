@@ -151,6 +151,11 @@ export interface SessionConfig {
     hideTimer: boolean;
 
     /**
+     * If true, the device LED is dark/obscured during the session.
+     */
+    disableLED: boolean;
+
+    /**
      * Intent Metadata.
      */
     durationType: 'fixed' | 'random' | 'short' | 'medium' | 'long';
