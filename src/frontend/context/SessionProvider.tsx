@@ -32,12 +32,12 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
             return 'connecting';
         }
 
-        if (status?.hardware.verified == false) {
+        if (status?.verified === false) {
             return 'verifying_hardware';
         }
 
         // Trust device status (ready, armed, locked, aborted, etc.)
-        return status?.status || 'connecting';
+        return status?.state || 'connecting';
     }, [activeDevice, connectionHealth, status]);
 
     // --- API Interactions ---
@@ -76,7 +76,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     const startSession = useCallback(
         async (payload: SessionConfig) => {
             if (!activeDevice) return;
-            if (currentState !== 'ready') {
+            if (currentState !== 'READY') {
                 notification.error({
                     message: 'Device Busy',
                     description: 'Device must be READY to arm a new session.',
@@ -88,7 +88,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
                 // Endpoint changed from /start to /arm
                 await apiClient.post(`/devices/${activeDevice.id}/session/arm`, payload);
 
-                const modeMsg = payload.triggerStrategy === 'buttonTrigger' ? 'Waiting for Button Press...' : 'Countdown Started';
+                const modeMsg = payload.triggerStrategy === 'STRAT_BUTTON_TRIGGER' ? 'Waiting for Button Press...' : 'Countdown Started';
 
                 notification.success({
                     message: 'Device Armed',
@@ -116,20 +116,19 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
      */
     const abortSession = useCallback(async () => {
         if (!activeDevice) return;
-        const stateBeforeAbort = status?.status;
+        const stateBeforeAbort = status?.state;
         try {
             await apiClient.post(`/devices/${activeDevice.id}/session/abort`);
 
-            if (stateBeforeAbort === 'armed') {
+            if (stateBeforeAbort === 'ARMED') {
                 notification.info({
                     message: 'Arming Cancelled',
                     description: 'The session start was cancelled. No penalty.',
                 });
-            } else if (stateBeforeAbort === 'locked') {
+            } else if (stateBeforeAbort === 'LOCKED') {
                 let description = 'Reboot the device for your next session.';
 
-                // Check DeviceDetails deterrents configuration
-                if (activeDevice.deterrents.enableRewardCode) {
+                if (activeDevice.deterrentConfig?.enableRewardCode) {
                     description = 'Penalty timer has started.';
                 }
 
@@ -137,7 +136,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
                     message: 'Session Aborted',
                     description,
                 });
-            } else if (stateBeforeAbort === 'testing') {
+            } else if (stateBeforeAbort === 'TESTING') {
                 notification.info({
                     message: 'Test Stopped',
                     description: 'Hardware test stopped.',
@@ -153,14 +152,14 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
             setError(msg);
             notification.error({ message: 'Abort Failed', description: msg });
         }
-    }, [activeDevice, fetchSessionStatus, notification, status?.status]);
+    }, [activeDevice, fetchSessionStatus, notification, status?.state]);
 
     /**
      * Sends the /start-test command to the device.
      */
     const startTestSession = useCallback(async () => {
         if (!activeDevice) return;
-        if (currentState !== 'ready') {
+        if (currentState !== 'READY') {
             notification.info({ message: 'Device is not ready.' });
             return;
         }
@@ -186,15 +185,16 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         fetchSessionStatus();
 
         let pollInterval: number;
+        // Updated switch case to match new DeviceState uppercase enums
         switch (currentState) {
-            case 'locked':
-            case 'armed':
-            case 'aborted':
-            case 'testing':
+            case 'LOCKED':
+            case 'ARMED':
+            case 'ABORTED':
+            case 'TESTING':
                 pollInterval = 1000;
                 break;
-            case 'ready':
-            case 'completed':
+            case 'READY':
+            case 'COMPLETED':
                 pollInterval = 5000;
                 break;
             default:
@@ -209,7 +209,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
      * Effect to fetch reward history when the device is in a valid state.
      */
     useEffect(() => {
-        const canFetchHistory = ['ready', 'completed', 'testing'].includes(currentState);
+        const canFetchHistory = ['READY', 'COMPLETED', 'TESTING'].includes(currentState as string);
         if (canFetchHistory) fetchRewardHistory();
         else setRewardHistory([]);
     }, [currentState, fetchRewardHistory]);

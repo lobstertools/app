@@ -81,7 +81,7 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
     /**
      * Sends Wi-Fi credentials and configuration data to a 'new' (BLE) device.
      * @param deviceId The ID of the BLE device to provision.
-     * @param data The provisioning data (SSID, pass, etc.).
+     * @param data The provisioning data.
      * @returns True on success, false on failure.
      */
     const provisionDevice = useCallback(
@@ -168,20 +168,20 @@ export const DeviceManagerProvider = ({ children }: { children: ReactNode }) => 
         const fullDevice = response.data;
         fullDevice.id = deviceId; // Ensure the ID is set
 
-        const fwVersion = (fullDevice.version || '').toLowerCase();
+        const fwVersion = (fullDevice.identity?.version || '').toLowerCase();
 
         // Determine BuildType based on version string priorities
         if (fwVersion.includes('mock')) {
-            fullDevice.buildType = 'mock';
+            fullDevice.identity.buildType = 'mock';
         } else if (fwVersion.includes('debug')) {
-            fullDevice.buildType = 'debug';
+            fullDevice.identity.buildType = 'debug';
         } else if (fwVersion.includes('local')) {
-            fullDevice.buildType = 'local_release';
+            fullDevice.identity.buildType = 'local_release';
         } else if (fwVersion.includes('beta')) {
-            fullDevice.buildType = 'beta';
+            fullDevice.identity.buildType = 'beta';
         } else {
             // Fallback for standard production builds
-            fullDevice.buildType = 'release';
+            fullDevice.identity.buildType = 'release';
         }
 
         setActiveDevice(fullDevice);
