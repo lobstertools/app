@@ -20,7 +20,7 @@ import {
 import { useState } from 'react';
 import { WifiOutlined, SafetyCertificateOutlined, RightOutlined, LeftOutlined, SaveOutlined, DashboardOutlined } from '@ant-design/icons';
 import humanizeDuration from 'humanize-duration';
-import { DiscoveredDevice, DeviceProvisioningData } from '../../../types';
+import { DiscoveredDevice, DeviceProvisioningData, SessionPresets, DeterrentConfig, Channels } from '../../../types';
 import { useDeviceManager } from '../../context/useDeviceManager';
 
 /**
@@ -53,14 +53,14 @@ interface ProvisionFormValues {
 
     // Payback
     enablePaybackTime: boolean;
-    paybackStrategy: 'fixed' | 'random';
+    paybackStrategy: 'DETERRENT_FIXED' | 'DETERRENT_RANDOM';
     paybackTimeMinutes: number;
     paybackMinMinutes: number;
     paybackMaxMinutes: number;
 
     // Reward
     enableRewardCode: boolean;
-    rewardStrategy: 'fixed' | 'random';
+    rewardStrategy: 'DETERRENT_FIXED' | 'DETERRENT_RANDOM';
     rewardPenaltyMinutes: number;
     rewardPenaltyMinMinutes: number;
     rewardPenaltyMaxMinutes: number;
@@ -76,15 +76,15 @@ const GLOBAL_MAX_MINUTES = 10080;
 // Helper for readable time
 const humanize = (minutes: number) => humanizeDuration(minutes * 60 * 1000, { largest: 2, round: true });
 
-// Presets with detailed breakdown
+// Presets with detailed numeric breakdown for Firmware
 const PLAY_STYLE_PRESETS = {
     cautious: {
         label: 'Cautious',
         desc: 'For testing and demos.',
         breakdown: [
-            { label: 'Short', range: '1 - 5 min' },
-            { label: 'Medium', range: '5 - 15 min' },
-            { label: 'Long', range: '15 - 30 min' },
+            { label: 'Short', range: '1 - 5 min', minMinutes: 1, maxMinutes: 5 },
+            { label: 'Medium', range: '5 - 15 min', minMinutes: 5, maxMinutes: 15 },
+            { label: 'Long', range: '15 - 30 min', minMinutes: 15, maxMinutes: 30 },
         ],
         min: 1,
         max: 60,
@@ -96,9 +96,9 @@ const PLAY_STYLE_PRESETS = {
         label: 'Standard',
         desc: 'The default experience.',
         breakdown: [
-            { label: 'Short', range: '20 - 45 min' },
-            { label: 'Medium', range: '1 - 1.5 hr' },
-            { label: 'Long', range: '2 - 3 hr' },
+            { label: 'Short', range: '20 - 45 min', minMinutes: 20, maxMinutes: 45 },
+            { label: 'Medium', range: '1 - 1.5 hr', minMinutes: 60, maxMinutes: 90 },
+            { label: 'Long', range: '2 - 3 hr', minMinutes: 120, maxMinutes: 180 },
         ],
         min: 15,
         max: 240, // 4 hours
@@ -110,9 +110,9 @@ const PLAY_STYLE_PRESETS = {
         label: 'Extended',
         desc: 'For experienced users.',
         breakdown: [
-            { label: 'Short', range: '1 - 2 hr' },
-            { label: 'Medium', range: '3 - 6 hr' },
-            { label: 'Long', range: '8 - 12 hr' },
+            { label: 'Short', range: '1 - 2 hr', minMinutes: 60, maxMinutes: 120 },
+            { label: 'Medium', range: '3 - 6 hr', minMinutes: 180, maxMinutes: 360 },
+            { label: 'Long', range: '8 - 12 hr', minMinutes: 480, maxMinutes: 720 },
         ],
         min: 60,
         max: 1440, // 24 hours
@@ -124,9 +124,9 @@ const PLAY_STYLE_PRESETS = {
         label: 'Extreme',
         desc: 'Multi-day sessions.',
         breakdown: [
-            { label: 'Short', range: '4 - 8 hr' },
-            { label: 'Medium', range: '12 - 24 hr' },
-            { label: 'Long', range: '2 - 3 days' },
+            { label: 'Short', range: '4 - 8 hr', minMinutes: 240, maxMinutes: 480 },
+            { label: 'Medium', range: '12 - 24 hr', minMinutes: 720, maxMinutes: 1440 },
+            { label: 'Long', range: '2 - 3 days', minMinutes: 2880, maxMinutes: 4320 },
         ],
         min: 240,
         max: 10080, // 7 days`
@@ -210,49 +210,56 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
     const handleFinish = async (values: ProvisionFormValues) => {
         setError(null);
 
-        // Helper: Logic to extract duration/min/max based on strategy
-        const getStrategyValues = (enabled: boolean, strategy: string, fixed: number, shortVal: number, longVal: number) => {
-            if (!enabled) return { duration: 0, min: 0, max: 0 };
-            if (strategy === 'fixed') return { duration: fixed * 60, min: 0, max: 0 };
-            return { duration: 0, min: shortVal * 60, max: longVal * 60 };
+        // 1. Get Preset Ranges (Hardware needs to know what "Short", "Medium", "Long" mean)
+        const styleConfig = PLAY_STYLE_PRESETS[values.playStyle || 'standard'];
+        // Safe access to breakdown indices [0]=Short, [1]=Medium, [2]=Long
+        const short = styleConfig.breakdown[0];
+        const medium = styleConfig.breakdown[1];
+        const long = styleConfig.breakdown[2];
+
+        // 2. Construct Objects matching 'index.ts' interfaces
+        const channels: Channels = {
+            ch1: !!values.ch1Enabled,
+            ch2: !!values.ch2Enabled,
+            ch3: !!values.ch3Enabled,
+            ch4: !!values.ch4Enabled,
         };
 
-        const payback = getStrategyValues(
-            values.enablePaybackTime,
-            values.paybackStrategy,
-            values.paybackTimeMinutes,
-            values.paybackMinMinutes,
-            values.paybackMaxMinutes
-        );
+        const presets: SessionPresets = {
+            minSessionDuration: values.minSessionDuration * 60,
+            maxSessionDuration: values.maxSessionDuration * 60,
+            shortMin: short.minMinutes * 60,
+            shortMax: short.maxMinutes * 60,
+            mediumMin: medium.minMinutes * 60,
+            mediumMax: medium.maxMinutes * 60,
+            longMin: long.minMinutes * 60,
+            longMax: long.maxMinutes * 60,
+        };
 
-        const reward = getStrategyValues(
-            values.enableRewardCode,
-            values.rewardStrategy,
-            values.rewardPenaltyMinutes,
-            values.rewardPenaltyMinMinutes,
-            values.rewardPenaltyMaxMinutes
-        );
+        const deterrents: DeterrentConfig = {
+            enableStreaks: !!values.enableStreaks,
+
+            // Payback
+            enablePaybackTime: !!values.enablePaybackTime,
+            paybackTimeStrategy: values.paybackStrategy,
+            paybackTime: values.paybackTimeMinutes * 60,
+            paybackTimeMin: values.paybackMinMinutes * 60,
+            paybackTimeMax: values.paybackMaxMinutes * 60,
+
+            // Reward
+            enableRewardCode: !!values.enableRewardCode,
+            rewardPenaltyStrategy: values.rewardStrategy,
+            rewardPenalty: values.rewardPenaltyMinutes * 60,
+            rewardPenaltyMin: values.rewardPenaltyMinMinutes * 60,
+            rewardPenaltyMax: values.rewardPenaltyMaxMinutes * 60,
+        };
 
         const payload: DeviceProvisioningData = {
             ssid: values.ssid,
             pass: values.pass,
-            ch1Enabled: !!values.ch1Enabled,
-            ch2Enabled: !!values.ch2Enabled,
-            ch3Enabled: !!values.ch3Enabled,
-            ch4Enabled: !!values.ch4Enabled,
-            minSessionDuration: values.minSessionDuration * 60,
-            maxSessionDuration: values.maxSessionDuration * 60,
-            enableStreaks: !!values.enableStreaks,
-            enablePaybackTime: !!values.enablePaybackTime,
-            paybackStrategy: values.paybackStrategy,
-            paybackDuration: payback.duration,
-            paybackMinDuration: payback.min,
-            paybackMaxDuration: payback.max,
-            enableRewardCode: !!values.enableRewardCode,
-            rewardStrategy: values.rewardStrategy,
-            rewardPenaltyDuration: reward.duration,
-            rewardPenaltyMinDuration: reward.min,
-            rewardPenaltyMaxDuration: reward.max,
+            channels,
+            presets,
+            deterrents,
         };
 
         const success = await provisionDevice(device.id, payload);
@@ -470,19 +477,19 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
                         <Form.Item
                             label="Strategy"
                             name="paybackStrategy"
-                            initialValue="fixed"
+                            initialValue="DETERRENT_FIXED"
                             style={{ marginBottom: 16, marginLeft: 0 }}
                             wrapperCol={{ style: { paddingLeft: 0 } }}
                         >
                             <Radio.Group optionType="button" buttonStyle="solid">
-                                <Radio.Button value="fixed">Fixed Time</Radio.Button>
-                                <Radio.Button value="random">Random Range</Radio.Button>
+                                <Radio.Button value="DETERRENT_FIXED">Fixed Time</Radio.Button>
+                                <Radio.Button value="DETERRENT_RANDOM">Random Range</Radio.Button>
                             </Radio.Group>
                         </Form.Item>
 
                         {/* Input Controls */}
                         <div style={{ marginBottom: 16 }}>
-                            {paybackStrategy === 'fixed' ? (
+                            {paybackStrategy === 'DETERRENT_FIXED' ? (
                                 <Form.Item
                                     label="Penalty Duration"
                                     name="paybackTimeMinutes"
@@ -558,19 +565,19 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
                         <Form.Item
                             label="Strategy"
                             name="rewardStrategy"
-                            initialValue="fixed"
+                            initialValue="DETERRENT_FIXED"
                             style={{ marginBottom: 16, marginLeft: 0 }}
                             wrapperCol={{ style: { paddingLeft: 0 } }}
                         >
                             <Radio.Group optionType="button" buttonStyle="solid">
-                                <Radio.Button value="fixed">Fixed Time</Radio.Button>
-                                <Radio.Button value="random">Random Range</Radio.Button>
+                                <Radio.Button value="DETERRENT_FIXED">Fixed Time</Radio.Button>
+                                <Radio.Button value="DETERRENT_RANDOM">Random Range</Radio.Button>
                             </Radio.Group>
                         </Form.Item>
 
                         {/* Input Controls */}
                         <div style={{ marginBottom: 16 }}>
-                            {rewardStrategy === 'fixed' ? (
+                            {rewardStrategy === 'DETERRENT_FIXED' ? (
                                 <Form.Item
                                     label="Hide Duration"
                                     name="rewardPenaltyMinutes"
@@ -647,12 +654,12 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
                         maxSessionDuration: 240,
                         enableStreaks: true,
                         enablePaybackTime: true,
-                        paybackStrategy: 'fixed',
+                        paybackStrategy: 'DETERRENT_FIXED',
                         paybackTimeMinutes: 30, // Standard Default
                         paybackMinMinutes: 15, // Standard Default
                         paybackMaxMinutes: 45, // Standard Default
                         enableRewardCode: true,
-                        rewardStrategy: 'fixed',
+                        rewardStrategy: 'DETERRENT_FIXED',
                         rewardPenaltyMinutes: 15, // Standard Default
                         rewardPenaltyMinMinutes: 5, // Standard Default
                         rewardPenaltyMaxMinutes: 20, // Standard Default
