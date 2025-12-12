@@ -78,7 +78,7 @@ export const DeviceSettingsModal = () => {
             content: (
                 <>
                     This will erase all settings (including WiFi) on
-                    <Text strong> {activeDevice.name} </Text>
+                    <Text strong> {activeDevice.identity?.name || activeDevice.identity?.name} </Text>
                     and put it back into provisioning mode.
                 </>
             ),
@@ -107,7 +107,7 @@ export const DeviceSettingsModal = () => {
     }, [activeDevice]);
 
     // --- Device Config Items ---
-    const paybackDuration = activeDevice?.deterrents?.paybackDuration || 0;
+    const paybackDuration = activeDevice?.deterrentConfig?.paybackTime || 0;
     const paybackTimeMinutes = Math.floor(paybackDuration / 60);
 
     const configItems = [
@@ -119,17 +119,17 @@ export const DeviceSettingsModal = () => {
         {
             key: 'streaks',
             label: 'Streaks Enabled',
-            children: activeDevice?.deterrents?.enableStreaks ? 'Yes' : 'No',
+            children: activeDevice?.deterrentConfig?.enableStreaks ? 'Yes' : 'No',
         },
         {
             key: 'rewardCode',
             label: 'Reward Code Enabled',
-            children: activeDevice?.deterrents?.enableRewardCode ? 'Yes' : 'No',
+            children: activeDevice?.deterrentConfig?.enableRewardCode ? 'Yes' : 'No',
         },
         {
             key: 'payback',
             label: 'Payback Time Enabled',
-            children: activeDevice?.deterrents?.enablePaybackTime ? 'Yes' : 'No',
+            children: activeDevice?.deterrentConfig?.enablePaybackTime ? 'Yes' : 'No',
         },
         {
             key: 'paybackMins',
@@ -140,7 +140,7 @@ export const DeviceSettingsModal = () => {
     ];
 
     // --- Session Stat Items  ---
-    const { streaks = 0, totalTimeLocked = 0, completed = 0, aborted = 0 } = status?.stats || {};
+    const { streaks = 0, totalLockedTime = 0, completed = 0, aborted = 0 } = status?.stats || {};
 
     const sessionStatItems = [
         {
@@ -165,7 +165,7 @@ export const DeviceSettingsModal = () => {
                     </Space>
                 </Tooltip>
             ),
-            children: formatSeconds(totalTimeLocked),
+            children: formatSeconds(totalLockedTime),
         },
         {
             key: 'completed',
@@ -256,7 +256,7 @@ export const DeviceSettingsModal = () => {
                             <Input.Password placeholder="Your Wi-Fi Password" />
                         </Form.Item>
                         <Form.Item>
-                            <Button type="primary" htmlType="submit" loading={isUpdatingWifi} disabled={currentState !== 'ready'}>
+                            <Button type="primary" htmlType="submit" loading={isUpdatingWifi} disabled={currentState !== 'READY'}>
                                 Save Wi-Fi Credentials
                             </Button>
                         </Form.Item>
@@ -319,7 +319,7 @@ export const DeviceSettingsModal = () => {
                                     danger
                                     icon={<UndoOutlined />}
                                     onClick={showFactoryResetConfirm}
-                                    disabled={currentState !== 'ready'}
+                                    disabled={currentState !== 'READY'} //
                                 >
                                     Factory Reset
                                 </Button>
@@ -335,7 +335,7 @@ export const DeviceSettingsModal = () => {
         <>
             {contextHolder}
             <Modal
-                title={`Device Settings: ${activeDevice?.name || ''}`}
+                title={`Device Settings: ${activeDevice?.identity?.name || activeDevice?.identity?.name || ''}`}
                 open={isDeviceSettingsModalOpen}
                 onCancel={handleClose}
                 width={800}

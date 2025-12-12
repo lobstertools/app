@@ -43,21 +43,21 @@ export const DeviceMenu = () => {
     const { connectionHealth, openDeviceLogs, activeDevice, openDeviceSettingsModal } = useDeviceManager();
 
     // Pulling static config from activeDevice
-    const deviceName = activeDevice?.name;
-    const displayDeviceAddress = activeDevice?.address || 'N/A';
-    const displayPort = activeDevice?.port || 'N/A';
+    const deviceName = activeDevice?.identity?.name;
+    const displayDeviceAddress = activeDevice?.network?.ip || 'N/A'; //
+    const displayPort = activeDevice?.network?.port || 'N/A'; //
 
     // Deterrent Logic Extraction
-    const deterrents = activeDevice?.deterrents;
+    const deterrents = activeDevice?.deterrentConfig;
     const paybackTimeEnabled = deterrents?.enablePaybackTime || false;
     const streaksEnabled = deterrents?.enableStreaks || false;
     const rewardCodeEnabled = deterrents?.enableRewardCode || false;
 
-    const paybackDuration = deterrents?.paybackDuration || 0;
+    const paybackDuration = deterrents?.paybackTime || 0;
     const paybackTimeMinutes = Math.floor(paybackDuration / 60);
 
-    const appVersion = activeDevice?.version || 'N/A';
-    const appBuildType = activeDevice?.buildType || 'N/A';
+    const appVersion = activeDevice?.identity?.version || 'N/A';
+    const appBuildType = activeDevice?.identity?.buildType || 'N/A';
 
     // Calculate display string for enabled channels
     const enabledChannelsString = useMemo(() => {
@@ -220,7 +220,7 @@ export const DeviceMenu = () => {
 
     let mainActionItem: NonNullable<MenuProps['items']>[number];
 
-    if (currentState === 'ready') {
+    if (currentState === 'READY') {
         mainActionItem = {
             key: 'main-action-start-test',
             label: 'Start Hardware Test',
@@ -228,7 +228,7 @@ export const DeviceMenu = () => {
             onClick: startTestSession,
             disabled: false,
         };
-    } else if (currentState === 'testing') {
+    } else if (currentState === 'TESTING') {
         mainActionItem = {
             key: 'main-action-stop-test',
             label: 'Stop Hardware Test',
@@ -360,7 +360,7 @@ export const DeviceMenu = () => {
                     label: 'Device Settings',
                     icon: <SlidersOutlined />,
                     onClick: openDeviceSettingsModal,
-                    disabled: !activeDevice || (currentState !== 'ready' && currentState !== 'completed'),
+                    disabled: !activeDevice || (currentState !== 'READY' && currentState !== 'COMPLETED'),
                 },
             ],
         },
