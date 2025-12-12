@@ -73,7 +73,7 @@ const MOCK_CONFIGURATION = {
         channels: { ch1: true, ch2: true, ch3: true, ch4: true },
     },
 
-    // System Limits & Defaults (Replaces flat 'limits' object)
+    // System Limits & Defaults
     defaults: {
         longPressDuration: 1000, // 1s for quick triggering
         extButtonSignalDuration: 500,
@@ -86,19 +86,19 @@ const MOCK_CONFIGURATION = {
         armedTimeoutSeconds: 300, // 5 min idle timeout
     } as SystemDefaults,
 
-    // Duration Presets (New Interface)
+    // Duration Presets
     presets: {
-        shortMin: 20 * 60,
-        shortMax: 45 * 60,
-        mediumMin: 60 * 60,
-        mediumMax: 90 * 60,
-        longMin: 120 * 60,
-        longMax: 180 * 60,
+        shortMin: 10,
+        shortMax: 20,
+        mediumMin: 60,
+        mediumMax: 90,
+        longMin: 120,
+        longMax: 180,
         minSessionDuration: 10, // 10s for debug
         maxSessionDuration: 3600, // 1 hr for debug
     } as SessionPresets,
 
-    // Initial "Boot" State (Mapped to DeterrentConfig)
+    // Initial "Boot" State
     initialDeterrents: {
         enableStreaks: true,
         enableRewardCode: true,
@@ -822,7 +822,7 @@ app.post('/arm', (req, res) => {
 
     if (config.durationType === 'DUR_FIXED') {
         // Use the explicit 'duration' field for fixed
-        resolvedDuration = config.fixedDuration || defaultMin;
+        resolvedDuration = config.durationFixed || defaultMin;
         log(`   -> Fixed Duration Resolved: ${resolvedDuration}s`);
     } else {
         // Range Logic: Calculate boundaries
@@ -841,8 +841,8 @@ app.post('/arm', (req, res) => {
                 break;
             case 'DUR_RANDOM':
                 // For 'random', use the explicit min/max fields
-                min = config.minDuration || defaultMin;
-                max = config.maxDuration || min + 60;
+                min = config.durationMin || defaultMin;
+                max = config.durationMax || min + 60;
                 break;
             default:
                 // Fallback
@@ -1005,9 +1005,9 @@ app.get('/status', (_, res) => {
 
         config: currentSessionConfig || {
             durationType: 'DUR_FIXED',
-            fixedDuration: 0,
-            minDuration: 0,
-            maxDuration: 0,
+            durationFixed: 0,
+            durationMin: 0,
+            durationMax: 0,
             triggerStrategy: 'STRAT_AUTO_COUNTDOWN',
             channelDelays: [0, 0, 0, 0],
             hideTimer: false,

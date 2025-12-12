@@ -122,9 +122,6 @@ export const SessionConfiguration = () => {
         [activeDevice?.presets?.maxSessionDuration, timeScale]
     );
 
-    const minPenaltyUnit = 1;
-    const maxPenaltyUnit = 1000;
-
     /**
      * Helper to ensure value is within device limits
      */
@@ -133,28 +130,40 @@ export const SessionConfiguration = () => {
     };
 
     // ------------------------------------------------------------------------
-    // 3. SMART DEFAULTS
+    // 3. SMART DEFAULTS (Derived from Firmware Presets)
     // ------------------------------------------------------------------------
 
-    const defaultValues = useMemo(() => {
-        // Ideal targets based on Build Type
-        // Debug: 15 seconds. Release: 30 minutes.
-        const targetDuration = isDebugMode ? 15 : 30;
+    const presetValues = useMemo(() => {
+        const p = activeDevice?.presets;
 
-        // Ranges
-        const targetRangeMin = isDebugMode ? 10 : 20;
-        const targetRangeMax = isDebugMode ? 60 : 60; // 60s (debug) or 60m (release)
-
-        // Penalty: 15s (debug) or 15m (release)
-        const targetPenalty = 15;
+        // Helper to scale generic preset values (defaulting to Standard Play Style if undefined)
+        const scale = (val: number | undefined, fallback: number) => Math.round((val ?? fallback) / timeScale);
 
         return {
-            duration: clamp(targetDuration, minLockUnit, maxLockUnit),
-            rangeMin: clamp(targetRangeMin, minLockUnit, maxLockUnit),
-            rangeMax: clamp(targetRangeMax, minLockUnit, maxLockUnit),
-            penalty: clamp(targetPenalty, minPenaltyUnit, maxPenaltyUnit),
+            // "Short" Range Defaults (Fallback: 20m - 45m)
+            shortMin: scale(p?.shortMin, 1200),
+            shortMax: scale(p?.shortMax, 2700),
+
+            // "Medium" Range Defaults (Fallback: 60m - 90m)
+            mediumMin: scale(p?.mediumMin, 3600),
+            mediumMax: scale(p?.mediumMax, 5400),
+
+            // "Long" Range Defaults (Fallback: 120m - 180m)
+            longMin: scale(p?.longMin, 7200),
+            longMax: scale(p?.longMax, 10800),
+
+            // Fixed Default (Fallback: 30m)
+            defaultFixed: scale(p?.minSessionDuration, 1800),
         };
-    }, [isDebugMode, minLockUnit, maxLockUnit, minPenaltyUnit, maxPenaltyUnit]);
+    }, [activeDevice?.presets, timeScale]);
+
+    const defaultValues = useMemo(() => {
+        return {
+            duration: presetValues.defaultFixed,
+            rangeMin: presetValues.shortMin,
+            rangeMax: presetValues.shortMax,
+        };
+    }, [presetValues]);
 
     // Calculate enabled channels for the UI based on the new API structure
     const enabledChannels = useMemo(() => {
@@ -172,7 +181,6 @@ export const SessionConfiguration = () => {
     // --- Compute Timer Values ---
     const penaltyTimeRemaining = useMemo(() => {
         if (status?.state === 'ABORTED') {
-            //
             return status.timers.penaltyRemaining || 0;
         }
         return 0;
@@ -247,24 +255,23 @@ export const SessionConfiguration = () => {
                 switch (values.timeRangeSelection) {
                     case 'short':
                         durationType = 'DUR_RANGE_SHORT';
-                        // Use presets from firmware config if available, otherwise UI defaults
-                        calculatedMin = (activeDevice?.presets?.shortMin || 1200) / timeScale;
-                        calculatedMax = (activeDevice?.presets?.shortMax || 2700) / timeScale;
+                        calculatedMin = presetValues.shortMin;
+                        calculatedMax = presetValues.shortMax;
                         break;
                     case 'medium':
                         durationType = 'DUR_RANGE_MEDIUM';
-                        calculatedMin = (activeDevice?.presets?.mediumMin || 3600) / timeScale;
-                        calculatedMax = (activeDevice?.presets?.mediumMax || 5400) / timeScale;
+                        calculatedMin = presetValues.mediumMin;
+                        calculatedMax = presetValues.mediumMax;
                         break;
                     case 'long':
                         durationType = 'DUR_RANGE_LONG';
-                        calculatedMin = (activeDevice?.presets?.longMin || 7200) / timeScale;
-                        calculatedMax = (activeDevice?.presets?.longMax || 10800) / timeScale;
+                        calculatedMin = presetValues.longMin;
+                        calculatedMax = presetValues.longMax;
                         break;
                     default:
                         durationType = 'DUR_RANGE_SHORT';
-                        calculatedMin = defaultValues.rangeMin;
-                        calculatedMax = defaultValues.rangeMax;
+                        calculatedMin = presetValues.shortMin;
+                        calculatedMax = presetValues.shortMax;
                 }
                 finalDurationUnits = 0; // Backend handles ranges
             }
@@ -291,9 +298,9 @@ export const SessionConfiguration = () => {
                 hideTimer: !!values.hideTimer,
                 disableLED: !!values.disableLED,
                 durationType: durationType,
-                fixedDuration: finalDurationUnits * timeScale, // Convert to seconds
-                minDuration: calculatedMin * timeScale, // Convert to seconds
-                maxDuration: calculatedMax * timeScale, // Convert to seconds
+                durationFixed: finalDurationUnits * timeScale, // Convert to seconds
+                durationMin: calculatedMin * timeScale, // Convert to seconds
+                durationMax: calculatedMax * timeScale, // Convert to seconds
                 channelDelays: channelDelays,
             };
 
@@ -485,9 +492,15 @@ export const SessionConfiguration = () => {
                                 return (
                                     <Form.Item name="timeRangeSelection" label="Select a Range">
                                         <Radio.Group buttonStyle="solid">
-                                            <Radio.Button value="short">Short: 20-45 {unitLabel}</Radio.Button>
-                                            <Radio.Button value="medium">Medium: 60-90 {unitLabel}</Radio.Button>
-                                            <Radio.Button value="long">Long: 120-180 {unitLabel}</Radio.Button>
+                                            <Radio.Button value="short">
+                                                Short: {presetValues.shortMin}-{presetValues.shortMax} {unitLabel}
+                                            </Radio.Button>
+                                            <Radio.Button value="medium">
+                                                Medium: {presetValues.mediumMin}-{presetValues.mediumMax} {unitLabel}
+                                            </Radio.Button>
+                                            <Radio.Button value="long">
+                                                Long: {presetValues.longMin}-{presetValues.longMax} {unitLabel}
+                                            </Radio.Button>
                                         </Radio.Group>
                                     </Form.Item>
                                 );

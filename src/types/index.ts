@@ -159,9 +159,9 @@ export interface SystemDefaults {
 
 export interface SessionConfig {
     durationType: DurationType;
-    fixedDuration: number;
-    minDuration: number;
-    maxDuration: number;
+    durationFixed: number;
+    durationMin: number;
+    durationMax: number;
     triggerStrategy: TriggerStrategy;
     channelDelays: [number, number, number, number];
     hideTimer: boolean;
