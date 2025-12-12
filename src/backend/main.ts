@@ -18,7 +18,7 @@ import cors from 'cors';
 // --- Imports for Discovery ---
 import Bonjour, { Browser, Bonjour as BonjourInstance } from 'bonjour';
 import noble from '@abandonware/noble';
-import { DeviceProvisioningData, DiscoveredDevice } from '../types';
+import { DeviceProvisioningData, DiscoveredDevice, DeterrentStrategy } from '../types';
 
 // --- Configuration ---
 const app = express();
@@ -40,19 +40,45 @@ const log = (message: string) => console.log(`[${new Date().toISOString()}] Serv
 // UUIDs
 const PROV_SERVICE_UUID = '5a160000-8334-469b-a316-c340cf29188f';
 
+// --- WiFi Credentials ---
 const PROV_SSID_CHAR_UUID = '5a160001-8334-469b-a316-c340cf29188f';
 const PROV_PASS_CHAR_UUID = '5a160002-8334-469b-a316-c340cf29188f';
 
-const PROV_ENABLE_REWARD_CODE_CHAR_UUID = '5a160003-8334-469b-a316-c340cf29188f';
-const PROV_ENABLE_STREAKS_CHAR_UUID = '5a160004-8334-469b-a316-c340cf29188f';
-const PROV_ENABLE_PAYBACK_TIME_CHAR_UUID = '5a160005-8334-469b-a316-c340cf29188f';
-const PROV_PAYBACK_TIME_CHAR_UUID = '5a160006-8334-469b-a316-c340cf29188f';
-const PROV_REWARD_PENALTY_CHAR_UUID = '5a160007-8334-469b-a316-c340cf29188f';
-
+// --- Hardware Config ---
 const PROV_CH1_ENABLE_UUID = '5a16000a-8334-469b-a316-c340cf29188f';
 const PROV_CH2_ENABLE_UUID = '5a16000b-8334-469b-a316-c340cf29188f';
 const PROV_CH3_ENABLE_UUID = '5a16000c-8334-469b-a316-c340cf29188f';
 const PROV_CH4_ENABLE_UUID = '5a16000d-8334-469b-a316-c340cf29188f';
+
+// --- Global Safety Limits ---
+const PROV_MIN_SESSION_DURATION_UUID = '5a160010-8334-469b-a316-c340cf29188f';
+const PROV_MAX_SESSION_DURATION_UUID = '5a160011-8334-469b-a316-c340cf29188f';
+
+// --- Duration Presets ---
+// Short
+const PROV_SHORT_MIN_UUID = '5a160020-8334-469b-a316-c340cf29188f';
+const PROV_SHORT_MAX_UUID = '5a160021-8334-469b-a316-c340cf29188f';
+// Medium
+const PROV_MEDIUM_MIN_UUID = '5a160022-8334-469b-a316-c340cf29188f';
+const PROV_MEDIUM_MAX_UUID = '5a160023-8334-469b-a316-c340cf29188f';
+// Long
+const PROV_LONG_MIN_UUID = '5a160024-8334-469b-a316-c340cf29188f';
+const PROV_LONG_MAX_UUID = '5a160025-8334-469b-a316-c340cf29188f';
+
+// --- Deterrents ---
+const PROV_ENABLE_STREAKS_CHAR_UUID = '5a160004-8334-469b-a316-c340cf29188f';
+
+const PROV_ENABLE_REWARD_CODE_CHAR_UUID = '5a160003-8334-469b-a316-c340cf29188f';
+const PROV_REWARD_STRATEGY_UUID = '5a160015-8334-469b-a316-c340cf29188f';
+const PROV_REWARD_PENALTY_CHAR_UUID = '5a160007-8334-469b-a316-c340cf29188f';
+const PROV_REWARD_MIN_DURATION_UUID = '5a160016-8334-469b-a316-c340cf29188f';
+const PROV_REWARD_MAX_DURATION_UUID = '5a160017-8334-469b-a316-c340cf29188f';
+
+const PROV_ENABLE_PAYBACK_TIME_CHAR_UUID = '5a160005-8334-469b-a316-c340cf29188f';
+const PROV_PAYBACK_STRATEGY_UUID = '5a160012-8334-469b-a316-c340cf29188f';
+const PROV_PAYBACK_TIME_CHAR_UUID = '5a160006-8334-469b-a316-c340cf29188f';
+const PROV_PAYBACK_MIN_DURATION_UUID = '5a160013-8334-469b-a316-c340cf29188f';
+const PROV_PAYBACK_MAX_DURATION_UUID = '5a160014-8334-469b-a316-c340cf29188f';
 
 // mDNS Service Type
 const MDNS_SERVICE_TYPE = 'lobster-lock';
@@ -336,43 +362,11 @@ app.get('/api/devices', (_: Request, res: Response) => {
 app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
     const { id } = req.params;
 
-    // Extract all fields from the body
-    const {
-        ssid,
-        pass,
-        enableStreaks,
-        enablePaybackTime,
-        paybackDuration,
-        enableRewardCode,
-        rewardPenaltyDuration,
-        ch1Enabled,
-        ch2Enabled,
-        ch3Enabled,
-        ch4Enabled,
-    } = req.body as DeviceProvisioningData;
+    // Destructure the nested object coming from UI
+    const { ssid, pass, channels, presets, deterrents } = req.body as DeviceProvisioningData;
 
-    // Validate all required fields
-    const missingFields = [
-        { key: 'ssid', val: ssid },
-        { key: 'pass', val: pass },
-        { key: 'enableStreaks', val: enableStreaks },
-        { key: 'enablePaybackTime', val: enablePaybackTime },
-        { key: 'paybackDuration', val: paybackDuration },
-        { key: 'enableRewardCode', val: enableRewardCode },
-        { key: 'rewardPenaltyDuration', val: rewardPenaltyDuration },
-        { key: 'ch1Enabled', val: ch1Enabled },
-        { key: 'ch2Enabled', val: ch2Enabled },
-        { key: 'ch3Enabled', val: ch3Enabled },
-        { key: 'ch4Enabled', val: ch4Enabled },
-    ]
-        .filter((field: { key: string; val: unknown }) => field.val === undefined)
-        .map((field) => field.key);
-
-    if (missingFields.length > 0) {
-        return res.status(400).json({
-            status: 'error',
-            message: `Missing required fields: ${missingFields.join(', ')}`,
-        });
+    if (!ssid || !channels || !presets || !deterrents) {
+        return res.status(400).json({ status: 'error', message: `Missing required provisioning objects.` });
     }
 
     // --- MOCK PROVISIONING HACK ---
@@ -409,79 +403,118 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         const normalize = (uuid: string) => uuid.toLowerCase().replace(/-/g, '');
         const findChar = (targetUuid: string) => characteristics.find((c) => normalize(c.uuid) === normalize(targetUuid));
 
-        // Find standard chars
-        const ssidChar = findChar(PROV_SSID_CHAR_UUID);
-        const passChar = findChar(PROV_PASS_CHAR_UUID);
-        const enableStreaksChar = findChar(PROV_ENABLE_STREAKS_CHAR_UUID);
-        const enablePaybackTimeChar = findChar(PROV_ENABLE_PAYBACK_TIME_CHAR_UUID);
-        const paybackTimeChar = findChar(PROV_PAYBACK_TIME_CHAR_UUID);
-        const enableRewardCodeChar = findChar(PROV_ENABLE_REWARD_CODE_CHAR_UUID);
-        const rewardPenaltyChar = findChar(PROV_REWARD_PENALTY_CHAR_UUID);
-
-        // Find channel chars
-        const ch1Char = findChar(PROV_CH1_ENABLE_UUID);
-        const ch2Char = findChar(PROV_CH2_ENABLE_UUID);
-        const ch3Char = findChar(PROV_CH3_ENABLE_UUID);
-        const ch4Char = findChar(PROV_CH4_ENABLE_UUID);
-
-        // Validate required characteristics
-        const requiredChars = [
-            { name: 'SSID', value: ssidChar },
-            { name: 'Password', value: passChar },
-            { name: 'EnableStreaks', value: enableStreaksChar },
-            { name: 'EnablePayback', value: enablePaybackTimeChar },
-            { name: 'PaybackTime', value: paybackTimeChar },
-            { name: 'EnableRewardCode', value: enableRewardCodeChar },
-            { name: 'RewardPenalty', value: rewardPenaltyChar },
-            { name: 'Ch1', value: ch1Char },
-            { name: 'Ch2', value: ch2Char },
-            { name: 'Ch3', value: ch3Char },
-            { name: 'Ch4', value: ch4Char },
-        ];
-
-        const missing = requiredChars.filter((item) => !item.value).map((item) => item.name);
-
-        if (missing.length > 0) {
-            const missingList = missing.join(', ');
-            log(`[Provision] Missing characteristics: ${missingList}`);
-            log(`[Provision] Found characteristics: ${characteristics.join(',')}`);
-            throw new Error(`Could not find all required provisioning characteristics. Missing: ${missingList}`);
-        }
-
-        // --- DATA CONVERSION ---
-        const getBoolBuf = (val: boolean | undefined) => {
-            const b = Buffer.alloc(1);
-            b.writeUInt8(val ? 1 : 0, 0);
-            return b;
+        // --- VALIDATION: Ensure all chars exist ---
+        const uuidMap: Record<string, string> = {
+            // Credentials
+            SSID: PROV_SSID_CHAR_UUID,
+            Pass: PROV_PASS_CHAR_UUID,
+            // Hardware
+            Ch1: PROV_CH1_ENABLE_UUID,
+            Ch2: PROV_CH2_ENABLE_UUID,
+            Ch3: PROV_CH3_ENABLE_UUID,
+            Ch4: PROV_CH4_ENABLE_UUID,
+            // Limits
+            MinSession: PROV_MIN_SESSION_DURATION_UUID,
+            MaxSession: PROV_MAX_SESSION_DURATION_UUID,
+            // Presets
+            ShortMin: PROV_SHORT_MIN_UUID,
+            ShortMax: PROV_SHORT_MAX_UUID,
+            MedMin: PROV_MEDIUM_MIN_UUID,
+            MedMax: PROV_MEDIUM_MAX_UUID,
+            LongMin: PROV_LONG_MIN_UUID,
+            LongMax: PROV_LONG_MAX_UUID,
+            // Deterrents (Toggles)
+            EnStreak: PROV_ENABLE_STREAKS_CHAR_UUID,
+            EnPayback: PROV_ENABLE_PAYBACK_TIME_CHAR_UUID,
+            EnReward: PROV_ENABLE_REWARD_CODE_CHAR_UUID,
+            // Deterrents (Payback)
+            PayStr: PROV_PAYBACK_STRATEGY_UUID,
+            PayFixed: PROV_PAYBACK_TIME_CHAR_UUID,
+            PayMin: PROV_PAYBACK_MIN_DURATION_UUID,
+            PayMax: PROV_PAYBACK_MAX_DURATION_UUID,
+            // Deterrents (Reward)
+            RewStr: PROV_REWARD_STRATEGY_UUID,
+            RewFixed: PROV_REWARD_PENALTY_CHAR_UUID,
+            RewMin: PROV_REWARD_MIN_DURATION_UUID,
+            RewMax: PROV_REWARD_MAX_DURATION_UUID,
         };
 
-        const enableStreaksBuf = getBoolBuf(enableStreaks);
-        const enablePaybackTimeBuf = getBoolBuf(enablePaybackTime);
-        const enableRewardCodeBuf = getBoolBuf(enableRewardCode);
+        const missing: string[] = [];
+        for (const [name, uuid] of Object.entries(uuidMap)) {
+            if (!findChar(uuid)) missing.push(name);
+        }
 
-        const paybackTimeBuf = Buffer.alloc(4);
-        paybackTimeBuf.writeUInt32LE(paybackDuration, 0);
+        if (missing.length > 0) {
+            throw new Error(`Missing firmware characteristics: ${missing.join(', ')}`);
+        }
 
-        const rewardPenaltyBuf = Buffer.alloc(4);
-        rewardPenaltyBuf.writeUInt32LE(rewardPenaltyDuration, 0);
+        // --- HELPER WRITERS ---
+        const writeBuf = async (uuid: string, buf: Buffer) => {
+            const char = findChar(uuid);
+            if (char) await char.writeAsync(buf, false);
+        };
 
-        log(`[Provision] Writing configuration settings...`);
-        await enableStreaksChar!.writeAsync(enableStreaksBuf, false);
-        await enablePaybackTimeChar!.writeAsync(enablePaybackTimeBuf, false);
-        await paybackTimeChar!.writeAsync(paybackTimeBuf, false);
+        const writeBool = (uuid: string, val: boolean) => {
+            const b = Buffer.alloc(1);
+            b.writeUInt8(val ? 1 : 0, 0);
+            return writeBuf(uuid, b);
+        };
 
-        await enableRewardCodeChar!.writeAsync(enableRewardCodeBuf, false);
-        await rewardPenaltyChar!.writeAsync(rewardPenaltyBuf, false);
+        const writeU32 = (uuid: string, val: number) => {
+            const b = Buffer.alloc(4);
+            b.writeUInt32LE(val, 0);
+            return writeBuf(uuid, b);
+        };
 
-        await ch1Char!.writeAsync(getBoolBuf(ch1Enabled || false), false);
-        await ch2Char!.writeAsync(getBoolBuf(ch2Enabled || false), false);
-        await ch3Char!.writeAsync(getBoolBuf(ch3Enabled || false), false);
-        await ch4Char!.writeAsync(getBoolBuf(ch4Enabled || false), false);
+        const writeStrategy = (uuid: string, val: DeterrentStrategy) => {
+            const b = Buffer.alloc(1);
+            // Enum mapping: FIXED=0, RANDOM=1
+            const numericVal = val === 'DETERRENT_RANDOM' ? 1 : 0;
+            b.writeUInt8(numericVal, 0);
+            return writeBuf(uuid, b);
+        };
 
-        // --- 2. Write Password LAST (Triggers Reboot) ---
-        log(`[Provision] Writing ssid & password (triggering reboot)...`);
-        await ssidChar!.writeAsync(Buffer.from(ssid), false);
-        await passChar!.writeAsync(Buffer.from(pass || ''), false);
+        log(`[Provision] Writing configuration...`);
+
+        // 1. Hardware
+        await writeBool(PROV_CH1_ENABLE_UUID, channels.ch1);
+        await writeBool(PROV_CH2_ENABLE_UUID, channels.ch2);
+        await writeBool(PROV_CH3_ENABLE_UUID, channels.ch3);
+        await writeBool(PROV_CH4_ENABLE_UUID, channels.ch4);
+
+        // 2. Global Safety Limits
+        await writeU32(PROV_MIN_SESSION_DURATION_UUID, presets.minSessionDuration);
+        await writeU32(PROV_MAX_SESSION_DURATION_UUID, presets.maxSessionDuration);
+
+        // 3. Duration Presets
+        await writeU32(PROV_SHORT_MIN_UUID, presets.shortMin);
+        await writeU32(PROV_SHORT_MAX_UUID, presets.shortMax);
+        await writeU32(PROV_MEDIUM_MIN_UUID, presets.mediumMin);
+        await writeU32(PROV_MEDIUM_MAX_UUID, presets.mediumMax);
+        await writeU32(PROV_LONG_MIN_UUID, presets.longMin);
+        await writeU32(PROV_LONG_MAX_UUID, presets.longMax);
+
+        // 4. Deterrents: Streaks
+        await writeBool(PROV_ENABLE_STREAKS_CHAR_UUID, deterrents.enableStreaks);
+
+        // 5. Deterrents: Payback
+        await writeBool(PROV_ENABLE_PAYBACK_TIME_CHAR_UUID, deterrents.enablePaybackTime);
+        await writeStrategy(PROV_PAYBACK_STRATEGY_UUID, deterrents.paybackTimeStrategy);
+        await writeU32(PROV_PAYBACK_TIME_CHAR_UUID, deterrents.paybackTime);
+        await writeU32(PROV_PAYBACK_MIN_DURATION_UUID, deterrents.paybackTimeMin);
+        await writeU32(PROV_PAYBACK_MAX_DURATION_UUID, deterrents.paybackTimeMax);
+
+        // 6. Deterrents: Reward
+        await writeBool(PROV_ENABLE_REWARD_CODE_CHAR_UUID, deterrents.enableRewardCode);
+        await writeStrategy(PROV_REWARD_STRATEGY_UUID, deterrents.rewardPenaltyStrategy);
+        await writeU32(PROV_REWARD_PENALTY_CHAR_UUID, deterrents.rewardPenalty);
+        await writeU32(PROV_REWARD_MIN_DURATION_UUID, deterrents.rewardPenaltyMin);
+        await writeU32(PROV_REWARD_MAX_DURATION_UUID, deterrents.rewardPenaltyMax);
+
+        // 7. Credentials (Trigger Reboot)
+        log(`[Provision] Writing SSID & Password (triggering reboot)...`);
+        await writeBuf(PROV_SSID_CHAR_UUID, Buffer.from(ssid));
+        await writeBuf(PROV_PASS_CHAR_UUID, Buffer.from(pass || ''));
 
         log(`[Provision] Credentials and settings sent! Disconnecting...`);
         await peripheral.disconnectAsync();
