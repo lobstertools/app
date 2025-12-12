@@ -19,7 +19,19 @@ import cors from 'cors';
 import readline from 'readline';
 import bonjour from 'bonjour';
 
-import { DeviceDetails, DeviceFeature, Reward, SessionStatus, SessionConfig, SessionState } from '../types/';
+import {
+    DeviceDetails,
+    DeviceFeature,
+    Reward,
+    SessionStatus,
+    SessionConfig,
+    DeviceState,
+    Identity,
+    Network,
+    SessionPresets,
+    DeterrentConfig,
+    SystemDefaults,
+} from '../types/';
 
 const app = express();
 const PORT = 3003;
@@ -29,18 +41,30 @@ app.use(express.json());
 // ============================================================================
 // 1. CENTRALIZED MOCK CONFIGURATION
 // ============================================================================
-// Mirrors the C++ SystemConfig structure.
 // Implements "Developer Friendly" defaults (Debug Mode).
 
 const MOCK_CONFIGURATION = {
     // Device Identity
     identity: {
-        id: 'Mock-LobsterLock',
-        version: 'v1.4-mock-debug', // Explicitly marked as debug
-        buildType: 'mock' as const, // 'mock' | 'debug' | 'release'
+        name: 'Lobster Lock (Mock)',
+        version: 'v1.5-mock-debug',
+        buildType: 'mock',
+        buildDate: new Date().toISOString().split('T')[0],
+        buildTime: new Date().toTimeString().split(' ')[0],
+        cppStandard: 201703,
+    } as Identity,
+
+    // Network Config
+    network: {
+        ssid: 'Mock-WiFi-Network',
+        rssi: -45,
         mac: '00:1A:2B:3C:4D:5E',
+        ip: '127.0.0.1',
+        subnetMask: '255.255.255.0',
+        gateway: '127.0.0.1',
+        hostname: 'lobster-lock-mock',
         port: PORT,
-    },
+    } as Network,
 
     // Hardware Capabilities
     hardware: {
@@ -49,66 +73,81 @@ const MOCK_CONFIGURATION = {
         channels: { ch1: true, ch2: true, ch3: true, ch4: true },
     },
 
-    // System Limits & Timers
-    limits: {
-        longPressMs: 1000, // 1s for quick triggering
-        minLockSeconds: 10, // 10s minimum for quick lock cycles
-        maxLockSeconds: 3600, // 1 hour
-        minPenaltySeconds: 10, // 10s penalty
-        maxPenaltySeconds: 3600, // 1 hour
-        minPaybackTimeSeconds: 10, // 10s min debt
-        maxPaybackTimeSeconds: 600, // 10 min cap
-        testModeDurationSeconds: 30, // 30s hardware test
+    // System Limits & Defaults (Replaces flat 'limits' object)
+    defaults: {
+        longPressDuration: 1000, // 1s for quick triggering
+        extButtonSignalDuration: 500,
+        testModeDuration: 30, // 30s hardware test
+        keepAliveInterval: 10000,
+        keepAliveMaxStrikes: 3,
+        bootLoopThreshold: 3,
+        stableBootTime: 30000,
+        wifiMaxRetries: 5,
         armedTimeoutSeconds: 300, // 5 min idle timeout
-    },
+    } as SystemDefaults,
 
-    // Initial "Boot" State
-    initialState: {
+    // Duration Presets (New Interface)
+    presets: {
+        shortMin: 20 * 60,
+        shortMax: 45 * 60,
+        mediumMin: 60 * 60,
+        mediumMax: 90 * 60,
+        longMin: 120 * 60,
+        longMax: 180 * 60,
+        minSessionDuration: 10, // 10s for debug
+        maxSessionDuration: 3600, // 1 hr for debug
+    } as SessionPresets,
+
+    // Initial "Boot" State (Mapped to DeterrentConfig)
+    initialDeterrents: {
         enableStreaks: true,
-        enablePaybackTime: true,
         enableRewardCode: true,
-        paybackDurationSeconds: 20,
-        rewardPenaltyDuration: 10,
+        rewardPenaltyStrategy: 'DETERRENT_FIXED',
+        rewardPenaltyMin: 300,
+        rewardPenaltyMax: 900,
+        rewardPenalty: 10, // 10s for debug
+        enablePaybackTime: true,
+        paybackTimeStrategy: 'DETERRENT_FIXED',
+        paybackTimeMin: 300,
+        paybackTimeMax: 900,
+        paybackTime: 20, // 20s for debug
+    } as DeterrentConfig,
 
-        // Mock Data for "Story Mode"
-        startingStreaks: 5,
-        startingTotalTime: 50000,
-        startingCompleted: 12,
-        startingAborted: 2,
-        startingPendingPayback: 10,
+    // Mock Data for "Story Mode"
+    initialStats: {
+        streaks: 5,
+        completed: 12,
+        aborted: 2,
+        paybackAccumulated: 10,
+        totalLockedTime: 50000,
     },
 };
 
 // --- Mutable Settings (Simulating Flash Storage) ---
-// Initialized from Config
-const enableStreaks = MOCK_CONFIGURATION.initialState.enableStreaks;
-const enablePaybackTime = MOCK_CONFIGURATION.initialState.enablePaybackTime;
-const enableRewardCode = MOCK_CONFIGURATION.initialState.enableRewardCode;
-const paybackDuration = MOCK_CONFIGURATION.initialState.paybackDurationSeconds;
-const rewardPenaltyDuration = MOCK_CONFIGURATION.initialState.rewardPenaltyDuration;
+const deterrentConfig: DeterrentConfig = { ...MOCK_CONFIGURATION.initialDeterrents };
 const channelConfig = { ...MOCK_CONFIGURATION.hardware.channels };
 
 // --- Dynamic Session State ---
-let streaks = MOCK_CONFIGURATION.initialState.startingStreaks;
-let totalTimeLocked = MOCK_CONFIGURATION.initialState.startingTotalTime;
-let completed = MOCK_CONFIGURATION.initialState.startingCompleted;
-let aborted = MOCK_CONFIGURATION.initialState.startingAborted;
-let pendingPayback = MOCK_CONFIGURATION.initialState.startingPendingPayback;
+let streaks = MOCK_CONFIGURATION.initialStats.streaks;
+let totalTimeLocked = MOCK_CONFIGURATION.initialStats.totalLockedTime;
+let completed = MOCK_CONFIGURATION.initialStats.completed;
+let aborted = MOCK_CONFIGURATION.initialStats.aborted;
+let paybackAccumulated = MOCK_CONFIGURATION.initialStats.paybackAccumulated;
 
 // State Machine
-let currentState: SessionState = 'ready';
+let currentState: DeviceState = 'READY';
 
 // Current Active Config
 let currentSessionConfig: SessionConfig | undefined;
 
 // Timers
 let lockRemaining = 0;
-let rewardRemaining = 0; // Was penaltySecondsRemaining
+let penaltyRemaining = 0;
 let testRemaining = 0;
 let triggerTimeout = 0;
 
 // Dynamic channel delays
-let currentDelays = { ch1: 0, ch2: 0, ch3: 0, ch4: 0 };
+let currentDelays: [number, number, number, number] = [0, 0, 0, 0];
 
 // Internal tracking variables
 let lockDurationTotal = 0; // Total duration of current/last session
@@ -246,15 +285,13 @@ const stopAllTimers = () => {
  */
 const initializeState = () => {
     log('Initializing state (simulating device boot).');
-    log(` -> Device: ${MOCK_CONFIGURATION.identity.id} ${MOCK_CONFIGURATION.identity.version}`);
+    log(` -> Device: ${MOCK_CONFIGURATION.identity.name} ${MOCK_CONFIGURATION.identity.version}`);
     log(` -> Build Type: ${MOCK_CONFIGURATION.identity.buildType.toUpperCase()}`);
-    log(` -> Limits: MinLock=${MOCK_CONFIGURATION.limits.minLockSeconds}s, TestMode=${MOCK_CONFIGURATION.limits.testModeDurationSeconds}s`);
+    log(` -> Limits: MinLock=${MOCK_CONFIGURATION.presets.minSessionDuration}s, TestMode=${MOCK_CONFIGURATION.defaults.testModeDuration}s`);
 
     stopAllTimers();
 
-    // If we're initializing from a reset (reboot), we want to preserve history
-    // but shift it for a new code. If it's fresh start, generate history.
-    if (rewardHistory.length === 0 && enableRewardCode) {
+    if (rewardHistory.length === 0 && deterrentConfig.enableRewardCode) {
         // Fresh start: Generate fake history
         const numberOfHistoricalCodes = 4;
         for (let i = 0; i < numberOfHistoricalCodes; i++) {
@@ -267,7 +304,7 @@ const initializeState = () => {
         const newReward = generateUniqueReward();
         rewardHistory.unshift(newReward);
         log(`Generated new reward code for this session: ${newReward.code} (${newReward.checksum})`);
-    } else if (enableRewardCode) {
+    } else if (deterrentConfig.enableRewardCode) {
         // Reboot scenario: Shift history and generate new current code
         log('   -> Shifting reward history for new session code.');
         // Remove oldest if we exceed history size (mock size 5)
@@ -281,50 +318,50 @@ const initializeState = () => {
 
     // Reset stats to config starting values if first run, otherwise keep accumulating in memory
     // (In mock, memory persistence = session persistence)
-    if (streaks === undefined) streaks = MOCK_CONFIGURATION.initialState.startingStreaks;
-    if (totalTimeLocked === undefined) totalTimeLocked = MOCK_CONFIGURATION.initialState.startingTotalTime;
-    if (completed === undefined) completed = MOCK_CONFIGURATION.initialState.startingCompleted;
-    if (aborted === undefined) aborted = MOCK_CONFIGURATION.initialState.startingAborted;
-    if (pendingPayback === undefined) pendingPayback = MOCK_CONFIGURATION.initialState.startingPendingPayback;
+    if (streaks === undefined) streaks = MOCK_CONFIGURATION.initialStats.streaks;
+    if (totalTimeLocked === undefined) totalTimeLocked = MOCK_CONFIGURATION.initialStats.totalLockedTime;
+    if (completed === undefined) completed = MOCK_CONFIGURATION.initialStats.completed;
+    if (aborted === undefined) aborted = MOCK_CONFIGURATION.initialStats.aborted;
+    if (paybackAccumulated === undefined) paybackAccumulated = MOCK_CONFIGURATION.initialStats.paybackAccumulated;
 
-    currentState = 'ready';
+    currentState = 'READY';
     currentSessionConfig = undefined;
 
     lockRemaining = 0;
-    rewardRemaining = 0;
+    penaltyRemaining = 0;
     testRemaining = 0;
     triggerTimeout = 0;
     lastKeepAliveTime = 0;
 
-    currentDelays = { ch1: 0, ch2: 0, ch3: 0, ch4: 0 };
+    currentDelays = [0, 0, 0, 0];
     lockDurationTotal = 0;
     penaltyDurationConfig = 0;
 };
 
 /**
- * Triggers the full abort logic, moving from 'locked' to 'aborted'.
- * Or safely resets if in 'armed'.
+ * Triggers the full abort logic, moving from 'LOCKED' to 'ABORTED'.
+ * Or safely resets if in 'ARMED'.
  * @param source The reason for the abort (e.g., 'API', 'Watchdog')
  * @returns true if the abort was successful
  */
 const triggerAbort = (source: string): boolean => {
     // Safe Abort (Safety is ON)
-    if (currentState === 'armed') {
+    if (currentState === 'ARMED') {
         log(`🔓 Arming sequence canceled by ${source}. Returning to READY (No penalty).`);
         stopAllTimers();
-        currentState = 'ready';
+        currentState = 'READY';
         return true;
     }
 
     // Safe Abort (Safety is ON)
-    if (currentState === 'testing') {
+    if (currentState === 'TESTING') {
         log(`🔬 Hardware Testing canceled by ${source}. Returning to READY.`);
         stopAllTimers();
-        currentState = 'ready';
+        currentState = 'READY';
         return true;
     }
 
-    if (currentState !== 'locked') {
+    if (currentState !== 'LOCKED') {
         log(`triggerAbort called from ${source} but state is ${currentState}. Ignoring.`);
         return false;
     }
@@ -338,18 +375,18 @@ const triggerAbort = (source: string): boolean => {
     aborted++; // Increment stat
 
     // Add to debt bank if enabled
-    if (enablePaybackTime) {
-        const paybackToAdd = paybackDuration;
-        pendingPayback += paybackToAdd;
-        log(`   -> Added ${paybackToAdd}s to payback bank. Total: ${pendingPayback}s`);
+    if (deterrentConfig.enablePaybackTime) {
+        const paybackToAdd = deterrentConfig.paybackTime;
+        paybackAccumulated += paybackToAdd;
+        log(`   -> Added ${paybackToAdd}s to payback bank. Total: ${paybackAccumulated}s`);
     }
-    if (enableStreaks) {
+    if (deterrentConfig.enableStreaks) {
         log(`   -> Streak reset to 0.`);
         streaks = 0; // Aborting resets streaks
     }
 
-    // LOGIC CHANGE: If Reward Code is Disabled, skip penalty phase.
-    if (!enableRewardCode) {
+    // If Reward Code is Disabled, skip penalty phase.
+    if (!deterrentConfig.enableRewardCode) {
         log(`   -> Reward Code disabled. Skipping penalty timer and moving to COMPLETED.`);
         completeSession();
         return true;
@@ -357,13 +394,13 @@ const triggerAbort = (source: string): boolean => {
 
     // Reward Code Enabled: Enforce Penalty
     log(`   -> Penalty timer started.`);
-    currentState = 'aborted';
+    currentState = 'ABORTED';
     lockRemaining = 0;
-    rewardRemaining = penaltyDurationConfig;
+    penaltyRemaining = penaltyDurationConfig;
 
     // Start penalty timer
     penaltyInterval = setInterval(() => {
-        if (rewardRemaining > 0) rewardRemaining--;
+        if (penaltyRemaining > 0) penaltyRemaining--;
         else completeSession();
     }, 1000);
 
@@ -377,7 +414,7 @@ const startLockInterval = () => {
     log(`Starting main lock timer for ${lockDurationTotal} seconds.`);
     stopAllTimers();
 
-    currentState = 'locked';
+    currentState = 'LOCKED';
     lockRemaining = lockDurationTotal;
     lastKeepAliveTime = Date.now(); // <-- ARM WATCHDOG
 
@@ -407,22 +444,21 @@ const startArmedInterval = () => {
     stopAllTimers();
 
     armedInterval = setInterval(() => {
-        if (currentSessionConfig?.triggerStrategy === 'autoCountdown') {
+        if (currentSessionConfig?.triggerStrategy === 'STRAT_AUTO_COUNTDOWN') {
             // --- AUTO MODE ---
             // Tick down channels immediately
             let allZero = true;
 
-            // Iterate delays object
-            // Typecast keys for simple iteration in mock
-            (['ch1', 'ch2', 'ch3', 'ch4'] as const).forEach((key) => {
-                if (currentDelays[key] > 0) {
+            // Iterate delays array [ch1, ch2, ch3, ch4]
+            for (let i = 0; i < 4; i++) {
+                if (currentDelays[i] > 0) {
                     allZero = false;
-                    currentDelays[key]--;
-                    if (currentDelays[key] === 0) {
-                        log(`Channel ${key} closed (delay finished).`);
+                    currentDelays[i]--;
+                    if (currentDelays[i] === 0) {
+                        log(`Channel ${i + 1} closed (delay finished).`);
                     }
                 }
-            });
+            }
 
             // When all delays hit 0, transition to LOCKED
             if (allZero) {
@@ -452,7 +488,7 @@ const startArmedInterval = () => {
 const stopTestMode = () => {
     if (testInterval) clearInterval(testInterval);
     testInterval = null;
-    currentState = 'ready';
+    currentState = 'READY';
     testRemaining = 0;
     lastKeepAliveTime = 0; // Disarm watchdog
 };
@@ -462,7 +498,7 @@ const stopTestMode = () => {
  */
 const startTestInterval = () => {
     // Use the limit from Config
-    const duration = MOCK_CONFIGURATION.limits.testModeDurationSeconds;
+    const duration = MOCK_CONFIGURATION.defaults.testModeDuration;
     log(`Starting test mode timer for ${duration} seconds.`);
 
     stopAllTimers();
@@ -485,17 +521,17 @@ const startTestInterval = () => {
 const completeSession = () => {
     log('Session COMPLETED. Awaiting reboot to generate next code.');
     stopAllTimers();
-    currentState = 'completed';
+    currentState = 'COMPLETED';
     lastKeepAliveTime = 0; // Disarm watchdog
     lockRemaining = 0;
-    rewardRemaining = 0;
+    penaltyRemaining = 0;
     testRemaining = 0;
     triggerTimeout = 0;
-    currentDelays = { ch1: 0, ch2: 0, ch3: 0, ch4: 0 };
+    currentDelays = [0, 0, 0, 0];
 
     completed++; // Increment stat
 
-    if (enableStreaks) {
+    if (deterrentConfig.enableStreaks) {
         streaks++;
         log(`Streak count incremented to: ${streaks}`);
     }
@@ -520,18 +556,21 @@ const formatTime = (totalSeconds: number): string => {
  */
 const startMDNS = () => {
     log(`Starting mDNS advertisement...`);
-    const service = bonjour().publish({
-        name: MOCK_CONFIGURATION.identity.id,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const service = (bonjour() as any).publish({
+        name: MOCK_CONFIGURATION.identity.name,
         type: 'lobster-lock',
         port: PORT,
         protocol: 'tcp',
+        txt: { mac: MOCK_CONFIGURATION.network.mac },
     });
 
     service.on('up', () => {
         log(`mDNS service announced: _lobster-lock._tcp.local on port ${PORT}`);
     });
 
-    service.on('error', (err) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    service.on('error', (err: any) => {
         log(`mDNS error: ${err.message}`);
     });
 };
@@ -562,7 +601,7 @@ process.stdin.on('keypress', (_, key) => {
     // 'D' for Double-Click (Simulate Button)
     if (key.name === 'd') {
         // Debounce / State Check: Only allow if we are strictly in ARMED state
-        if (currentState === 'armed') {
+        if (currentState === 'ARMED') {
             log('⌨️  KEYPRESS: Simulated Double-Click (Button).');
             handlePhysicalButtonDoubleClick();
         } else {
@@ -576,12 +615,12 @@ process.stdin.on('keypress', (_, key) => {
         const adjustment = key.name === 'up' ? TIME_ADJUSTMENT_SECONDS : -TIME_ADJUSTMENT_SECONDS;
         const action = key.name === 'up' ? 'Increased' : 'Decreased';
 
-        if (currentState === 'locked') {
+        if (currentState === 'LOCKED') {
             lockRemaining = Math.max(0, lockRemaining + adjustment);
             log(`🔼🔽 ${action} lock time. New remaining: ${formatTime(lockRemaining)}`);
-        } else if (currentState === 'aborted') {
-            rewardRemaining = Math.max(0, rewardRemaining + adjustment);
-            log(`🔼🔽 ${action} penalty time. New remaining: ${formatTime(rewardRemaining)}`);
+        } else if (currentState === 'ABORTED') {
+            penaltyRemaining = Math.max(0, penaltyRemaining + adjustment);
+            log(`🔼🔽 ${action} penalty time. New remaining: ${formatTime(penaltyRemaining)}`);
         }
     }
 });
@@ -590,7 +629,7 @@ process.stdin.on('keypress', (_, key) => {
  * Long-press = abort
  */
 const handlePhysicalButtonLongPress = () => {
-    if (currentState === 'locked') {
+    if (currentState === 'LOCKED') {
         // In LOCKED state, long-press triggers abort
         log('Button Abort Triggered (Emergency Stop).');
         triggerAbort('Physical Button');
@@ -603,9 +642,9 @@ const handlePhysicalButtonLongPress = () => {
  * Double-click = start
  */
 const handlePhysicalButtonDoubleClick = () => {
-    if (currentState === 'armed') {
+    if (currentState === 'ARMED') {
         // In ARMED state, double-click triggers lock if strategy is buttonTrigger
-        if (currentSessionConfig?.triggerStrategy === 'buttonTrigger') {
+        if (currentSessionConfig?.triggerStrategy === 'STRAT_BUTTON_TRIGGER') {
             log('Double-Click Trigger Received! Locking session.');
             startLockInterval();
         } else {
@@ -651,7 +690,7 @@ app.get('/log', (_, res) => {
  * "Pets" the watchdog to prevent a timeout.
  */
 app.post('/keepalive', (_, res) => {
-    if (currentState === 'locked') {
+    if (currentState === 'LOCKED') {
         lastKeepAliveTime = Date.now();
         log('API: /keepalive received (watchdog petted).');
     } else {
@@ -665,7 +704,7 @@ app.post('/keepalive', (_, res) => {
  * Simulates updating the Wi-Fi credentials (only in 'ready' state).
  */
 app.post('/update-wifi', (req, res) => {
-    if (currentState !== 'ready') {
+    if (currentState !== 'READY') {
         log('API: /update-wifi FAILED (not ready)');
         return res.status(409).json({
             status: 'error',
@@ -696,32 +735,16 @@ app.post('/update-wifi', (req, res) => {
  */
 app.get('/details', (_, res) => {
     log('API: /details requested.');
+
     const response: DeviceDetails = {
-        id: MOCK_CONFIGURATION.identity.id,
-        name: MOCK_CONFIGURATION.identity.id,
-        address: '127.0.0.1',
-        port: PORT,
-        mac: MOCK_CONFIGURATION.identity.mac,
-        version: MOCK_CONFIGURATION.identity.version,
+        id: MOCK_CONFIGURATION.identity.name,
+        identity: MOCK_CONFIGURATION.identity,
+        network: MOCK_CONFIGURATION.network,
         features: MOCK_CONFIGURATION.hardware.features,
-        buildType: MOCK_CONFIGURATION.identity.buildType,
         channels: { ...channelConfig },
-
-        // System Limits (Mapped from Config)
-        longPressMs: MOCK_CONFIGURATION.limits.longPressMs,
-        minLockDuration: MOCK_CONFIGURATION.limits.minLockSeconds,
-        maxLockDuration: MOCK_CONFIGURATION.limits.maxLockSeconds,
-        testModeDuration: MOCK_CONFIGURATION.limits.testModeDurationSeconds,
-
-        deterrents: {
-            enableStreaks: enableStreaks,
-            enableRewardCode: enableRewardCode,
-            rewardPenaltyDuration: rewardPenaltyDuration,
-            enablePaybackTime: enablePaybackTime,
-            paybackDuration: paybackDuration,
-            minPaybackDuration: MOCK_CONFIGURATION.limits.minPaybackTimeSeconds,
-            maxPaybackDuration: MOCK_CONFIGURATION.limits.maxPaybackTimeSeconds,
-        },
+        presets: MOCK_CONFIGURATION.presets,
+        deterrentConfig: deterrentConfig,
+        defaults: MOCK_CONFIGURATION.defaults,
     };
     res.json(response);
 });
@@ -737,7 +760,7 @@ app.get('/details', (_, res) => {
  */
 app.get('/reward', (_, res) => {
     // 1. LOCKED or ARMED: Always hidden
-    if (currentState === 'locked' || currentState === 'armed') {
+    if (currentState === 'LOCKED' || currentState === 'ARMED') {
         log(`API: /reward DENIED (Session ${currentState})`);
         return res.status(403).json({
             status: 'forbidden',
@@ -746,11 +769,11 @@ app.get('/reward', (_, res) => {
     }
 
     // 2. ABORTED: Hidden ONLY if penalty is still ticking
-    if (currentState === 'aborted' && rewardRemaining > 0) {
-        log(`API: /reward DENIED (Penalty Active: ${rewardRemaining}s)`);
+    if (currentState === 'ABORTED' && penaltyRemaining > 0) {
+        log(`API: /reward DENIED (Penalty Active: ${penaltyRemaining}s)`);
         return res.status(403).json({
             status: 'forbidden',
-            message: `Reward locked for penalty duration (${rewardRemaining}s).`,
+            message: `Reward locked for penalty duration (${penaltyRemaining}s).`,
         });
     }
 
@@ -764,7 +787,7 @@ app.get('/reward', (_, res) => {
  * Arm the device for a session.
  */
 app.post('/arm', (req, res) => {
-    if (currentState !== 'ready') {
+    if (currentState !== 'READY') {
         log('API: /arm FAILED (not ready)');
         return res.status(409).json({
             status: 'error',
@@ -789,28 +812,28 @@ app.post('/arm', (req, res) => {
     let max = 0;
 
     // Default lower bound if not specified
-    const defaultMin = MOCK_CONFIGURATION.limits.minLockSeconds;
+    const defaultMin = MOCK_CONFIGURATION.presets.minSessionDuration;
 
-    if (config.durationType === 'fixed') {
+    if (config.durationType === 'DUR_FIXED') {
         // Use the explicit 'duration' field for fixed
-        resolvedDuration = config.duration || defaultMin;
+        resolvedDuration = config.fixedDuration || defaultMin;
         log(`   -> Fixed Duration Resolved: ${resolvedDuration}s`);
     } else {
         // Range Logic: Calculate boundaries
         switch (config.durationType) {
-            case 'short':
+            case 'DUR_RANGE_SHORT':
                 min = 20;
                 max = 45;
                 break;
-            case 'medium':
+            case 'DUR_RANGE_MEDIUM':
                 min = 60;
                 max = 90;
                 break;
-            case 'long':
+            case 'DUR_RANGE_LONG':
                 min = 120;
                 max = 180;
                 break;
-            case 'random':
+            case 'DUR_RANDOM':
                 // For 'random', use the explicit min/max fields
                 min = config.minDuration || defaultMin;
                 max = config.maxDuration || min + 60;
@@ -825,36 +848,37 @@ app.post('/arm', (req, res) => {
         // Ensure max >= min to avoid negative range
         const effectiveMax = Math.max(min, max);
         resolvedDuration = Math.floor(Math.random() * (effectiveMax - min + 1)) + min;
-        log(`   -> ${config.durationType.toUpperCase()} Duration Resolved: ${resolvedDuration}s (Range: ${min}-${effectiveMax}s)`);
+        log(`   -> ${config.durationType} Duration Resolved: ${resolvedDuration}s (Range: ${min}-${effectiveMax}s)`);
     }
 
     // Store config for this session
     currentSessionConfig = config;
 
     // Apply Payback logic
-    lockDurationTotal = resolvedDuration + pendingPayback;
-    if (pendingPayback > 0) {
-        log(`   -> Added ${pendingPayback}s payback time. Total: ${lockDurationTotal}s`);
+    lockDurationTotal = resolvedDuration + paybackAccumulated;
+    if (paybackAccumulated > 0) {
+        log(`   -> Added ${paybackAccumulated}s payback time. Total: ${lockDurationTotal}s`);
     }
 
-    penaltyDurationConfig = rewardPenaltyDuration; // From static config
+    penaltyDurationConfig = deterrentConfig.rewardPenalty; // From static config
 
-    // Parse channel delays from object
-    currentDelays.ch1 = Number(config.channelDelays.ch1 || 0);
-    currentDelays.ch2 = Number(config.channelDelays.ch2 || 0);
-    currentDelays.ch3 = Number(config.channelDelays.ch3 || 0);
-    currentDelays.ch4 = Number(config.channelDelays.ch4 || 0);
+    // Parse channel delays from array [ch1, ch2, ch3, ch4]
+    if (config.channelDelays && config.channelDelays.length === 4) {
+        currentDelays = [...config.channelDelays];
+    } else {
+        currentDelays = [0, 0, 0, 0];
+    }
 
     log(`🔒 /arm request. Strategy: ${currentSessionConfig?.triggerStrategy}. Total Lock Duration: ${lockDurationTotal}s.`);
 
     // Transition to ARMED
-    currentState = 'armed';
+    currentState = 'ARMED';
 
     stopAllTimers();
 
-    if (currentSessionConfig?.triggerStrategy === 'buttonTrigger') {
+    if (currentSessionConfig?.triggerStrategy === 'STRAT_BUTTON_TRIGGER') {
         // Manual Mode: Set timeout and wait
-        triggerTimeout = MOCK_CONFIGURATION.limits.armedTimeoutSeconds;
+        triggerTimeout = MOCK_CONFIGURATION.defaults.armedTimeoutSeconds;
         log('   -> Waiting for Button Trigger...');
     } else {
         // Auto Mode: Logs
@@ -865,7 +889,7 @@ app.post('/arm', (req, res) => {
     startArmedInterval();
 
     res.json({
-        status: 'armed',
+        status: 'ARMED',
     });
 });
 
@@ -874,7 +898,7 @@ app.post('/arm', (req, res) => {
  * Start a test session.
  */
 app.post('/start-test', (_, res) => {
-    if (currentState !== 'ready') {
+    if (currentState !== 'READY') {
         log('API: /start-test FAILED (not ready)');
         return res.status(409).json({
             status: 'error',
@@ -882,12 +906,12 @@ app.post('/start-test', (_, res) => {
         });
     }
 
-    log(`🔬 /start-test request. Engaging relays for ${MOCK_CONFIGURATION.limits.testModeDurationSeconds}s.`);
-    currentState = 'testing';
+    log(`🔬 /start-test request. Engaging relays for ${MOCK_CONFIGURATION.defaults.testModeDuration}s.`);
+    currentState = 'TESTING';
     startTestInterval(); // Watchdog is NOT armed
 
     res.json({
-        status: 'testing',
+        status: 'TESTING',
         testSecondsRemaining: testRemaining,
     });
 });
@@ -899,7 +923,7 @@ app.post('/start-test', (_, res) => {
 app.post('/abort', (_, res) => {
     if (triggerAbort('API')) {
         // If triggerAbort returned true, it handled the state change
-        res.json({ status: currentState === 'ready' ? 'ready' : 'aborted' });
+        res.json({ status: currentState === 'READY' ? 'READY' : 'ABORTED' });
     } else {
         log('API: /abort FAILED (not abortable)');
         return res.status(409).json({
@@ -926,7 +950,7 @@ app.post('/debug/button-press', (_, res) => {
  */
 app.post('/reboot', (_, res) => {
     // Match Firmware: Only allow reboot if ready or completed
-    if (currentState !== 'ready' && currentState !== 'completed') {
+    if (currentState !== 'READY' && currentState !== 'COMPLETED') {
         log('API: /reboot FAILED (Device active)');
         return res.status(403).json({
             status: 'error',
@@ -947,7 +971,7 @@ app.post('/reboot', (_, res) => {
  * Simulates the device forgetting credentials and rebooting.
  */
 app.post('/factory-reset', (_, res) => {
-    if (currentState !== 'ready' && currentState !== 'completed') {
+    if (currentState !== 'READY' && currentState !== 'COMPLETED') {
         log('API: /factory-reset FAILED (session active)');
         return res.status(409).json({
             status: 'error',
@@ -970,36 +994,40 @@ app.post('/factory-reset', (_, res) => {
  */
 app.get('/status', (_, res) => {
     const response: SessionStatus = {
-        status: currentState,
-        lockDuration: lockDurationTotal,
+        state: currentState,
+        verified: true,
 
-        timers: {
-            lockRemaining: lockRemaining,
-            rewardRemaining: rewardRemaining,
-            testRemaining: testRemaining,
-            triggerTimeout:
-                currentState === 'armed' && currentSessionConfig?.triggerStrategy === 'buttonTrigger' ? triggerTimeout : undefined,
+        config: currentSessionConfig || {
+            durationType: 'DUR_FIXED',
+            fixedDuration: 0,
+            minDuration: 0,
+            maxDuration: 0,
+            triggerStrategy: 'STRAT_AUTO_COUNTDOWN',
+            channelDelays: [0, 0, 0, 0],
+            hideTimer: false,
+            disableLED: false,
         },
 
-        config: currentSessionConfig,
-
-        channelDelaysRemaining: {
-            ch1: currentDelays.ch1,
-            ch2: currentDelays.ch2,
-            ch3: currentDelays.ch3,
-            ch4: currentDelays.ch4,
+        timers: {
+            lockDuration: lockDurationTotal,
+            penaltyDuration: penaltyDurationConfig,
+            lockRemaining: lockRemaining,
+            penaltyRemaining: penaltyRemaining,
+            testRemaining: testRemaining,
+            triggerTimeout:
+                currentState === 'ARMED' && currentSessionConfig?.triggerStrategy === 'STRAT_BUTTON_TRIGGER' ? triggerTimeout : 0,
+            channelDelays: currentDelays,
         },
 
         stats: {
             streaks,
             aborted,
             completed,
-            totalTimeLocked: totalTimeLocked,
-            pendingPayback,
+            totalLockedTime: totalTimeLocked,
+            paybackAccumulated: paybackAccumulated,
         },
 
-        hardware: {
-            verified: true,
+        telemetry: {
             buttonPressed: false,
             currentPressDurationMs: 0,
             rssi: -40,
