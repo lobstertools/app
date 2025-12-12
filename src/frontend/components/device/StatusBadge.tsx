@@ -19,27 +19,27 @@ export const StatusBadge = () => {
 
         switch (currentState) {
             // --- Session States ---
-            case 'locked':
+            case 'LOCKED':
                 color = '#faad14';
                 text = 'LOCKED (Session Running)';
                 break;
-            case 'aborted':
+            case 'ABORTED':
                 color = red[5];
                 text = 'ABORTED (Penalty Active)';
                 break;
-            case 'completed':
+            case 'COMPLETED':
                 color = purple[5];
                 text = 'COMPLETED (Waiting for Reboot)';
                 break;
-            case 'ready':
+            case 'READY':
                 color = '#52c41a';
                 text = 'READY (Waiting for Session)';
                 break;
-            case 'armed':
+            case 'ARMED':
                 color = blue[5];
                 text = 'ARMED (Waiting for Trigger)';
                 break;
-            case 'testing':
+            case 'TESTING':
                 color = blue[5];
                 text = 'TESTING';
                 break;

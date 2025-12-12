@@ -11,7 +11,6 @@ export const PressProgressBar = () => {
     const { activeDevice } = useDeviceManager();
 
     // 2. Feature Check: Only render if the device supports the foot pedal
-    // The 'features' array is part of the DeviceDetails interface
     const hasFootPedal = activeDevice?.features?.includes('footPedal');
 
     if (!hasFootPedal) {
@@ -19,11 +18,11 @@ export const PressProgressBar = () => {
     }
 
     // 3. Derive specific values
-    const isPressed = status?.hardware?.buttonPressed ?? false; //
-    const currentMs = status?.hardware?.currentPressDurationMs ?? 0; //
+    const isPressed = status?.telemetry?.buttonPressed ?? false;
+    const currentMs = status?.telemetry?.currentPressDurationMs ?? 0;
 
     // Default to 0 if device settings aren't loaded yet
-    const thresholdMs = activeDevice?.longPressMs ?? 0; //
+    const thresholdMs = activeDevice?.defaults?.longPressDuration ?? 0;
 
     // 4. Calculate percentage (capped at 100%)
     const rawPercent = thresholdMs > 0 ? (currentMs / thresholdMs) * 100 : 0;
