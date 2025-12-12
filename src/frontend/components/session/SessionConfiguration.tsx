@@ -40,7 +40,7 @@ import { CountdownDisplay } from './CountdownDisplay';
 import { useDeviceManager } from '../../context/useDeviceManager';
 import { useKeyboard } from '../../context/useKeyboardContext';
 import { useSession } from '../../context/useSessionContext';
-import { SessionConfig, TriggerStrategy } from '../../../types';
+import { SessionConfig, TriggerStrategy, DurationType } from '../../../types';
 
 const { Title, Text } = Typography;
 
@@ -80,7 +80,7 @@ export const SessionConfiguration = () => {
 
     // Watch the strategy to update UI text dynamically
     const selectedStrategy = Form.useWatch('triggerStrategy', form);
-    const isManualTrigger = selectedStrategy === 'buttonTrigger';
+    const isManualTrigger = selectedStrategy === 'STRAT_BUTTON_TRIGGER';
 
     const { token } = antdTheme.useToken();
 
@@ -90,7 +90,7 @@ export const SessionConfiguration = () => {
     }, [activeDevice]);
 
     // Check deterrent configuration
-    const enableRewardCode = activeDevice?.deterrents?.enableRewardCode ?? true;
+    const enableRewardCode = activeDevice?.deterrentConfig?.enableRewardCode ?? true;
 
     // ------------------------------------------------------------------------
     // 1. ADAPTIVE TIME SCALING
@@ -98,8 +98,9 @@ export const SessionConfiguration = () => {
 
     // Detect if we are in a developer mode where seconds are preferred over minutes
     const isDebugMode = useMemo(() => {
-        return activeDevice?.buildType === 'debug' || activeDevice?.buildType === 'mock';
-    }, [activeDevice?.buildType]);
+        const buildType = activeDevice?.identity?.buildType;
+        return buildType === 'debug' || buildType === 'mock';
+    }, [activeDevice?.identity?.buildType]);
 
     // Define the Time Scale:
     // Debug/Mock -> 1 (Values are in seconds)
@@ -111,13 +112,14 @@ export const SessionConfiguration = () => {
     // 2. DYNAMIC SYSTEM LIMITS (Scaled to UI Units)
     // ------------------------------------------------------------------------
 
+    // Get limits from Firmware Presets
     const minLockUnit = useMemo(
-        () => Math.ceil((activeDevice?.minLockDuration || 900) / timeScale),
-        [activeDevice?.minLockDuration, timeScale]
+        () => Math.ceil((activeDevice?.presets?.minSessionDuration || 900) / timeScale),
+        [activeDevice?.presets?.minSessionDuration, timeScale]
     );
     const maxLockUnit = useMemo(
-        () => Math.floor((activeDevice?.maxLockDuration || 10800) / timeScale),
-        [activeDevice?.maxLockDuration, timeScale]
+        () => Math.floor((activeDevice?.presets?.maxSessionDuration || 10800) / timeScale),
+        [activeDevice?.presets?.maxSessionDuration, timeScale]
     );
 
     const minPenaltyUnit = 1;
@@ -169,15 +171,16 @@ export const SessionConfiguration = () => {
 
     // --- Compute Timer Values ---
     const penaltyTimeRemaining = useMemo(() => {
-        if (status?.status === 'aborted') {
-            return status.timers.rewardRemaining || 0;
+        if (status?.state === 'ABORTED') {
+            //
+            return status.timers.penaltyRemaining || 0;
         }
         return 0;
     }, [status]);
 
-    // Reset form when returning to 'ready' state
+    // Reset form when returning to 'READY' state
     useEffect(() => {
-        if (currentState === 'ready') {
+        if (currentState === 'READY') {
             setSetupStep(0);
             setUseMultiDelay(false);
             form.resetFields();
@@ -195,7 +198,7 @@ export const SessionConfiguration = () => {
                 return;
             }
 
-            if (currentState === 'ready') {
+            if (currentState === 'READY') {
                 if (setupStep === 0) {
                     setSetupStep(1);
                     notification.success({
@@ -226,37 +229,40 @@ export const SessionConfiguration = () => {
             let finalDurationUnits: number;
             let calculatedMin = values.rangeMin || minLockUnit;
             let calculatedMax = values.rangeMax || maxLockUnit;
-            let durationType: 'fixed' | 'random' | 'short' | 'medium' | 'long' = 'fixed';
+            let durationType: DurationType = 'DUR_FIXED';
 
             // Determine Duration Type string for API
             if (values.type === 'fixed') {
-                durationType = 'fixed';
+                durationType = 'DUR_FIXED';
                 finalDurationUnits = values.duration || defaultValues.duration;
                 // Min/Max are same as duration for fixed
                 calculatedMin = finalDurationUnits;
                 calculatedMax = finalDurationUnits;
             } else if (values.type === 'random') {
-                durationType = 'random';
+                durationType = 'DUR_RANDOM';
                 // calculatedMin/Max already set from inputs
                 finalDurationUnits = 0; // Backend handles random
             } else {
-                // Time Range
-                durationType = values.timeRangeSelection || 'short';
-
+                // Time Range - using keys from SessionPresets interface
                 switch (values.timeRangeSelection) {
                     case 'short':
-                        calculatedMin = 20;
-                        calculatedMax = 45;
+                        durationType = 'DUR_RANGE_SHORT';
+                        // Use presets from firmware config if available, otherwise UI defaults
+                        calculatedMin = (activeDevice?.presets?.shortMin || 1200) / timeScale;
+                        calculatedMax = (activeDevice?.presets?.shortMax || 2700) / timeScale;
                         break;
                     case 'medium':
-                        calculatedMin = 60;
-                        calculatedMax = 90;
+                        durationType = 'DUR_RANGE_MEDIUM';
+                        calculatedMin = (activeDevice?.presets?.mediumMin || 3600) / timeScale;
+                        calculatedMax = (activeDevice?.presets?.mediumMax || 5400) / timeScale;
                         break;
                     case 'long':
-                        calculatedMin = 120;
-                        calculatedMax = 180;
+                        durationType = 'DUR_RANGE_LONG';
+                        calculatedMin = (activeDevice?.presets?.longMin || 7200) / timeScale;
+                        calculatedMax = (activeDevice?.presets?.longMax || 10800) / timeScale;
                         break;
                     default:
+                        durationType = 'DUR_RANGE_SHORT';
                         calculatedMin = defaultValues.rangeMin;
                         calculatedMax = defaultValues.rangeMax;
                 }
@@ -264,32 +270,35 @@ export const SessionConfiguration = () => {
             }
 
             // Clamp duration to system limits (in units) for fixed values
-            if (durationType === 'fixed') {
+            if (durationType === 'DUR_FIXED') {
                 finalDurationUnits = clamp(finalDurationUnits, minLockUnit, maxLockUnit);
             }
 
             // 2. Map Delays (Always Seconds in Form) to Channel Object
-            const channelDelays = {
-                ch1: values.delayCh1 || 0,
-                ch2: values.useMultiChannelDelay ? values.delayCh2 || 0 : values.delayCh1 || 0,
-                ch3: values.useMultiChannelDelay ? values.delayCh3 || 0 : values.delayCh1 || 0,
-                ch4: values.useMultiChannelDelay ? values.delayCh4 || 0 : values.delayCh1 || 0,
-            };
+            const channelDelays: [number, number, number, number] = [
+                values.delayCh1 || 0,
+                values.useMultiChannelDelay ? values.delayCh2 || 0 : values.delayCh1 || 0,
+                values.useMultiChannelDelay ? values.delayCh3 || 0 : values.delayCh1 || 0,
+                values.useMultiChannelDelay ? values.delayCh4 || 0 : values.delayCh1 || 0,
+            ];
 
-            // 3. Construct Payload
+            // 3. Map Trigger Strategy (Direct assignment since Form uses correct type now)
+            const triggerStrategy = values.triggerStrategy;
+
+            // 4. Construct Payload
             const payload: SessionConfig = {
-                triggerStrategy: values.triggerStrategy,
+                triggerStrategy: triggerStrategy,
                 hideTimer: !!values.hideTimer,
                 disableLED: !!values.disableLED,
                 durationType: durationType,
-                duration: finalDurationUnits * timeScale, // Convert to seconds
+                fixedDuration: finalDurationUnits * timeScale, // Convert to seconds
                 minDuration: calculatedMin * timeScale, // Convert to seconds
                 maxDuration: calculatedMax * timeScale, // Convert to seconds
                 channelDelays: channelDelays,
             };
 
-            // 4. Call Context Action
-            await startSession(payload);
+            // 5. Call Context Action
+            startSession(payload);
         } catch (e) {
             console.error(e);
             setIsSubmitting(false);
@@ -301,10 +310,10 @@ export const SessionConfiguration = () => {
         if (currentState === 'no_device_selected') return 0;
         if (currentState === 'server_unreachable' || currentState === 'device_unreachable' || currentState === 'connecting') return 0;
 
-        if (currentState === 'ready' || currentState === 'testing') return setupStep;
-        if (currentState === 'armed') return 2;
-        if (currentState === 'locked' || currentState === 'aborted') return 3;
-        if (currentState === 'completed') return 4;
+        if (currentState === 'READY' || currentState === 'TESTING') return setupStep;
+        if (currentState === 'ARMED') return 2;
+        if (currentState === 'LOCKED' || currentState === 'ABORTED') return 3;
+        if (currentState === 'COMPLETED') return 4;
         return 0;
     }, [currentState, setupStep]);
 
@@ -347,7 +356,7 @@ export const SessionConfiguration = () => {
                 disabled = true;
                 icon = <LoadingOutlined />;
                 break;
-            case 'testing':
+            case 'TESTING':
                 text = 'Testing Hardware...';
                 disabled = true;
                 icon = <LoadingOutlined />;
@@ -427,9 +436,9 @@ export const SessionConfiguration = () => {
      * Content for Step 1: The main configuration form.
      */
     const renderConfigurationForm = () => {
-        const pendingPaybackSeconds = status?.stats?.pendingPayback || 0;
-        const paybackDuration = activeDevice?.deterrents?.paybackDuration || 0;
-        const paybackTimeEnabled = activeDevice?.deterrents?.enablePaybackTime || false;
+        const pendingPaybackSeconds = status?.stats?.paybackAccumulated || 0;
+        const paybackDuration = activeDevice?.deterrentConfig?.paybackTime || 0;
+        const paybackTimeEnabled = activeDevice?.deterrentConfig?.enablePaybackTime || false;
         const paybackDisplayVal = Math.floor(paybackDuration / timeScale);
 
         return (
@@ -438,7 +447,7 @@ export const SessionConfiguration = () => {
                 onFinish={handleFinish}
                 layout="vertical"
                 initialValues={{
-                    triggerStrategy: 'buttonTrigger',
+                    triggerStrategy: 'STRAT_BUTTON_TRIGGER',
                     type: 'time-range',
                     timeRangeSelection: 'short',
                     duration: defaultValues.duration,
@@ -565,10 +574,10 @@ export const SessionConfiguration = () => {
                     {supportsManualTrigger && (
                         <Form.Item name="triggerStrategy" style={{ marginBottom: 12, marginTop: 8 }}>
                             <Radio.Group buttonStyle="solid" block>
-                                <Radio.Button value="buttonTrigger" style={{ width: '50%', textAlign: 'center' }}>
+                                <Radio.Button value="STRAT_BUTTON_TRIGGER" style={{ width: '50%', textAlign: 'center' }}>
                                     <ThunderboltOutlined /> Device Button
                                 </Radio.Button>
-                                <Radio.Button value="autoCountdown" style={{ width: '50%', textAlign: 'center' }}>
+                                <Radio.Button value="STRAT_AUTO_COUNTDOWN" style={{ width: '50%', textAlign: 'center' }}>
                                     <TimerIcon /> Automatic Timer
                                 </Radio.Button>
                             </Radio.Group>
@@ -653,6 +662,7 @@ export const SessionConfiguration = () => {
                                 </Form.Item>
                             </Space>
                         </Col>
+
                         <Col span={12}>
                             <Space>
                                 <Text>Disable LED</Text>
@@ -697,17 +707,17 @@ export const SessionConfiguration = () => {
                     icon={isManualTrigger ? <ThunderboltOutlined /> : <LockOutlined />}
                     htmlType="submit"
                     size="large"
-                    loading={isSubmitting || currentState === 'testing'}
-                    disabled={currentState !== 'ready'}
+                    loading={isSubmitting || currentState === 'TESTING'}
+                    disabled={currentState !== 'READY'}
                     style={{ width: '100%' }}
                 >
                     {isSubmitting
                         ? 'Arming Device...'
-                        : currentState === 'ready'
+                        : currentState === 'READY'
                           ? isManualTrigger
                               ? 'Arm Device (Wait for Button)'
                               : 'Start Countdown'
-                          : currentState === 'testing'
+                          : currentState === 'TESTING'
                             ? 'Testing Hardware...'
                             : 'Device Not Ready'}
                 </Button>
@@ -719,7 +729,7 @@ export const SessionConfiguration = () => {
      * Content for Step 3: Locked or Aborted state.
      */
     const renderSessionActiveContent = () => {
-        const isLocked = currentState === 'locked';
+        const isLocked = currentState === 'LOCKED';
 
         let description = '';
         if (isLocked) {
