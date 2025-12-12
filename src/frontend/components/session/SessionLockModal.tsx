@@ -14,9 +14,7 @@ export const SessionLockModal = () => {
     const { status, abortSession } = useSession();
     const { activeDevice } = useDeviceManager();
 
-    const isLocked = status?.status === 'locked';
-
-    // Access hideTimer from config object
+    const isLocked = status?.state === 'LOCKED';
     const isTimerHidden = status?.config?.hideTimer === true;
 
     // Check if the connected device supports the foot pedal feature
