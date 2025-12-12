@@ -11,7 +11,7 @@ export const SessionStats = () => {
     const { activeDevice } = useDeviceManager();
     const { status } = useSession();
 
-    if (activeDevice?.deterrents.enableStreaks === false) {
+    if (activeDevice?.deterrentConfig?.enableStreaks === false) {
         return <></>;
     }
 
@@ -20,7 +20,7 @@ export const SessionStats = () => {
         return null;
     }
 
-    const { streaks = 0, totalTimeLocked = 0, completed = 0, aborted = 0, pendingPayback = 0 } = status.stats;
+    const { streaks = 0, totalLockedTime = 0, completed = 0, aborted = 0, paybackAccumulated = 0 } = status.stats;
 
     // Standard spacing style for icons inside tags
     const iconStyle = { marginRight: 4 };
@@ -34,7 +34,7 @@ export const SessionStats = () => {
             </Tooltip>
             <Tooltip title="Total Time Locked">
                 <Tag icon={<ClockCircleOutlined style={iconStyle} />} color="blue" style={{ margin: 0 }}>
-                    {formatSeconds(totalTimeLocked)}
+                    {formatSeconds(totalLockedTime)}
                 </Tag>
             </Tooltip>
             <Tooltip title="Total Sessions Completed">
@@ -47,10 +47,10 @@ export const SessionStats = () => {
                     {aborted}
                 </Tag>
             </Tooltip>
-            {pendingPayback > 0 && (
+            {paybackAccumulated > 0 && (
                 <Tooltip title="Accumulated Payback Debt">
                     <Tag icon={<WarningOutlined style={iconStyle} />} color="volcano" style={{ margin: 0 }}>
-                        {formatSeconds(pendingPayback)}
+                        {formatSeconds(paybackAccumulated)}
                     </Tag>
                 </Tooltip>
             )}
