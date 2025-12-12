@@ -11,15 +11,15 @@ export const TestSessionModal = () => {
     const { currentState, abortSession, status } = useSession();
     const { activeDevice } = useDeviceManager();
 
-    // The modal is only visible when the state is specifically 'testing'
-    const isOpen = currentState === 'testing';
-    const hw = status?.hardware;
+    // The modal is only visible when the state is specifically 'TESTING'
+    const isOpen = currentState === 'TESTING';
+
+    const telemetry = status?.telemetry;
 
     // --- Logic for Button State ---
-    // Use the static config from Device Details, defaulting to 3000ms if not yet loaded
-    const longPressThresholdMs = activeDevice?.longPressMs || 3000;
-    const currentPressMs = hw?.currentPressDurationMs || 0;
-    const isPressed = hw?.buttonPressed || false;
+    const longPressThresholdMs = activeDevice?.defaults?.longPressDuration || 3000;
+    const currentPressMs = telemetry?.currentPressDurationMs || 0;
+    const isPressed = telemetry?.buttonPressed || false;
     const isLongPress = isPressed && currentPressMs >= longPressThresholdMs;
 
     // Helper to calculate signal strength percentage from RSSI (approximate)
@@ -116,11 +116,11 @@ export const TestSessionModal = () => {
                                         <Text>
                                             <WifiOutlined /> Signal (RSSI):
                                         </Text>
-                                        <Text strong>{hw?.rssi} dBm</Text>
+                                        <Text strong>{telemetry?.rssi} dBm</Text>
                                     </div>
                                     <Progress
-                                        percent={getSignalPercent(hw?.rssi || -90)}
-                                        strokeColor={getSignalColor(hw?.rssi || -90)}
+                                        percent={getSignalPercent(telemetry?.rssi || -90)}
+                                        strokeColor={getSignalColor(telemetry?.rssi || -90)}
                                         showInfo={false}
                                         size="small"
                                     />
@@ -131,11 +131,13 @@ export const TestSessionModal = () => {
                                 {/* System Vitals */}
                                 <Descriptions column={1} size="small" bordered={false}>
                                     <Descriptions.Item label="Free Heap">
-                                        <Text code>{((hw?.freeHeap || 0) / 1024).toFixed(1)} KB</Text>
+                                        <Text code>{((telemetry?.freeHeap || 0) / 1024).toFixed(1)} KB</Text>
                                     </Descriptions.Item>
-                                    <Descriptions.Item label="Uptime">{formatSeconds(hw?.uptime || 0)}</Descriptions.Item>
+                                    <Descriptions.Item label="Uptime">{formatSeconds(telemetry?.uptime || 0)}</Descriptions.Item>
                                     <Descriptions.Item label="Internal Temp">
-                                        {hw?.internalTempC !== 'N/A' && hw?.internalTempC !== undefined ? `${hw?.internalTempC}°C` : 'N/A'}
+                                        {telemetry?.internalTempC !== 'N/A' && telemetry?.internalTempC !== undefined
+                                            ? `${telemetry?.internalTempC}°C`
+                                            : 'N/A'}
                                     </Descriptions.Item>
                                 </Descriptions>
                             </Space>
@@ -165,33 +167,33 @@ export const TestSessionModal = () => {
                     >
                         <Descriptions column={1} size="small" bordered layout="vertical">
                             <Descriptions.Item label="Device Name">
-                                <Text strong>{activeDevice?.name}</Text>
+                                <Text strong>{activeDevice?.identity?.name}</Text>
                             </Descriptions.Item>
 
                             <Descriptions.Item label="Firmware Version">
-                                <Tag color="blue">{activeDevice?.version || 'Unknown'}</Tag>
+                                <Tag color="blue">{activeDevice?.identity?.version || 'Unknown'}</Tag>
                             </Descriptions.Item>
 
                             <Descriptions.Item label="Build Type">
-                                <Tag color={activeDevice?.buildType === 'release' ? 'green' : 'orange'}>
-                                    {activeDevice?.buildType?.toUpperCase()}
+                                <Tag color={activeDevice?.identity?.buildType === 'release' ? 'green' : 'orange'}>
+                                    {activeDevice?.identity?.buildType?.toUpperCase()}
                                 </Tag>
                             </Descriptions.Item>
 
-                            {/* Merged Network Line */}
+                            {/* Network Line */}
                             <Descriptions.Item label="Network Interface">
                                 <Space split={<Divider type="vertical" />}>
                                     <Text copyable>
-                                        {activeDevice?.address}:{activeDevice?.port}
+                                        {activeDevice?.network?.ip}:{activeDevice?.network?.port}
                                     </Text>
-                                    <Text copyable>{activeDevice?.mac}</Text>
+                                    <Text copyable>{activeDevice?.network?.mac}</Text>
                                 </Space>
                             </Descriptions.Item>
 
                             {/* Section 1: Hardware Features (Read Only) */}
                             <Descriptions.Item label="Hardware Features">
                                 <Space size={[0, 8]} wrap>
-                                    {activeDevice?.features.length ? (
+                                    {activeDevice?.features?.length ? (
                                         activeDevice.features.map((f) => (
                                             <Tag key={f} color="geekblue">
                                                 {toHumanReadable(f)}
@@ -206,21 +208,21 @@ export const TestSessionModal = () => {
                             {/* Section 2: Session Deterrents (Configurable) */}
                             <Descriptions.Item label="Session Deterrents">
                                 <Space size={[0, 8]} wrap>
-                                    {activeDevice?.deterrents.enableRewardCode && <Tag color="gold">Reward Code</Tag>}
-                                    {activeDevice?.deterrents.enableStreaks && <Tag color="purple">Streaks</Tag>}
-                                    {activeDevice?.deterrents.enablePaybackTime && <Tag color="red">Payback Time</Tag>}
-                                    {!activeDevice?.deterrents.enableRewardCode &&
-                                        !activeDevice?.deterrents.enableStreaks &&
-                                        !activeDevice?.deterrents.enablePaybackTime && <Text type="secondary">None Enabled</Text>}
+                                    {activeDevice?.deterrentConfig?.enableRewardCode && <Tag color="gold">Reward Code</Tag>}
+                                    {activeDevice?.deterrentConfig?.enableStreaks && <Tag color="purple">Streaks</Tag>}
+                                    {activeDevice?.deterrentConfig?.enablePaybackTime && <Tag color="red">Payback Time</Tag>}
+                                    {!activeDevice?.deterrentConfig?.enableRewardCode &&
+                                        !activeDevice?.deterrentConfig?.enableStreaks &&
+                                        !activeDevice?.deterrentConfig?.enablePaybackTime && <Text type="secondary">None Enabled</Text>}
                                 </Space>
                             </Descriptions.Item>
 
                             <Descriptions.Item label="Hardware Channels">
                                 <Space size="small">
-                                    <Tag color={activeDevice?.channels.ch1 ? 'cyan' : 'default'}>CH1</Tag>
-                                    <Tag color={activeDevice?.channels.ch2 ? 'cyan' : 'default'}>CH2</Tag>
-                                    <Tag color={activeDevice?.channels.ch3 ? 'cyan' : 'default'}>CH3</Tag>
-                                    <Tag color={activeDevice?.channels.ch4 ? 'cyan' : 'default'}>CH4</Tag>
+                                    <Tag color={activeDevice?.channels?.ch1 ? 'cyan' : 'default'}>CH1</Tag>
+                                    <Tag color={activeDevice?.channels?.ch2 ? 'cyan' : 'default'}>CH2</Tag>
+                                    <Tag color={activeDevice?.channels?.ch3 ? 'cyan' : 'default'}>CH3</Tag>
+                                    <Tag color={activeDevice?.channels?.ch4 ? 'cyan' : 'default'}>CH4</Tag>
                                 </Space>
                             </Descriptions.Item>
                         </Descriptions>
