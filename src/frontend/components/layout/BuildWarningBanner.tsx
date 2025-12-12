@@ -13,7 +13,7 @@ export const BuildWarningBanner: React.FC = () => {
     const { activeDevice } = useDeviceManager();
 
     // 2. Get the Firmware Build Type
-    const firmwareBuild = activeDevice?.buildType;
+    const firmwareBuild = activeDevice?.identity.buildType;
 
     // 3. Check for non-production states
     // We assume 'release' is the only production state.

@@ -32,12 +32,12 @@ export const AppContent = ({ theme, toggleTheme }: { theme: 'light' | 'dark'; to
     const { token } = antdTheme.useToken();
 
     // Determine if the Reward Code feature is enabled on the device
-    const enableRewardCode = activeDevice?.deterrents?.enableRewardCode ?? true;
+    const enableRewardCode = activeDevice?.deterrentConfig?.enableRewardCode ?? true;
 
     // Determine layout mode:
     // 1. If state is 'armed', we always go full width for focus.
     // 2. If 'enableRewardCode' is FALSE, we always go full width because there is no reward panel to show.
-    const useFullWidthLayout = currentState === 'armed' || !enableRewardCode;
+    const useFullWidthLayout = currentState === 'ARMED' || !enableRewardCode;
 
     return (
         <>
