@@ -129,7 +129,7 @@ const PLAY_STYLE_PRESETS = {
             { label: 'Long', range: '2 - 3 days' },
         ],
         min: 240,
-        max: 10080, // 7 days
+        max: 10080, // 7 days`
         // Penalties (Severe)
         payback: { fixed: 360, min: 180, max: 720 }, // 6 hrs fixed, 3-12 hrs random
         reward: { fixed: 180, min: 60, max: 360 }, // 3 hrs fixed, 1-6 hrs random
