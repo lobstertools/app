@@ -123,6 +123,8 @@ const MOCK_CONFIGURATION = {
     },
 };
 
+const MOCK_DEVICE_ID = MOCK_CONFIGURATION.network.mac.replace(/:/g, '');
+
 // --- Mutable Settings (Simulating Flash Storage) ---
 const deterrentConfig: DeterrentConfig = { ...MOCK_CONFIGURATION.initialDeterrents };
 const channelConfig = { ...MOCK_CONFIGURATION.hardware.channels };
@@ -558,15 +560,19 @@ const startMDNS = () => {
     log(`Starting mDNS advertisement...`);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = (bonjour() as any).publish({
-        name: MOCK_CONFIGURATION.identity.name,
+        name: MOCK_DEVICE_ID,
         type: 'lobster-lock',
         port: PORT,
         protocol: 'tcp',
-        txt: { mac: MOCK_CONFIGURATION.network.mac },
+        txt: {
+            mac: MOCK_CONFIGURATION.network.mac,
+            id: MOCK_DEVICE_ID,
+            deviceName: MOCK_CONFIGURATION.identity.name,
+        },
     });
 
     service.on('up', () => {
-        log(`mDNS service announced: _lobster-lock._tcp.local on port ${PORT}`);
+        log(`mDNS service announced: ${MOCK_DEVICE_ID}._lobster-lock._tcp.local on port ${PORT}`);
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -737,7 +743,7 @@ app.get('/details', (_, res) => {
     log('API: /details requested.');
 
     const response: DeviceDetails = {
-        id: MOCK_CONFIGURATION.identity.name,
+        id: MOCK_DEVICE_ID,
         identity: MOCK_CONFIGURATION.identity,
         network: MOCK_CONFIGURATION.network,
         features: MOCK_CONFIGURATION.hardware.features,

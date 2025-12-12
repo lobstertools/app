@@ -163,7 +163,7 @@ function cycleMDNSBrowser() {
         // This is the one necessary hack. On firewalled dev machines,
         // the backend (server) can't talk to the mock's network IP
         // (e.g., 192.168.x.x), but it CAN talk to 127.0.0.1.
-        if (service.name === 'Mock-LobsterLock') {
+        if (service.name === 'Mock-LobsterLock' || service.name === '001A2B3C4D5E') {
             log(`[mDNS] Discovered Mock-LobsterLock. Forcing IP to 127.0.0.1 for local dev on managed device.`);
             ip = '127.0.0.1';
             // We still use the discovered port (e.g., 3003)
@@ -200,9 +200,12 @@ function cycleMDNSBrowser() {
             }
             existingDevice.lastSeenTimestamp = Date.now();
         } else {
+            const txt = service.txt || {};
+            const friendlyName = txt.deviceName || txt.devicename || service.name;
+
             const device: DiscoveredDevice = {
-                id: service.fqdn,
-                name: service.name,
+                id: service.name,
+                name: friendlyName,
                 state: 'ready',
                 address: ip,
                 mac: mac,
