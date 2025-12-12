@@ -45,9 +45,6 @@ export interface Telemetry {
  * Represents the firmware identity and build metadata.
  */
 export interface Identity {
-    /** device ID */
-    id: string;
-
     /** The friendly name reported by firmware (e.g., "Lobster Lock") */
     name: string;
 
@@ -198,6 +195,9 @@ export interface Reward {
 // ============================================================================
 
 export interface DeviceDetails {
+    // --- Device ID
+    id: string;
+
     // --- System Info ---
     identity: Identity;
     network: Network;
