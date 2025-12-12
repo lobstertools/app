@@ -46,7 +46,7 @@ export const KeyboardProvider = ({ children }: { children: ReactNode }) => {
                     break;
 
                 case 't': // Test
-                    if (currentState === 'ready') {
+                    if (currentState === 'READY') {
                         startTestSession();
                     }
                     break;

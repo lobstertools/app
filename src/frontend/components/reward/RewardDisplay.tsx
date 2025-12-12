@@ -102,7 +102,7 @@ export const RewardDisplay = () => {
         );
     }
 
-    if (currentState === 'testing') {
+    if (currentState === 'TESTING') {
         return (
             <div style={placeholderStyles}>
                 <Space direction="vertical" align="center" size="middle">
@@ -130,16 +130,16 @@ export const RewardDisplay = () => {
     // --- 2. Handle Active Session (Hidden Rewards) ---
     // While locked, aborted, or armed (countdown/trigger), the reward is hidden.
 
-    if (currentState === 'locked' || currentState === 'aborted' || currentState === 'armed') {
+    if (currentState === 'LOCKED' || currentState === 'ABORTED' || currentState === 'ARMED') {
         let message = 'The reward code is hidden.';
         let icon = <LockOutlined style={{ fontSize: '32px', color: token.colorTextDisabled }} />;
 
-        if (currentState === 'locked') {
+        if (currentState === 'LOCKED') {
             message = 'The reward code is hidden and will be revealed once the timer ends.';
-        } else if (currentState === 'aborted') {
+        } else if (currentState === 'ABORTED') {
             message = 'Session Aborted. The reward code will be revealed after the penalty cooldown ends.';
             icon = <FireOutlined style={{ fontSize: '32px', color: red[5] }} />;
-        } else if (currentState === 'armed') {
+        } else if (currentState === 'ARMED') {
             // Handles both 'autoCountdown' and 'buttonTrigger'
             message = 'The reward code will be generated after the session starts.';
             icon = <LoadingOutlined style={{ fontSize: '32px', color: token.colorTextDisabled }} />;
@@ -201,7 +201,7 @@ export const RewardDisplay = () => {
                     </Row>
                 </Card>
                 {/* Show opening instructions only when session is complete */}
-                {currentState === 'completed' && OpeningInstructions}
+                {currentState === 'COMPLETED' && OpeningInstructions}
             </Space>
         );
     }
