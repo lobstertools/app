@@ -130,8 +130,8 @@ export interface SessionPresets {
     mediumMax: number;
     longMin: number;
     longMax: number;
-    maxLockDuration: number;
-    minLockDuration: number;
+    minSessionDuration: number;
+    maxSessionDuration: number;
 }
 
 export interface DeterrentConfig {
