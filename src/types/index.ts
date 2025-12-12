@@ -165,6 +165,7 @@ export interface SessionConfig {
     triggerStrategy: TriggerStrategy;
     channelDelays: [number, number, number, number];
     hideTimer: boolean;
+    disableLED: boolean;
 }
 
 export interface SessionTimers {
