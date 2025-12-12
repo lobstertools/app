@@ -22,8 +22,9 @@ export const CountdownDisplay = () => {
 
     // Helper: Determine if we are in Debug/Seconds or Release/Minutes mode
     const isDebugMode = useMemo(() => {
-        return activeDevice?.buildType === 'debug' || activeDevice?.buildType === 'mock';
-    }, [activeDevice?.buildType]);
+        const buildType = activeDevice?.identity?.buildType;
+        return buildType === 'debug' || buildType === 'mock';
+    }, [activeDevice?.identity?.buildType]);
 
     const unitLabel = isDebugMode ? 'sec' : 'min';
 
@@ -35,16 +36,17 @@ export const CountdownDisplay = () => {
     if (!status || !activeDevice) return <Spin />;
 
     // Use the strategy from the active config (or fallback to status for robustness)
-    const isManualTrigger = activeConfig?.triggerStrategy === 'buttonTrigger';
+    const isManualTrigger = activeConfig?.triggerStrategy === 'STRAT_BUTTON_TRIGGER';
 
     // --- HELPER: Configuration Summary ---
     const renderConfigSummary = () => {
-        const lockDurationTotal = status.lockDuration || 0;
-        const accruedDebtSeconds = status.stats?.pendingPayback || 0;
-        const enablePayback = activeDevice?.deterrents?.enablePaybackTime || false;
-        const abortCostSeconds = activeDevice?.deterrents?.paybackDuration || 0;
-        const enableRewardCode = activeDevice?.deterrents?.enableRewardCode ?? true;
-        const penaltyDurationSeconds = activeDevice?.deterrents?.rewardPenaltyDuration || 0;
+        const lockDurationTotal = status.timers.lockDuration || 0;
+        const accruedDebtSeconds = status.stats?.paybackAccumulated || 0;
+
+        const enablePayback = activeDevice?.deterrentConfig?.enablePaybackTime || false;
+        const abortCostSeconds = activeDevice?.deterrentConfig?.paybackTime || 0;
+        const enableRewardCode = activeDevice?.deterrentConfig?.enableRewardCode ?? true;
+        const penaltyDurationSeconds = activeDevice?.deterrentConfig?.rewardPenalty || 0;
 
         // --- Duration Display Logic ---
         let durationDisplay = <Text strong>{formatSeconds(lockDurationTotal)}</Text>;
@@ -53,12 +55,14 @@ export const CountdownDisplay = () => {
         if (activeConfig) {
             const { durationType, minDuration, maxDuration } = activeConfig;
 
-            if (durationType === 'fixed') {
+            if (durationType === 'DUR_FIXED') {
                 durationDisplay = <Text strong>{formatSeconds(lockDurationTotal)}</Text>;
             } else {
                 durationLabel = 'Duration Range';
                 const minDisplay = isDebugMode ? minDuration : Math.floor((minDuration || 0) / 60);
                 const maxDisplay = isDebugMode ? maxDuration : Math.floor((maxDuration || 0) / 60);
+
+                const typeLabel = durationType.replace('DUR_', '').replace(/_/g, ' ');
 
                 durationDisplay = (
                     <Space direction="vertical" size={0}>
@@ -66,7 +70,7 @@ export const CountdownDisplay = () => {
                             {minDisplay} - {maxDisplay} {unitLabel}
                         </Text>
                         <Tag color="purple" style={{ marginTop: 4 }}>
-                            <EyeInvisibleOutlined /> {durationType.toUpperCase()}
+                            <EyeInvisibleOutlined /> {typeLabel}
                         </Tag>
                     </Space>
                 );
@@ -191,12 +195,13 @@ export const CountdownDisplay = () => {
 
     // --- RENDER: Auto Countdown View ---
     const activeDelays: { id: number; val: number }[] = [];
-    const delays = status.channelDelaysRemaining || {};
 
-    if (activeDevice.channels.ch1) activeDelays.push({ id: 1, val: delays.ch1 ?? 0 });
-    if (activeDevice.channels.ch2) activeDelays.push({ id: 2, val: delays.ch2 ?? 0 });
-    if (activeDevice.channels.ch3) activeDelays.push({ id: 3, val: delays.ch3 ?? 0 });
-    if (activeDevice.channels.ch4) activeDelays.push({ id: 4, val: delays.ch4 ?? 0 });
+    const delays = status.timers.channelDelays || [0, 0, 0, 0];
+
+    if (activeDevice.channels.ch1) activeDelays.push({ id: 1, val: delays[0] ?? 0 });
+    if (activeDevice.channels.ch2) activeDelays.push({ id: 2, val: delays[1] ?? 0 });
+    if (activeDevice.channels.ch3) activeDelays.push({ id: 3, val: delays[2] ?? 0 });
+    if (activeDevice.channels.ch4) activeDelays.push({ id: 4, val: delays[3] ?? 0 });
 
     const maxDelay = Math.max(0, ...activeDelays.map((d) => d.val));
     const closedCount = activeDelays.filter((d) => d.val === 0).length;
