@@ -103,7 +103,7 @@ const PLAY_STYLE_PRESETS = {
         min: 15,
         max: 240, // 4 hours
         // Penalties (Moderate)
-        payback: { fixed: 30, min: 15, max: 45 },
+        payback: { fixed: 20, min: 15, max: 45 },
         reward: { fixed: 15, min: 5, max: 20 },
     },
     extended: {
