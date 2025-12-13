@@ -192,7 +192,21 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
     const handleNext = async () => {
         try {
             if (currentStep === 0) {
+                // Validate individual fields first
                 await form.validateFields(['ssid', 'pass', 'ch1Enabled', 'ch2Enabled', 'ch3Enabled', 'ch4Enabled']);
+
+                // Then validate the group rule manually just in case
+                const values = form.getFieldsValue(['ch1Enabled', 'ch2Enabled', 'ch3Enabled', 'ch4Enabled']);
+                if (!values.ch1Enabled && !values.ch2Enabled && !values.ch3Enabled && !values.ch4Enabled) {
+                    // Trigger the form item error
+                    form.setFields([
+                        {
+                            name: 'ch1Enabled', // Attach error to first checkbox
+                            errors: ['At least one channel must be enabled'],
+                        },
+                    ]);
+                    return;
+                }
             } else if (currentStep === 1) {
                 await form.validateFields(['minSessionDuration', 'maxSessionDuration']);
             }
@@ -298,24 +312,64 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
                         border: `1px solid ${token.colorBorderSecondary}`,
                     }}
                 >
-                    <Row gutter={24}>
-                        <Col span={12}>
-                            <Form.Item name="ch1Enabled" valuePropName="checked" noStyle>
-                                <Checkbox style={{ display: 'flex', marginBottom: 8 }}>Channel 1</Checkbox>
-                            </Form.Item>
-                            <Form.Item name="ch2Enabled" valuePropName="checked" noStyle>
-                                <Checkbox style={{ display: 'flex' }}>Channel 2</Checkbox>
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item name="ch3Enabled" valuePropName="checked" noStyle>
-                                <Checkbox style={{ display: 'flex', marginBottom: 8 }}>Channel 3</Checkbox>
-                            </Form.Item>
-                            <Form.Item name="ch4Enabled" valuePropName="checked" noStyle>
-                                <Checkbox style={{ display: 'flex' }}>Channel 4</Checkbox>
-                            </Form.Item>
-                        </Col>
-                    </Row>
+                    {/* Add dependency validator to ensure at least one is checked */}
+                    <Form.Item
+                        noStyle
+                        shouldUpdate={(prev, curr) =>
+                            prev.ch1Enabled !== curr.ch1Enabled ||
+                            prev.ch2Enabled !== curr.ch2Enabled ||
+                            prev.ch3Enabled !== curr.ch3Enabled ||
+                            prev.ch4Enabled !== curr.ch4Enabled
+                        }
+                    >
+                        {({ getFieldsValue }) => {
+                            const values = getFieldsValue(['ch1Enabled', 'ch2Enabled', 'ch3Enabled', 'ch4Enabled']);
+                            const hasOne = values.ch1Enabled || values.ch2Enabled || values.ch3Enabled || values.ch4Enabled;
+
+                            return (
+                                <>
+                                    <Row gutter={24}>
+                                        <Col span={12}>
+                                            <Form.Item name="ch1Enabled" valuePropName="checked" noStyle>
+                                                <Checkbox style={{ display: 'flex', marginBottom: 8 }}>Channel 1</Checkbox>
+                                            </Form.Item>
+                                            <Form.Item name="ch2Enabled" valuePropName="checked" noStyle>
+                                                <Checkbox style={{ display: 'flex' }}>Channel 2</Checkbox>
+                                            </Form.Item>
+                                        </Col>
+                                        <Col span={12}>
+                                            <Form.Item name="ch3Enabled" valuePropName="checked" noStyle>
+                                                <Checkbox style={{ display: 'flex', marginBottom: 8 }}>Channel 3</Checkbox>
+                                            </Form.Item>
+                                            <Form.Item name="ch4Enabled" valuePropName="checked" noStyle>
+                                                <Checkbox style={{ display: 'flex' }}>Channel 4</Checkbox>
+                                            </Form.Item>
+                                        </Col>
+                                    </Row>
+                                    {!hasOne && (
+                                        <div style={{ color: token.colorError, fontSize: '12px', marginTop: 8 }}>
+                                            At least one output channel must be enabled.
+                                        </div>
+                                    )}
+                                    {/* Invisible validator hook to block form submission */}
+                                    <Form.Item
+                                        name="hardwareValidator"
+                                        rules={[
+                                            () => ({
+                                                validator() {
+                                                    if (hasOne) return Promise.resolve();
+                                                    return Promise.reject(new Error('At least one output channel must be enabled'));
+                                                },
+                                            }),
+                                        ]}
+                                        style={{ display: 'none' }}
+                                    >
+                                        <Input />
+                                    </Form.Item>
+                                </>
+                            );
+                        }}
+                    </Form.Item>
                 </div>
                 <Text type="secondary" style={{ fontSize: '12px', marginTop: 8, display: 'block' }}>
                     Select which physical outputs on the controller are connected to MagLocks.
