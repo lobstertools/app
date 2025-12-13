@@ -83,7 +83,7 @@ const MOCK_CONFIGURATION = {
         bootLoopThreshold: 3,
         stableBootTime: 30000,
         wifiMaxRetries: 5,
-        armedTimeoutSeconds: 300, // 5 min idle timeout
+        armedTimeout: 300, // 5 min idle timeout
     } as SystemDefaults,
 
     // Duration Presets
@@ -884,7 +884,7 @@ app.post('/arm', (req, res) => {
 
     if (currentSessionConfig?.triggerStrategy === 'STRAT_BUTTON_TRIGGER') {
         // Manual Mode: Set timeout and wait
-        triggerTimeout = MOCK_CONFIGURATION.defaults.armedTimeoutSeconds;
+        triggerTimeout = MOCK_CONFIGURATION.defaults.armedTimeout;
         log('   -> Waiting for Button Trigger...');
     } else {
         // Auto Mode: Logs

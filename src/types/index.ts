@@ -154,7 +154,7 @@ export interface SystemDefaults {
     bootLoopThreshold: number;
     stableBootTime: number;
     wifiMaxRetries: number;
-    armedTimeoutSeconds: number;
+    armedTimeout: number;
 }
 
 export interface SessionConfig {
