@@ -286,11 +286,24 @@ export const SessionConfiguration = () => {
             }
 
             // 2. Map Delays (Always Seconds in Form) to Channel Object
+            // Ensure disabled channels (from device details) always get 0 delay
+            const channels = activeDevice?.channels;
+            const masterDelay = values.delayCh1 || 0; // delayCh1 is effectively the unified delay input
+
+            // Helper to determine the delay:
+            // If channel is physically disabled on device -> 0
+            // Else if Per-MagLock Mode -> Use specific input
+            // Else (Unified Mode) -> Use masterDelay
+            const resolveDelay = (isEnabled: boolean | undefined, specificDelay: number | undefined) => {
+                if (!isEnabled) return 0;
+                return values.useMultiChannelDelay ? specificDelay || 0 : masterDelay;
+            };
+
             const channelDelays: [number, number, number, number] = [
-                values.delayCh1 || 0,
-                values.useMultiChannelDelay ? values.delayCh2 || 0 : values.delayCh1 || 0,
-                values.useMultiChannelDelay ? values.delayCh3 || 0 : values.delayCh1 || 0,
-                values.useMultiChannelDelay ? values.delayCh4 || 0 : values.delayCh1 || 0,
+                resolveDelay(channels?.ch1, values.delayCh1),
+                resolveDelay(channels?.ch2, values.delayCh2),
+                resolveDelay(channels?.ch3, values.delayCh3),
+                resolveDelay(channels?.ch4, values.delayCh4),
             ];
 
             // 3. Map Trigger Strategy (Direct assignment since Form uses correct type now)
