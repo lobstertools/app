@@ -70,7 +70,7 @@ const MOCK_CONFIGURATION = {
     hardware: {
         numberOfChannels: 4,
         features: ['footPedal', 'startCountdown', 'statusLed'] as DeviceFeature[],
-        channels: { ch1: true, ch2: true, ch3: true, ch4: true },
+        channels: { ch1: true, ch2: false, ch3: true, ch4: false },
     },
 
     // System Limits & Defaults
