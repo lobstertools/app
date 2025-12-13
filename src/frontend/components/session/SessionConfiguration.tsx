@@ -152,16 +152,20 @@ export const SessionConfiguration = () => {
             longMin: scale(p?.longMin, 7200),
             longMax: scale(p?.longMax, 10800),
 
-            // Fixed Default (Fallback: 30m)
-            defaultFixed: scale(p?.minSessionDuration, 1800),
+            // Fixed Default: Halfway between Min and Max Session Duration
+            defaultFixed: Math.floor((minLockUnit + maxLockUnit) / 2),
+
+            // Global Limits for Random Defaults
+            globalMin: minLockUnit,
+            globalMax: maxLockUnit,
         };
-    }, [activeDevice?.presets, timeScale]);
+    }, [activeDevice?.presets, timeScale, minLockUnit, maxLockUnit]);
 
     const defaultValues = useMemo(() => {
         return {
             duration: presetValues.defaultFixed,
-            rangeMin: presetValues.shortMin,
-            rangeMax: presetValues.shortMax,
+            rangeMin: presetValues.globalMin,
+            rangeMax: presetValues.globalMax,
         };
     }, [presetValues]);
 
@@ -178,7 +182,7 @@ export const SessionConfiguration = () => {
 
     const canUseMultiChannel = enabledChannels.length > 1;
 
-    // --- Compute Timer Values ---
+    // --- Timer Values ---
     const penaltyTimeRemaining = useMemo(() => {
         if (status?.state === 'ABORTED') {
             return status.timers.penaltyRemaining || 0;
