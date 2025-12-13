@@ -17,7 +17,7 @@ export const TestSessionModal = () => {
     const telemetry = status?.telemetry;
 
     // --- Logic for Button State ---
-    const longPressThresholdMs = activeDevice?.defaults?.longPressDuration || 3000;
+    const longPressThresholdMs = (activeDevice?.defaults?.longPressDuration || 3) * 1000;
     const currentPressMs = telemetry?.currentPressDurationMs || 0;
     const isPressed = telemetry?.buttonPressed || false;
     const isLongPress = isPressed && currentPressMs >= longPressThresholdMs;

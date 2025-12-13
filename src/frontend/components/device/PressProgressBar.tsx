@@ -22,7 +22,7 @@ export const PressProgressBar = () => {
     const currentMs = status?.telemetry?.currentPressDurationMs ?? 0;
 
     // Default to 0 if device settings aren't loaded yet
-    const thresholdMs = activeDevice?.defaults?.longPressDuration ?? 0;
+    const thresholdMs = (activeDevice?.defaults?.longPressDuration ?? 0) * 1000;
 
     // 4. Calculate percentage (capped at 100%)
     const rawPercent = thresholdMs > 0 ? (currentMs / thresholdMs) * 100 : 0;
