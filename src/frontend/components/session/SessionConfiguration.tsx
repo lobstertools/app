@@ -89,6 +89,10 @@ export const SessionConfiguration = () => {
         return activeDevice?.features?.includes('footPedal') ?? false;
     }, [activeDevice]);
 
+    const supportsStatusLed = useMemo(() => {
+        return activeDevice?.features?.includes('statusLed') ?? false;
+    }, [activeDevice]);
+
     // Check deterrent configuration
     const enableRewardCode = activeDevice?.deterrentConfig?.enableRewardCode ?? true;
 
@@ -693,14 +697,16 @@ export const SessionConfiguration = () => {
                             </Space>
                         </Col>
 
-                        <Col span={12}>
-                            <Space>
-                                <Text>Disable LED</Text>
-                                <Form.Item name="disableLED" valuePropName="checked" noStyle>
-                                    <Switch />
-                                </Form.Item>
-                            </Space>
-                        </Col>
+                        {supportsStatusLed && (
+                            <Col span={12}>
+                                <Space>
+                                    <Text>Disable LED</Text>
+                                    <Form.Item name="disableLED" valuePropName="checked" noStyle>
+                                        <Switch />
+                                    </Form.Item>
+                                </Space>
+                            </Col>
+                        )}
                     </Row>
                 </Space>
 
