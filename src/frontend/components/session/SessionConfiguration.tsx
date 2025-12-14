@@ -828,23 +828,22 @@ export const SessionConfiguration = () => {
                     type="info"
                     showIcon
                     icon={<PoweroffOutlined />}
-                    style={{ marginTop: 24, textAlign: 'left' }}
-                    // Add the action button directly to the Alert for context
-                    action={
-                        <Button
-                            size="small"
-                            type="primary"
-                            icon={<ReloadOutlined />}
-                            onClick={() => {
-                                if (activeDevice?.id) {
-                                    rebootDevice(activeDevice.id);
-                                }
-                            }}
-                        >
-                            Reboot Now
-                        </Button>
-                    }
+                    style={{ marginTop: 24, textAlign: 'left', marginBottom: 24 }}
                 />
+
+                <Button
+                    type="primary"
+                    size="large"
+                    icon={<ReloadOutlined />}
+                    onClick={() => {
+                        if (activeDevice?.id) {
+                            rebootDevice(activeDevice.id);
+                        }
+                    }}
+                    style={{ width: '100%' }}
+                >
+                    Reboot Device Now
+                </Button>
             </div>
         </Card>
     );
