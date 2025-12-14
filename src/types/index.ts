@@ -170,6 +170,7 @@ export interface SessionConfig {
 
 export interface SessionTimers {
     lockDuration: number;
+    debtServed: number;
     penaltyDuration: number;
     lockRemaining: number;
     penaltyRemaining: number;

@@ -1015,6 +1015,7 @@ app.get('/status', (_, res) => {
 
         timers: {
             lockDuration: lockDurationTotal,
+            debtServed: 0,
             penaltyDuration: penaltyDurationConfig,
             lockRemaining: lockRemaining,
             penaltyRemaining: penaltyRemaining,
