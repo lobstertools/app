@@ -566,7 +566,6 @@ const startMDNS = () => {
         protocol: 'tcp',
         txt: {
             mac: MOCK_CONFIGURATION.network.mac,
-            id: MOCK_DEVICE_ID,
             deviceName: MOCK_CONFIGURATION.identity.name,
         },
     });
