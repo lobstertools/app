@@ -754,6 +754,8 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
                     initialValues={{
                         ch1Enabled: true,
                         ch2Enabled: true,
+                        ch3Enabled: false,
+                        ch4Enabled: false,
                         playStyle: 'standard',
                         minSessionDuration: 15,
                         maxSessionDuration: 240,
