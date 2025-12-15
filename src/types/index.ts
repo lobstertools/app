@@ -6,6 +6,8 @@ import { Peripheral } from '@abandonware/noble';
 
 export type DeviceState = 'READY' | 'ARMED' | 'LOCKED' | 'ABORTED' | 'COMPLETED' | 'TESTING';
 
+export type SessionOutcome = 'SUCCESS' | 'ABORTED' | 'UNKNOWN';
+
 export type TriggerStrategy = 'STRAT_AUTO_COUNTDOWN' | 'STRAT_BUTTON_TRIGGER';
 
 export type DurationType = 'DUR_FIXED' | 'DUR_RANDOM' | 'DUR_RANGE_SHORT' | 'DUR_RANGE_MEDIUM' | 'DUR_RANGE_LONG';
@@ -216,6 +218,7 @@ export interface DeviceDetails {
 
 export interface SessionStatus {
     state: DeviceState;
+    outcome: SessionOutcome;
     verified: boolean;
     config: SessionConfig;
     timers: SessionTimers;

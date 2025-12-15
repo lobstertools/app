@@ -4,7 +4,6 @@ import { useDeviceManager } from '../../context/useDeviceManager';
 import { StatusBadge } from '../device/StatusBadge';
 import { DeviceManagerModal } from '../device/DeviceManagerModal';
 import { RewardDisplay } from '../reward/RewardDisplay';
-import { SessionConfiguration } from '../session/SessionConfiguration';
 import { SessionLockModal } from '../session/SessionLockModal';
 import { DeviceMenu } from '../device/DeviceMenu';
 import { DeviceLogModal } from '../device/DeviceLogModal';
@@ -22,6 +21,7 @@ import { BuildWarningBanner } from './BuildWarningBanner';
 import { AboutAppModal } from '../app/AboutModal';
 import { TestSessionModal } from '../session/TestSessionModal';
 import { ReadinessModal } from '../device/ReadinessModal';
+import { SessionFlow } from '../session/flow/SessionFlow';
 
 /**
  * Inner component to hold the main layout and logic.
@@ -91,7 +91,7 @@ export const AppContent = ({ theme, toggleTheme }: { theme: 'light' | 'dark'; to
                                     // Full width layout (Armed OR Reward Code Disabled)
                                     <Col xs={24} lg={24}>
                                         <Card title="Session Configuration" style={{ minHeight: '100%' }}>
-                                            <SessionConfiguration />
+                                            <SessionFlow />
                                         </Card>
                                     </Col>
                                 ) : (
@@ -99,7 +99,7 @@ export const AppContent = ({ theme, toggleTheme }: { theme: 'light' | 'dark'; to
                                     <>
                                         <Col xs={24} lg={12}>
                                             <Card title="Session Configuration" style={{ minHeight: '100%' }}>
-                                                <SessionConfiguration />
+                                                <SessionFlow />
                                             </Card>
                                         </Col>
                                         <Col xs={24} lg={12}>

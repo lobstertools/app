@@ -31,6 +31,7 @@ import {
     SessionPresets,
     DeterrentConfig,
     SystemDefaults,
+    SessionOutcome, //
 } from '../types/';
 
 const app = express();
@@ -154,6 +155,7 @@ let currentDelays: [number, number, number, number] = [0, 0, 0, 0];
 // Internal tracking variables
 let lockDurationTotal = 0; // Total duration of current/last session
 let penaltyDurationConfig = 0; // Loaded from system config on arm
+let isAbortedSession = false; // [NEW] Track if session was aborted
 const rewardHistory: Reward[] = [];
 
 // --- Keep-Alive Session Watchdog ---
@@ -334,6 +336,7 @@ const initializeState = () => {
     testRemaining = 0;
     triggerTimeout = 0;
     lastKeepAliveTime = 0;
+    isAbortedSession = false; // [NEW] Reset abort flag
 
     currentDelays = [0, 0, 0, 0];
     lockDurationTotal = 0;
@@ -375,6 +378,7 @@ const triggerAbort = (source: string): boolean => {
 
     lastKeepAliveTime = 0; // <-- DISARM WATCHDOG
     aborted++; // Increment stat
+    isAbortedSession = true; // [NEW] Mark session as aborted
 
     // Add to debt bank if enabled
     if (deterrentConfig.enablePaybackTime) {
@@ -493,6 +497,7 @@ const stopTestMode = () => {
     currentState = 'READY';
     testRemaining = 0;
     lastKeepAliveTime = 0; // Disarm watchdog
+    isAbortedSession = false; // [NEW] Reset flag
 };
 
 /**
@@ -811,6 +816,9 @@ app.post('/arm', (req, res) => {
         });
     }
 
+    // [NEW] Reset aborted flag on new arm
+    isAbortedSession = false;
+
     // --- REWORKED DURATION LOGIC ---
     let resolvedDuration = 0;
     let min = 0;
@@ -928,6 +936,7 @@ app.post('/start-test', (_, res) => {
 app.post('/abort', (_, res) => {
     if (triggerAbort('API')) {
         // If triggerAbort returned true, it handled the state change
+        // [NEW] Return the correct status string based on whether we fell through to penalty or ready
         res.json({ status: currentState === 'READY' ? 'READY' : 'ABORTED' });
     } else {
         log('API: /abort FAILED (not abortable)');
@@ -998,8 +1007,17 @@ app.post('/factory-reset', (_, res) => {
  * The main endpoint polled by the UI.
  */
 app.get('/status', (_, res) => {
+    // [NEW] Determine outcome logic
+    let outcome: SessionOutcome = 'UNKNOWN';
+    if (currentState === 'ABORTED') {
+        outcome = 'ABORTED';
+    } else if (currentState === 'COMPLETED') {
+        outcome = isAbortedSession ? 'ABORTED' : 'SUCCESS';
+    }
+
     const response: SessionStatus = {
         state: currentState,
+        outcome: outcome, //
         verified: true,
 
         config: currentSessionConfig || {
