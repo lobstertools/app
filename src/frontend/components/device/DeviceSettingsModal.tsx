@@ -262,6 +262,28 @@ export const DeviceSettingsModal = () => {
           ]
         : [];
 
+    // Time Modification Group
+    const timeModItems = det
+        ? [
+              {
+                  key: 'status',
+                  label: 'Status',
+                  children: det.enableTimeModification ? <Tag color="success">Enabled</Tag> : <Tag>Disabled</Tag>,
+              },
+              {
+                  key: 'step',
+                  label: 'Interval Step',
+                  children: det.enableTimeModification ? (
+                      formatDuration(det.timeModificationStep)
+                  ) : (
+                      <Text type="secondary" style={{ color: token.colorTextDisabled }}>
+                          N/A
+                      </Text>
+                  ),
+              },
+          ]
+        : [];
+
     // 6. Timing Presets (Rules Tab)
     const presets = activeDevice?.presets;
 
@@ -437,6 +459,11 @@ export const DeviceSettingsModal = () => {
                             Debt Payback
                         </Divider>
                         <Descriptions bordered items={paybackItems} size="small" column={1} labelStyle={descriptionLabelStyle} />
+
+                        <Divider orientation="left" plain style={{ fontSize: '12px', margin: '16px 0 8px 0' }}>
+                            Time Modification
+                        </Divider>
+                        <Descriptions bordered items={timeModItems} size="small" column={1} labelStyle={descriptionLabelStyle} />
                     </Card>
 
                     <Card size="small" title="Session Timing Presets">

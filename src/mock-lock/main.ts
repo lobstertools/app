@@ -112,6 +112,8 @@ const MOCK_CONFIGURATION = {
         paybackTimeMin: 300,
         paybackTimeMax: 900,
         paybackTime: 20, // 20s for debug
+        enableTimeModification: true,
+        timeModificationStep: 60,
     } as DeterrentConfig,
 
     // Mock Data for "Story Mode"
@@ -155,7 +157,8 @@ let currentDelays: [number, number, number, number] = [0, 0, 0, 0];
 // Internal tracking variables
 let lockDurationTotal = 0; // Total duration of current/last session
 let penaltyDurationConfig = 0; // Loaded from system config on arm
-let isAbortedSession = false; // [NEW] Track if session was aborted
+let isAbortedSession = false; // Track if session was aborted
+let currentSessionDebtServed = 0; // Amount of debt allocated to be served in this session
 const rewardHistory: Reward[] = [];
 
 // --- Keep-Alive Session Watchdog ---
@@ -336,7 +339,8 @@ const initializeState = () => {
     testRemaining = 0;
     triggerTimeout = 0;
     lastKeepAliveTime = 0;
-    isAbortedSession = false; // [NEW] Reset abort flag
+    isAbortedSession = false;
+    currentSessionDebtServed = 0;
 
     currentDelays = [0, 0, 0, 0];
     lockDurationTotal = 0;
@@ -378,7 +382,7 @@ const triggerAbort = (source: string): boolean => {
 
     lastKeepAliveTime = 0; // <-- DISARM WATCHDOG
     aborted++; // Increment stat
-    isAbortedSession = true; // [NEW] Mark session as aborted
+    isAbortedSession = true; // Mark session as aborted
 
     // Add to debt bank if enabled
     if (deterrentConfig.enablePaybackTime) {
@@ -435,6 +439,10 @@ const startLockInterval = () => {
         if (lockRemaining > 0) {
             lockRemaining--;
             totalTimeLocked++;
+
+            // [REMOVED] Real-time Debt Reduction
+            // Debt is now paid off ONLY at the end of the session in completeSession().
+            // currentSessionDebtServed acts as a constant "Target" for the UI to visualize.
         } else {
             completeSession();
         }
@@ -497,7 +505,7 @@ const stopTestMode = () => {
     currentState = 'READY';
     testRemaining = 0;
     lastKeepAliveTime = 0; // Disarm watchdog
-    isAbortedSession = false; // [NEW] Reset flag
+    isAbortedSession = false; // Reset flag
 };
 
 /**
@@ -529,12 +537,25 @@ const completeSession = () => {
     log('Session COMPLETED. Awaiting reboot to generate next code.');
     stopAllTimers();
     currentState = 'COMPLETED';
+
+    // Pay off debt on completion
+    // We deduct the amount allocated to this session from the global accumulated debt.
+    if (currentSessionDebtServed > 0) {
+        if (paybackAccumulated >= currentSessionDebtServed) {
+            paybackAccumulated -= currentSessionDebtServed;
+        } else {
+            paybackAccumulated = 0;
+        }
+        log(`   -> Served ${currentSessionDebtServed}s of debt. Global Debt Remaining: ${paybackAccumulated}s`);
+    }
+
     lastKeepAliveTime = 0; // Disarm watchdog
     lockRemaining = 0;
     penaltyRemaining = 0;
     testRemaining = 0;
     triggerTimeout = 0;
     currentDelays = [0, 0, 0, 0];
+    currentSessionDebtServed = 0; // Clear local debt tracking
 
     completed++; // Increment stat
 
@@ -680,6 +701,8 @@ Endpoints:
 - POST /abort
 - POST /start-test
 - POST /keepalive
+- POST /time/add
+- POST /time/remove
 - GET /reward
 - GET /log
 - POST /update-wifi
@@ -816,7 +839,7 @@ app.post('/arm', (req, res) => {
         });
     }
 
-    // [NEW] Reset aborted flag on new arm
+    // Reset aborted flag on new arm
     isAbortedSession = false;
 
     // --- REWORKED DURATION LOGIC ---
@@ -867,10 +890,14 @@ app.post('/arm', (req, res) => {
     // Store config for this session
     currentSessionConfig = config;
 
-    // Apply Payback logic
-    lockDurationTotal = resolvedDuration + paybackAccumulated;
-    if (paybackAccumulated > 0) {
-        log(`   -> Added ${paybackAccumulated}s payback time. Total: ${lockDurationTotal}s`);
+    // Apply Payback logic and track debt served
+    // Assuming we pay off ALL accumulated debt in the new session.
+    currentSessionDebtServed = paybackAccumulated;
+
+    lockDurationTotal = resolvedDuration + currentSessionDebtServed;
+
+    if (currentSessionDebtServed > 0) {
+        log(`   -> Added ${currentSessionDebtServed}s payback time. Total: ${lockDurationTotal}s`);
     }
 
     penaltyDurationConfig = deterrentConfig.rewardPenalty; // From static config
@@ -907,6 +934,66 @@ app.post('/arm', (req, res) => {
 });
 
 /**
+ * POST /time/add
+ * Increases the current session duration.
+ */
+app.post('/time/add', (_, res) => {
+    if (currentState !== 'LOCKED') {
+        return res.status(409).json({ status: 'error', message: 'Not locked.' });
+    }
+
+    // Check if enabled
+    if (!deterrentConfig.enableTimeModification) {
+        return res.status(403).json({ status: 'error', message: 'Feature disabled.' });
+    }
+
+    const step = deterrentConfig.timeModificationStep || 60;
+    lockRemaining += step;
+    lockDurationTotal += step;
+    // Added time is considered "Base" time, so currentSessionDebtServed remains unchanged.
+
+    log(`Time Added (+${step}s). New Remaining: ${formatTime(lockRemaining)}`);
+    res.json({ status: 'success', remaining: lockRemaining });
+});
+
+/**
+ * POST /time/remove
+ * Decreases the current session duration.
+ */
+app.post('/time/remove', (_, res) => {
+    if (currentState !== 'LOCKED') {
+        return res.status(409).json({ status: 'error', message: 'Not locked.' });
+    }
+
+    // Check if enabled
+    if (!deterrentConfig.enableTimeModification) {
+        return res.status(403).json({ status: 'error', message: 'Feature disabled.' });
+    }
+
+    const step = deterrentConfig.timeModificationStep || 60;
+
+    // Calculate new times, clamping to 0 (or some minimum step floor if desired)
+    // Here we just ensure we don't go negative.
+    if (lockRemaining <= step) {
+        return res.status(409).json({ status: 'error', message: 'Cannot reduce below minimum.' });
+    }
+
+    lockRemaining -= step;
+    lockDurationTotal = Math.max(0, lockDurationTotal - step);
+
+    // Logic: If we remove time, we potentially remove the debt obligation for this session
+    if (currentSessionDebtServed > 0) {
+        // Debt takes the hit first (you are choosing NOT to pay it off)
+        const debtReduction = Math.min(currentSessionDebtServed, step);
+        currentSessionDebtServed -= debtReduction;
+        // Note: We do NOT reduce paybackAccumulated here. That only happens when time is *served*.
+    }
+
+    log(`Time Removed (-${step}s). New Remaining: ${formatTime(lockRemaining)}`);
+    res.json({ status: 'success', remaining: lockRemaining });
+});
+
+/**
  * POST /start-test
  * Start a test session.
  */
@@ -936,7 +1023,7 @@ app.post('/start-test', (_, res) => {
 app.post('/abort', (_, res) => {
     if (triggerAbort('API')) {
         // If triggerAbort returned true, it handled the state change
-        // [NEW] Return the correct status string based on whether we fell through to penalty or ready
+        // Return the correct status string based on whether we fell through to penalty or ready
         res.json({ status: currentState === 'READY' ? 'READY' : 'ABORTED' });
     } else {
         log('API: /abort FAILED (not abortable)');
@@ -1007,7 +1094,7 @@ app.post('/factory-reset', (_, res) => {
  * The main endpoint polled by the UI.
  */
 app.get('/status', (_, res) => {
-    // [NEW] Determine outcome logic
+    // Determine outcome logic
     let outcome: SessionOutcome = 'UNKNOWN';
     if (currentState === 'ABORTED') {
         outcome = 'ABORTED';
@@ -1033,7 +1120,7 @@ app.get('/status', (_, res) => {
 
         timers: {
             lockDuration: lockDurationTotal,
-            debtServed: 0,
+            potentialDebtServed: currentSessionDebtServed,
             penaltyDuration: penaltyDurationConfig,
             lockRemaining: lockRemaining,
             penaltyRemaining: penaltyRemaining,

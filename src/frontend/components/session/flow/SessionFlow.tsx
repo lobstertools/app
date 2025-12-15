@@ -7,10 +7,11 @@ import { ConfigStage } from './stages/2_ConfigStage';
 import { ActiveStage } from './stages/3_ActiveStage';
 import { CompletionStage } from './stages/4_CompletionStage';
 
-import { CountdownDisplay } from '../CountdownDisplay';
+import { SessionArmedModal } from '../SessionArmedModal';
 import { useDeviceManager } from '../../../context/useDeviceManager';
 import { useKeyboard } from '../../../context/useKeyboardContext';
 import { useSession } from '../../../context/useSessionContext';
+import { SessionActiveModal } from '../SessionActiveModal';
 
 const { Text } = Typography;
 
@@ -138,7 +139,7 @@ export const SessionFlow = () => {
                 return <ConfigStage />;
             case 2:
                 // We reuse the existing CountdownDisplay component
-                return <CountdownDisplay />;
+                return <SessionArmedModal />;
             case 3:
                 return (
                     <ActiveStage
@@ -155,9 +156,12 @@ export const SessionFlow = () => {
     };
 
     return (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-            <Steps current={currentUiStep} items={stepItems} />
-            <div style={{ marginTop: 0 }}>{renderStage()}</div>
-        </Space>
+        <>
+            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                <Steps current={currentUiStep} items={stepItems} />
+                <div style={{ marginTop: 0 }}>{renderStage()}</div>
+            </Space>
+            <SessionActiveModal />
+        </>
     );
 };

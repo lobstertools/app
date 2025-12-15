@@ -145,6 +145,8 @@ export interface DeterrentConfig {
     paybackTimeMin: number;
     paybackTimeMax: number;
     paybackTime: number;
+    enableTimeModification: boolean;
+    timeModificationStep: number;
 }
 
 export interface SystemDefaults {
@@ -172,7 +174,7 @@ export interface SessionConfig {
 
 export interface SessionTimers {
     lockDuration: number;
-    debtServed: number;
+    potentialDebtServed: number;
     penaltyDuration: number;
     lockRemaining: number;
     penaltyRemaining: number;

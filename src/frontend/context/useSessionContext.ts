@@ -12,6 +12,8 @@ export interface SessionContextState {
     startSession: (payload: SessionConfig) => void;
     abortSession: () => void;
     startTestSession: () => void;
+    addTime: () => void;
+    removeTime: () => void;
 }
 
 // Create the context

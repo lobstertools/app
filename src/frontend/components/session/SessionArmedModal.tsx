@@ -15,7 +15,7 @@ const { Title, Text } = Typography;
  * 1. Auto Countdown: Shows timers for each channel.
  * 2. Button Trigger: Shows instructions to press the physical button + timeout.
  */
-export const CountdownDisplay = () => {
+export const SessionArmedModal = () => {
     const { status, abortSession } = useSession();
     const { activeDevice } = useDeviceManager();
     const { token } = antdTheme.useToken();
@@ -69,7 +69,10 @@ export const CountdownDisplay = () => {
                         <Text strong>
                             {minDisplay} - {maxDisplay} {unitLabel}
                         </Text>
-                        <Tag color="purple" style={{ marginTop: 4 }}>
+                        {/* Changed from hardcoded 'purple' to a theme-derived color. 
+                            'processing' maps to the primary color in Ant Design. 
+                            Alternatively, you could use custom styles with token.colorPrimary */}
+                        <Tag color="processing" style={{ marginTop: 4 }}>
                             <EyeInvisibleOutlined /> {typeLabel}
                         </Tag>
                     </Space>

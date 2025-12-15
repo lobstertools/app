@@ -4,7 +4,6 @@ import { useDeviceManager } from '../../context/useDeviceManager';
 import { StatusBadge } from '../device/StatusBadge';
 import { DeviceManagerModal } from '../device/DeviceManagerModal';
 import { RewardDisplay } from '../reward/RewardDisplay';
-import { SessionLockModal } from '../session/SessionLockModal';
 import { DeviceMenu } from '../device/DeviceMenu';
 import { DeviceLogModal } from '../device/DeviceLogModal';
 import { SessionStats } from '../session/SessionStats';
@@ -115,7 +114,6 @@ export const AppContent = ({ theme, toggleTheme }: { theme: 'light' | 'dark'; to
                 </Content>
 
                 {/* Global Modals */}
-                <SessionLockModal />
                 <TestSessionModal />
                 <DeviceManagerModal />
                 <DeviceLogModal />

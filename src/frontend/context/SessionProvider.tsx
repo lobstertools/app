@@ -112,6 +112,50 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
     );
 
     /**
+     * Adds time to the current session based on the device's stored step.
+     */
+    const addTime = useCallback(async () => {
+        if (!activeDevice) return;
+        try {
+            await apiClient.post(`/devices/${activeDevice.id}/session/time/add`);
+            await fetchSessionStatus();
+            notification.success({
+                message: 'Time Increased',
+                description: 'Session duration extended.',
+                duration: 2,
+            });
+        } catch (err: unknown) {
+            let msg = 'Failed to add time.';
+            if (axios.isAxiosError(err)) {
+                msg = err.response?.data?.message || err.message;
+            }
+            notification.error({ message: 'Update Failed', description: msg });
+        }
+    }, [activeDevice, fetchSessionStatus, notification]);
+
+    /**
+     * Removes time from the current session based on the device's stored step.
+     */
+    const removeTime = useCallback(async () => {
+        if (!activeDevice) return;
+        try {
+            await apiClient.post(`/devices/${activeDevice.id}/session/time/remove`);
+            await fetchSessionStatus();
+            notification.success({
+                message: 'Time Decreased',
+                description: 'Session duration reduced.',
+                duration: 2,
+            });
+        } catch (err: unknown) {
+            let msg = 'Failed to remove time.';
+            if (axios.isAxiosError(err)) {
+                msg = err.response?.data?.message || err.message;
+            }
+            notification.error({ message: 'Update Failed', description: msg });
+        }
+    }, [activeDevice, fetchSessionStatus, notification]);
+
+    /**
      * Sends the /abort command to the device.
      */
     const abortSession = useCallback(async () => {
@@ -221,6 +265,8 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
         abortSession,
         startTestSession,
         startSession,
+        addTime,
+        removeTime,
     };
 
     return (

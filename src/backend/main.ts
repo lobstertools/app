@@ -80,6 +80,10 @@ const PROV_PAYBACK_TIME_CHAR_UUID = '5a160006-8334-469b-a316-c340cf29188f';
 const PROV_PAYBACK_MIN_DURATION_UUID = '5a160013-8334-469b-a316-c340cf29188f';
 const PROV_PAYBACK_MAX_DURATION_UUID = '5a160014-8334-469b-a316-c340cf29188f';
 
+// --- Time Modification ---
+const PROV_ENABLE_TIME_MOD_UUID = '5a160030-8334-469b-a316-c340cf29188f';
+const PROV_TIME_MOD_STEP_UUID = '5a160031-8334-469b-a316-c340cf29188f';
+
 // mDNS Service Type
 const MDNS_SERVICE_TYPE = 'lobster-lock';
 
@@ -430,6 +434,7 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
             EnStreak: PROV_ENABLE_STREAKS_CHAR_UUID,
             EnPayback: PROV_ENABLE_PAYBACK_TIME_CHAR_UUID,
             EnReward: PROV_ENABLE_REWARD_CODE_CHAR_UUID,
+            EnTimeMod: PROV_ENABLE_TIME_MOD_UUID,
             // Deterrents (Payback)
             PayStr: PROV_PAYBACK_STRATEGY_UUID,
             PayFixed: PROV_PAYBACK_TIME_CHAR_UUID,
@@ -440,6 +445,8 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
             RewFixed: PROV_REWARD_PENALTY_CHAR_UUID,
             RewMin: PROV_REWARD_MIN_DURATION_UUID,
             RewMax: PROV_REWARD_MAX_DURATION_UUID,
+            // Deterrents (Time Mod Step)
+            TimeModStep: PROV_TIME_MOD_STEP_UUID,
         };
 
         const missing: string[] = [];
@@ -514,7 +521,11 @@ app.post('/api/devices/:id/provision', async (req: Request, res: Response) => {
         await writeU32(PROV_REWARD_MIN_DURATION_UUID, deterrents.rewardPenaltyMin);
         await writeU32(PROV_REWARD_MAX_DURATION_UUID, deterrents.rewardPenaltyMax);
 
-        // 7. Credentials (Trigger Reboot)
+        // 7. Deterrents: Time Modification
+        await writeBool(PROV_ENABLE_TIME_MOD_UUID, deterrents.enableTimeModification);
+        await writeU32(PROV_TIME_MOD_STEP_UUID, deterrents.timeModificationStep);
+
+        // 8. Credentials (Trigger Reboot)
         log(`[Provision] Writing SSID & Password (triggering reboot)...`);
         await writeBuf(PROV_SSID_CHAR_UUID, Buffer.from(ssid));
         await writeBuf(PROV_PASS_CHAR_UUID, Buffer.from(pass || ''));
@@ -983,6 +994,72 @@ app.post('/api/devices/:id/session/abort', async (req: Request, res: Response) =
             message = error.message;
         }
         log(`Failed to abort session: ${message}`);
+        res.status(status).json({ status: 'error', message });
+    }
+});
+
+/**
+ * Adds time to the current session (step defined on device).
+ */
+app.post('/api/devices/:id/session/time/add', async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const device = deviceCache.get(id);
+    if (!device || device.state !== 'ready') {
+        return res.status(404).json({
+            status: 'error',
+            message: 'Device not found or not ready.',
+        });
+    }
+
+    const targetUrl = buildTargetUrl(device.address, device.port, '/time/add');
+    try {
+        log(`Forwarding /time/add to ${targetUrl}`);
+        const lockResponse = await axios.post(targetUrl, {}, { timeout: 3000 });
+        refreshDeviceTimestamp(id);
+        res.status(lockResponse.status).json(lockResponse.data);
+    } catch (error: unknown) {
+        let status = 500;
+        let message = 'Failed to modify time.';
+        if (isAxiosError(error)) {
+            status = error.response?.status || 500;
+            message = error.response?.data?.message || error.message;
+        } else if (error instanceof Error) {
+            message = error.message;
+        }
+        log(`Failed to add time: ${message}`);
+        res.status(status).json({ status: 'error', message });
+    }
+});
+
+/**
+ * Removes time from the current session (step defined on device).
+ */
+app.post('/api/devices/:id/session/time/remove', async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const device = deviceCache.get(id);
+    if (!device || device.state !== 'ready') {
+        return res.status(404).json({
+            status: 'error',
+            message: 'Device not found or not ready.',
+        });
+    }
+
+    const targetUrl = buildTargetUrl(device.address, device.port, '/time/remove');
+    try {
+        log(`Forwarding /time/remove to ${targetUrl}`);
+        const lockResponse = await axios.post(targetUrl, {}, { timeout: 3000 });
+        refreshDeviceTimestamp(id);
+        res.status(lockResponse.status).json(lockResponse.data);
+    } catch (error: unknown) {
+        let status = 500;
+        let message = 'Failed to modify time.';
+        if (isAxiosError(error)) {
+            status = error.response?.status || 500;
+            message = error.response?.data?.message || error.message;
+        } else if (error instanceof Error) {
+            message = error.message;
+        }
+        log(`Failed to remove time: ${message}`);
         res.status(status).json({ status: 'error', message });
     }
 });

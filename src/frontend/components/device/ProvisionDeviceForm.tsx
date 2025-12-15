@@ -64,6 +64,10 @@ interface ProvisionFormValues {
     rewardPenaltyMinutes: number;
     rewardPenaltyMinMinutes: number;
     rewardPenaltyMaxMinutes: number;
+
+    // Time Modification
+    enableTimeModification: boolean;
+    timeModificationStepMinutes: number;
 }
 
 // --- CONSTANTS & CONFIG ---
@@ -91,6 +95,7 @@ const PLAY_STYLE_PRESETS = {
         // Penalties (Low)
         payback: { fixed: 5, min: 2, max: 10 },
         reward: { fixed: 2, min: 1, max: 5 },
+        timeMod: { step: 1 },
     },
     standard: {
         label: 'Standard',
@@ -105,6 +110,7 @@ const PLAY_STYLE_PRESETS = {
         // Penalties (Moderate)
         payback: { fixed: 20, min: 15, max: 45 },
         reward: { fixed: 15, min: 5, max: 20 },
+        timeMod: { step: 5 },
     },
     extended: {
         label: 'Extended',
@@ -119,6 +125,7 @@ const PLAY_STYLE_PRESETS = {
         // Penalties (High)
         payback: { fixed: 120, min: 60, max: 180 }, // 2 - 3 hrs
         reward: { fixed: 60, min: 30, max: 90 }, // 1 - 1.5 hrs
+        timeMod: { step: 15 },
     },
     extreme: {
         label: 'Extreme',
@@ -133,6 +140,7 @@ const PLAY_STYLE_PRESETS = {
         // Penalties (Severe)
         payback: { fixed: 360, min: 180, max: 720 }, // 6 hrs fixed, 3-12 hrs random
         reward: { fixed: 180, min: 60, max: 360 }, // 3 hrs fixed, 1-6 hrs random
+        timeMod: { step: 60 },
     },
 };
 
@@ -150,6 +158,7 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
     const paybackStrategy = Form.useWatch('paybackStrategy', form);
     const enableRewardCode = Form.useWatch('enableRewardCode', form);
     const rewardStrategy = Form.useWatch('rewardStrategy', form);
+    const enableTimeModification = Form.useWatch('enableTimeModification', form);
 
     // --- STYLES ---
 
@@ -182,6 +191,8 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
                 rewardPenaltyMinutes: preset.reward.fixed,
                 rewardPenaltyMinMinutes: preset.reward.min,
                 rewardPenaltyMaxMinutes: preset.reward.max,
+                // Update Time Mod Defaults
+                timeModificationStepMinutes: preset.timeMod.step,
             });
         }
     };
@@ -266,6 +277,10 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
             rewardPenalty: values.rewardPenaltyMinutes * 60,
             rewardPenaltyMin: values.rewardPenaltyMinMinutes * 60,
             rewardPenaltyMax: values.rewardPenaltyMaxMinutes * 60,
+
+            // Time Mod
+            enableTimeModification: !!values.enableTimeModification,
+            timeModificationStep: values.timeModificationStepMinutes * 60,
         };
 
         const payload: DeviceProvisioningData = {
@@ -681,6 +696,42 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
                     </div>
                 )}
             </Card>
+
+            {/* 4. Time Modification (New) */}
+            <Card size="small" style={cardStyle}>
+                <Row align="middle" justify="space-between">
+                    <Col>
+                        <Title level={5} style={{ margin: 0 }}>
+                            Time Modification
+                        </Title>
+                        <Text type="secondary">Allow adding/removing time during session.</Text>
+                    </Col>
+                    <Col>
+                        <Form.Item name="enableTimeModification" valuePropName="checked" noStyle>
+                            <Switch />
+                        </Form.Item>
+                    </Col>
+                </Row>
+
+                {enableTimeModification && (
+                    <div style={dependentConfigStyle}>
+                        <Form.Item
+                            label="Interval Step"
+                            name="timeModificationStepMinutes"
+                            rules={[{ required: true }]}
+                            style={{ margin: 0, padding: 0 }}
+                        >
+                            <InputNumber min={1} max={60} addonAfter="min" style={{ width: 150 }} />
+                        </Form.Item>
+
+                        {/* Explainer Text */}
+                        <Text type="secondary" style={{ fontSize: '0.85em', display: 'block', lineHeight: '1.4', marginTop: 8 }}>
+                            You can add or remove time in these increments while the session is active. Removing time cannot reduce the
+                            remaining duration below this step size.
+                        </Text>
+                    </div>
+                )}
+            </Card>
         </Space>
     );
 
@@ -717,6 +768,8 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
                         rewardPenaltyMinutes: 15, // Standard Default
                         rewardPenaltyMinMinutes: 5, // Standard Default
                         rewardPenaltyMaxMinutes: 20, // Standard Default
+                        enableTimeModification: true,
+                        timeModificationStepMinutes: 5, // Standard Default
                     }}
                 >
                     {error && (

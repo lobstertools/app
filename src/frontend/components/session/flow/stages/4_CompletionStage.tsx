@@ -29,16 +29,19 @@ export const CompletionStage = () => {
 
     // 2. Data Points
     const duration = status?.timers?.lockDuration || 0;
-    const debtServed = status?.timers?.debtServed || 0;
+    const debtServed = status?.timers?.potentialDebtServed || 0;
     const debtRemaining = status?.stats?.paybackAccumulated || 0;
     const streakCount = status?.stats?.streaks || 0;
 
     // 3. UI Theme Configuration
+    // If it was aborted, we show a Warning outcome, but the text needs to be specific.
     const resultStatus = isAborted ? 'warning' : 'success';
     const mainIcon = isAborted ? <WarningOutlined /> : <UnlockOutlined />;
-    const mainTitle = isAborted ? 'Penalty Served' : 'Session Complete';
+
+    // Corrected Text Logic
+    const mainTitle = isAborted ? 'Session Aborted' : 'Session Complete';
     const subTitle = isAborted
-        ? 'You have served your penalty time. The device is now unlocked.'
+        ? 'The session was terminated early. Any penalties have been applied.'
         : 'Congratulations! You have successfully completed your session.';
 
     return (
