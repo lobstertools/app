@@ -100,7 +100,7 @@ export const TestSessionModal = () => {
                                     <div style={{ fontSize: '14px', padding: '4px 0' }}>{getButtonTag()}</div>
                                 </div>
 
-                                <PressProgressBar />
+                                <PressProgressBar hideTime={false} />
 
                                 <Divider style={{ margin: '8px 0' }} />
 

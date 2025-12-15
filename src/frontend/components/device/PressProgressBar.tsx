@@ -5,7 +5,15 @@ import { Progress, Typography } from 'antd';
 
 const { Text } = Typography;
 
-export const PressProgressBar = () => {
+interface PressProgressBarProps {
+    /**
+     * Whether to hide the numeric time display (e.g., "1.2s / 5.0s").
+     * @default true
+     */
+    hideTime?: boolean;
+}
+
+export const PressProgressBar = ({ hideTime = true }: PressProgressBarProps) => {
     // 1. Access Global State
     const { status } = useSession();
     const { activeDevice } = useDeviceManager();
@@ -42,9 +50,11 @@ export const PressProgressBar = () => {
                 <Text type="secondary" style={{ fontSize: '12px' }}>
                     Hold to abort
                 </Text>
-                <Text style={{ fontSize: '12px', fontFamily: 'monospace' }}>
-                    {formatTime(isPressed ? currentMs : 0)} / {formatTime(thresholdMs)}
-                </Text>
+                {!hideTime && (
+                    <Text style={{ fontSize: '12px', fontFamily: 'monospace' }}>
+                        {formatTime(isPressed ? currentMs : 0)} / {formatTime(thresholdMs)}
+                    </Text>
+                )}
             </div>
             <Progress
                 percent={isPressed ? percent : 0} // Reset to 0 visually if button is released
