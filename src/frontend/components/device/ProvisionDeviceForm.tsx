@@ -546,7 +546,6 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
                         <Form.Item
                             label="Strategy"
                             name="paybackStrategy"
-                            initialValue="DETERRENT_FIXED"
                             style={{ marginBottom: 16, marginLeft: 0 }}
                             wrapperCol={{ style: { paddingLeft: 0 } }}
                         >
@@ -559,43 +558,53 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
                         {/* Input Controls */}
                         <div style={{ marginBottom: 16 }}>
                             {paybackStrategy === 'DETERRENT_FIXED' ? (
-                                <Form.Item
-                                    label="Penalty Duration"
-                                    name="paybackTimeMinutes"
-                                    rules={[{ required: true }]}
-                                    style={{ margin: 0, padding: 0 }}
-                                >
-                                    <InputNumber min={1} max={GLOBAL_MAX_MINUTES} addonAfter="min" style={{ width: 150 }} />
+                                <Form.Item label="Penalty Duration" rules={[{ required: true }]} style={{ margin: 0, padding: 0 }}>
+                                    <Space.Compact>
+                                        <Form.Item name="paybackTimeMinutes" noStyle>
+                                            <InputNumber min={1} max={GLOBAL_MAX_MINUTES} style={{ width: 150 }} />
+                                        </Form.Item>
+                                        <Button disabled style={{ pointerEvents: 'none' }}>
+                                            min
+                                        </Button>
+                                    </Space.Compact>
                                 </Form.Item>
                             ) : (
                                 <Space align="start" size="small" style={{ display: 'flex' }}>
-                                    <Form.Item
-                                        label="Min Duration"
-                                        name="paybackMinMinutes"
-                                        rules={[{ required: true }]}
-                                        style={{ margin: 0, padding: 0 }}
-                                    >
-                                        <InputNumber min={1} addonAfter="min" style={{ width: 120 }} />
+                                    <Form.Item label="Min Duration" rules={[{ required: true }]} style={{ margin: 0, padding: 0 }}>
+                                        <Space.Compact>
+                                            <Form.Item name="paybackMinMinutes" noStyle>
+                                                <InputNumber min={1} style={{ width: 120 }} />
+                                            </Form.Item>
+                                            <Button disabled style={{ pointerEvents: 'none' }}>
+                                                min
+                                            </Button>
+                                        </Space.Compact>
                                     </Form.Item>
                                     <span style={{ display: 'inline-block', marginTop: 32 }}>-</span>
-                                    <Form.Item
-                                        label="Max Duration"
-                                        name="paybackMaxMinutes"
-                                        dependencies={['paybackMinMinutes']}
-                                        rules={[
-                                            { required: true },
-                                            ({ getFieldValue }) => ({
-                                                validator(_, value) {
-                                                    if (!value || value >= getFieldValue('paybackMinMinutes')) {
-                                                        return Promise.resolve();
-                                                    }
-                                                    return Promise.reject(new Error('Max < Min'));
-                                                },
-                                            }),
-                                        ]}
-                                        style={{ margin: 0, padding: 0 }}
-                                    >
-                                        <InputNumber min={1} max={GLOBAL_MAX_MINUTES} addonAfter="min" style={{ width: 120 }} />
+                                    <Form.Item label="Max Duration" style={{ margin: 0, padding: 0 }}>
+                                        <Space.Compact>
+                                            <Form.Item
+                                                name="paybackMaxMinutes"
+                                                noStyle
+                                                dependencies={['paybackMinMinutes']}
+                                                rules={[
+                                                    { required: true },
+                                                    ({ getFieldValue }) => ({
+                                                        validator(_, value) {
+                                                            if (!value || value >= getFieldValue('paybackMinMinutes')) {
+                                                                return Promise.resolve();
+                                                            }
+                                                            return Promise.reject(new Error('Max < Min'));
+                                                        },
+                                                    }),
+                                                ]}
+                                            >
+                                                <InputNumber min={1} max={GLOBAL_MAX_MINUTES} style={{ width: 120 }} />
+                                            </Form.Item>
+                                            <Button disabled style={{ pointerEvents: 'none' }}>
+                                                min
+                                            </Button>
+                                        </Space.Compact>
                                     </Form.Item>
                                 </Space>
                             )}
@@ -634,7 +643,6 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
                         <Form.Item
                             label="Strategy"
                             name="rewardStrategy"
-                            initialValue="DETERRENT_FIXED"
                             style={{ marginBottom: 16, marginLeft: 0 }}
                             wrapperCol={{ style: { paddingLeft: 0 } }}
                         >
@@ -647,43 +655,53 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
                         {/* Input Controls */}
                         <div style={{ marginBottom: 16 }}>
                             {rewardStrategy === 'DETERRENT_FIXED' ? (
-                                <Form.Item
-                                    label="Hide Duration"
-                                    name="rewardPenaltyMinutes"
-                                    rules={[{ required: true }]}
-                                    style={{ margin: 0, padding: 0 }}
-                                >
-                                    <InputNumber min={1} max={GLOBAL_MAX_MINUTES} addonAfter="min" style={{ width: 150 }} />
+                                <Form.Item label="Hide Duration" rules={[{ required: true }]} style={{ margin: 0, padding: 0 }}>
+                                    <Space.Compact>
+                                        <Form.Item name="rewardPenaltyMinutes" noStyle>
+                                            <InputNumber min={1} max={GLOBAL_MAX_MINUTES} style={{ width: 150 }} />
+                                        </Form.Item>
+                                        <Button disabled style={{ pointerEvents: 'none' }}>
+                                            min
+                                        </Button>
+                                    </Space.Compact>
                                 </Form.Item>
                             ) : (
                                 <Space align="start" size="small" style={{ display: 'flex' }}>
-                                    <Form.Item
-                                        label="Min Duration"
-                                        name="rewardPenaltyMinMinutes"
-                                        rules={[{ required: true }]}
-                                        style={{ margin: 0, padding: 0 }}
-                                    >
-                                        <InputNumber min={1} addonAfter="min" style={{ width: 120 }} />
+                                    <Form.Item label="Min Duration" rules={[{ required: true }]} style={{ margin: 0, padding: 0 }}>
+                                        <Space.Compact>
+                                            <Form.Item name="rewardPenaltyMinMinutes" noStyle>
+                                                <InputNumber min={1} style={{ width: 120 }} />
+                                            </Form.Item>
+                                            <Button disabled style={{ pointerEvents: 'none' }}>
+                                                min
+                                            </Button>
+                                        </Space.Compact>
                                     </Form.Item>
                                     <span style={{ display: 'inline-block', marginTop: 32 }}>-</span>
-                                    <Form.Item
-                                        label="Max Duration"
-                                        name="rewardPenaltyMaxMinutes"
-                                        dependencies={['rewardPenaltyMinMinutes']}
-                                        rules={[
-                                            { required: true },
-                                            ({ getFieldValue }) => ({
-                                                validator(_, value) {
-                                                    if (!value || value >= getFieldValue('rewardPenaltyMinMinutes')) {
-                                                        return Promise.resolve();
-                                                    }
-                                                    return Promise.reject(new Error('Max < Min'));
-                                                },
-                                            }),
-                                        ]}
-                                        style={{ margin: 0, padding: 0 }}
-                                    >
-                                        <InputNumber min={1} max={GLOBAL_MAX_MINUTES} addonAfter="min" style={{ width: 120 }} />
+                                    <Form.Item label="Max Duration" style={{ margin: 0, padding: 0 }}>
+                                        <Space.Compact>
+                                            <Form.Item
+                                                name="rewardPenaltyMaxMinutes"
+                                                noStyle
+                                                dependencies={['rewardPenaltyMinMinutes']}
+                                                rules={[
+                                                    { required: true },
+                                                    ({ getFieldValue }) => ({
+                                                        validator(_, value) {
+                                                            if (!value || value >= getFieldValue('rewardPenaltyMinMinutes')) {
+                                                                return Promise.resolve();
+                                                            }
+                                                            return Promise.reject(new Error('Max < Min'));
+                                                        },
+                                                    }),
+                                                ]}
+                                            >
+                                                <InputNumber min={1} max={GLOBAL_MAX_MINUTES} style={{ width: 120 }} />
+                                            </Form.Item>
+                                            <Button disabled style={{ pointerEvents: 'none' }}>
+                                                min
+                                            </Button>
+                                        </Space.Compact>
                                     </Form.Item>
                                 </Space>
                             )}
@@ -715,13 +733,15 @@ export const ProvisionDeviceForm = ({ device, onSuccess }: ProvisionDeviceFormPr
 
                 {enableTimeModification && (
                     <div style={dependentConfigStyle}>
-                        <Form.Item
-                            label="Interval Step"
-                            name="timeModificationStepMinutes"
-                            rules={[{ required: true }]}
-                            style={{ margin: 0, padding: 0 }}
-                        >
-                            <InputNumber min={1} max={60} addonAfter="min" style={{ width: 150 }} />
+                        <Form.Item label="Interval Step" rules={[{ required: true }]} style={{ margin: 0, padding: 0 }}>
+                            <Space.Compact>
+                                <Form.Item name="timeModificationStepMinutes" noStyle>
+                                    <InputNumber min={1} max={60} style={{ width: 150 }} />
+                                </Form.Item>
+                                <Button disabled style={{ pointerEvents: 'none' }}>
+                                    min
+                                </Button>
+                            </Space.Compact>
                         </Form.Item>
 
                         {/* Explainer Text */}

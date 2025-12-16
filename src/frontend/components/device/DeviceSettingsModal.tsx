@@ -357,10 +357,10 @@ export const DeviceSettingsModal = () => {
             children: (
                 <Space direction="vertical" style={{ width: '100%' }} size="large">
                     <Card size="small" title="Device Status">
-                        <Descriptions bordered items={identityItems} size="small" column={2} labelStyle={descriptionLabelStyle} />
+                        <Descriptions bordered items={identityItems} size="small" column={2} styles={{ label: descriptionLabelStyle }} />
                     </Card>
                     <Card size="small" title="Session Statistics">
-                        <Descriptions bordered items={sessionStatItems} size="small" column={2} labelStyle={descriptionLabelStyle} />
+                        <Descriptions bordered items={sessionStatItems} size="small" column={2} styles={{ label: descriptionLabelStyle }} />
                     </Card>
                     <div style={{ textAlign: 'center', marginTop: 10 }}>
                         <Text type="secondary" style={{ fontSize: 12 }}>
@@ -389,7 +389,7 @@ export const DeviceSettingsModal = () => {
                             </Space>
                         }
                     >
-                        <Descriptions bordered items={networkItems} size="small" column={2} labelStyle={descriptionLabelStyle} />
+                        <Descriptions bordered items={networkItems} size="small" column={2} styles={{ label: descriptionLabelStyle }} />
                     </Card>
                     <Card title="Update Credentials" size="small">
                         <Spin spinning={isUpdatingWifi}>
@@ -447,31 +447,31 @@ export const DeviceSettingsModal = () => {
                             size="small"
                             column={1}
                             style={{ marginBottom: 16 }}
-                            labelStyle={descriptionLabelStyle}
+                            styles={{ label: descriptionLabelStyle }}
                         />
 
                         <Divider orientation="left" plain style={{ fontSize: '12px', margin: '8px 0' }}>
                             Reward Code
                         </Divider>
-                        <Descriptions bordered items={rewardItems} size="small" column={1} labelStyle={descriptionLabelStyle} />
+                        <Descriptions bordered items={rewardItems} size="small" column={1} styles={{ label: descriptionLabelStyle }} />
 
                         <Divider orientation="left" plain style={{ fontSize: '12px', margin: '16px 0 8px 0' }}>
                             Debt Payback
                         </Divider>
-                        <Descriptions bordered items={paybackItems} size="small" column={1} labelStyle={descriptionLabelStyle} />
+                        <Descriptions bordered items={paybackItems} size="small" column={1} styles={{ label: descriptionLabelStyle }} />
 
                         <Divider orientation="left" plain style={{ fontSize: '12px', margin: '16px 0 8px 0' }}>
                             Time Modification
                         </Divider>
-                        <Descriptions bordered items={timeModItems} size="small" column={1} labelStyle={descriptionLabelStyle} />
+                        <Descriptions bordered items={timeModItems} size="small" column={1} styles={{ label: descriptionLabelStyle }} />
                     </Card>
 
                     <Card size="small" title="Session Timing Presets">
-                        <Descriptions bordered items={limitItems} size="small" column={1} labelStyle={descriptionLabelStyle} />
+                        <Descriptions bordered items={limitItems} size="small" column={1} styles={{ label: descriptionLabelStyle }} />
                         <Divider orientation="left" style={{ margin: '16px 0 8px 0', fontSize: '12px' }} plain>
                             Randomization Ranges
                         </Divider>
-                        <Descriptions bordered items={rangeItems} size="small" column={1} labelStyle={descriptionLabelStyle} />
+                        <Descriptions bordered items={rangeItems} size="small" column={1} styles={{ label: descriptionLabelStyle }} />
                     </Card>
                 </Space>
             ),
@@ -488,7 +488,7 @@ export const DeviceSettingsModal = () => {
             children: (
                 <Space direction="vertical" style={{ width: '100%' }} size="large">
                     <Card size="small" title="Physical Configuration">
-                        <Descriptions bordered size="small" column={1} labelStyle={descriptionLabelStyle}>
+                        <Descriptions bordered size="small" column={1} styles={{ label: descriptionLabelStyle }}>
                             <Descriptions.Item label="Enabled Channels">{enabledChannelsString}</Descriptions.Item>
                         </Descriptions>
                         <Divider style={{ margin: '12px 0' }} orientation="left" plain>
@@ -510,7 +510,7 @@ export const DeviceSettingsModal = () => {
                         </Space>
                     </Card>
                     <Card size="small" title="System Defaults">
-                        <Descriptions bordered items={systemItems} size="small" column={2} labelStyle={descriptionLabelStyle} />
+                        <Descriptions bordered items={systemItems} size="small" column={2} styles={{ label: descriptionLabelStyle }} />
                     </Card>
                 </Space>
             ),
@@ -533,7 +533,7 @@ export const DeviceSettingsModal = () => {
                     }
                     size="small"
                     style={{ borderColor: token.colorErrorBorder }}
-                    headStyle={{ backgroundColor: token.colorErrorBg, color: token.colorError }}
+                    styles={{ header: { backgroundColor: token.colorErrorBg, color: token.colorError } }}
                 >
                     <Row justify="space-between" align="middle">
                         <Col span={16}>
