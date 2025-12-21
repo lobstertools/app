@@ -95,13 +95,19 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      # --- 1. Download all artifacts ---
+      # --- 1. Checkout code
+      - name: "Checkout code"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch full history for accurate release notes
+
+      # --- 2. Download all artifacts ---
       - name: "Download all artifacts"
         uses: actions/download-artifact@v4
         with:
           path: artifacts # Download all artifacts to an 'artifacts' directory
           
-      # --- 2. Create GitHub Release ---
+      # --- 3. Create GitHub Release ---
       - name: "Create GitHub Release"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
