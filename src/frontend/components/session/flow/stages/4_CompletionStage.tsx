@@ -28,8 +28,8 @@ export const CompletionStage = () => {
     const showPayback = detConfig?.enablePaybackTime ?? false;
 
     // 2. Data Points
-    const duration = status?.timers?.lockDuration || 0;
-    const debtServed = status?.timers?.potentialDebtServed || 0;
+    const duration = isAborted ? 0 : status?.timers?.lockDuration || 0;
+    const debtServed = isAborted ? 0 : status?.timers?.potentialDebtServed || 0;
     const debtRemaining = status?.stats?.paybackAccumulated || 0;
     const streakCount = status?.stats?.streaks || 0;
 
