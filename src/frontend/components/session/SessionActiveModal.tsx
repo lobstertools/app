@@ -213,7 +213,7 @@ export const SessionActiveModal = () => {
                                 <Text style={{ color: token.colorTextSecondary, fontSize: '12px' }}>Long-press pedal to abort</Text>
                             </Space>
                         </div>
-                        <PressProgressBar />
+                        <PressProgressBar hideTitle={true} />
                     </div>
                 )}
             </div>

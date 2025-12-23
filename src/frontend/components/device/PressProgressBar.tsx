@@ -11,9 +11,15 @@ interface PressProgressBarProps {
      * @default true
      */
     hideTime?: boolean;
+
+    /**
+     * Whether to hide the 'Hold to abort' message.
+     * @default false
+     */
+    hideTitle?: boolean;
 }
 
-export const PressProgressBar = ({ hideTime = true }: PressProgressBarProps) => {
+export const PressProgressBar = ({ hideTime = true, hideTitle = false }: PressProgressBarProps) => {
     // 1. Access Global State
     const { status } = useSession();
     const { activeDevice } = useDeviceManager();
@@ -47,9 +53,11 @@ export const PressProgressBar = ({ hideTime = true }: PressProgressBarProps) => 
     return (
         <div style={{ marginTop: 8 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                <Text type="secondary" style={{ fontSize: '12px' }}>
-                    Hold to abort
-                </Text>
+                {!hideTitle && (
+                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                        Hold to abort
+                    </Text>
+                )}
                 {!hideTime && (
                     <Text style={{ fontSize: '12px', fontFamily: 'monospace' }}>
                         {formatTime(isPressed ? currentMs : 0)} / {formatTime(thresholdMs)}
