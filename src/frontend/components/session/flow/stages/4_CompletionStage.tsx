@@ -66,7 +66,7 @@ export const CompletionStage = () => {
                         // Added height: 100% to match the Debt Report card
                         style={{ height: '100%' }}
                     >
-                        <Statistic title="Total Locked Time" value={formatSeconds(duration)} valueStyle={{ fontSize: '1.2rem' }} />
+                        <Statistic title="Total Locked Time" value={formatSeconds(duration, false)} valueStyle={{ fontSize: '1.2rem' }} />
                         {showStreaks && (
                             <div style={{ marginTop: 16 }}>
                                 <Statistic
@@ -97,7 +97,7 @@ export const CompletionStage = () => {
                                 {/* Debt Paid Off */}
                                 <Statistic
                                     title="Debt Paid Off"
-                                    value={formatSeconds(debtServed)}
+                                    value={formatSeconds(debtServed, false)}
                                     valueStyle={{ color: green[6], fontSize: '1.2rem' }}
                                     prefix={debtServed > 0 ? <SafetyCertificateOutlined /> : null}
                                 />
@@ -106,7 +106,7 @@ export const CompletionStage = () => {
                                 {debtRemaining > 0 ? (
                                     <Statistic
                                         title={isAborted ? 'New Total Debt' : 'Remaining Debt'}
-                                        value={formatSeconds(debtRemaining)}
+                                        value={formatSeconds(debtRemaining, false)}
                                         valueStyle={{ color: red[5], fontSize: '1.2rem' }}
                                         prefix={<WarningOutlined />}
                                     />
