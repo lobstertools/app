@@ -425,13 +425,15 @@ app.on('ready', () => {
             console.log('[Electron] All serial ports found:', JSON.stringify(ports, null, 2));
 
             const filteredPorts = filterforKnownDevices
-                ? ports.filter(
-                      (port) =>
-                          port.vendorId === '10C4' || // Silicon Labs (CP210x)
-                          port.vendorId === '1A86' || // WCH (CH340)
-                          port.vendorId === '303A' || // Espressif
-                          port.vendorId === '067b' // Prolific
-                  )
+                ? ports.filter((port) => {
+                      const vid = port.vendorId?.toUpperCase();
+                      return (
+                          vid === '10C4' || // Silicon Labs (CP210x)
+                          vid === '1A86' || // WCH (CH340)
+                          vid === '303A' || // Espressif
+                          vid === '067B' // Prolific
+                      );
+                  })
                 : ports;
 
             const processedPorts = filteredPorts.map((port) => {
